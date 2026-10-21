@@ -329,6 +329,7 @@ PB.Game = class {
     const s = b.def.super;
     const { ang, dist } = this.aim(b, aimIn, s.range || s.radius || 400);
     b.superCharge = 0;
+    b.supersUsed = (b.supersUsed || 0) + 1;
     this.events.push({ type: 'super', b });
     const pal = PB.VFX.PAL[b.def.atkType];
     this.ring(b.x, b.y - 10, 20, 90, pal[3], 0.35, 6);

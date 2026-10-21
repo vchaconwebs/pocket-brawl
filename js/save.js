@@ -1,5 +1,6 @@
-// Progreso del jugador: monedas, Puntos Pokémon, Pokémon desbloqueados y sus niveles,
-// cofres, fichas y misiones. Se guarda en el navegador (localStorage).
+// Progreso del jugador: monedas, Puntos Pokémon, Pokémon y niveles, copas, cofres, fichas,
+// misiones diarias y semanales, logros y estadísticas. Se guarda en el navegador (localStorage).
+// Cuando haya cuentas online, esto se guardará en el servidor (ver js/online.js).
 PB.META = {
   // Pokémon con los que se empieza (los tres iniciales)
   starters: ['charmander', 'squirtle', 'bulbasaur'],
@@ -23,6 +24,8 @@ PB.META = {
     great: { name: 'Super Ball', rolls: 3, pokemon: 0.05, color: '#3a7ad8' },
     ultra: { name: 'Ultra Ball', rolls: 10, pokemon: 0.04, color: '#f8c030' },
   },
+  clanCost: 300, // monedas para crear un clan
+  clanMax: 30,
 };
 
 // Multiplicador de stats para un nivel
@@ -32,10 +35,9 @@ PB.levelMul = (lvl) => 1 + PB.META.levelBonus * ((lvl || 1) - 1);
 PB.statsAt = (def, lvl) => {
   const k = PB.levelMul(lvl);
   const a = def.attack, s = def.super;
-  const atkDmg = a.dmg * (a.count && a.kind !== 'burst' ? 1 : 1) * k;
   return {
     hp: Math.round(def.hp * k),
-    dmg: Math.round(atkDmg),
+    dmg: Math.round(a.dmg * k),
     shots: a.kind === 'burst' ? a.count : a.count || 1,
     superDmg: s.dmg ? Math.round(s.dmg * k) : s.dps ? Math.round(s.dps * k) : 0,
     speed: def.speed,
@@ -44,37 +46,187 @@ PB.statsAt = (def, lvl) => {
   };
 };
 
+// Copas que se ganan o pierden según las copas que ya tiene ese Pokémon
+PB.copasDelta = (copas, result, rank) => {
+  if (rank) {
+    // Niebla Tóxica: según el puesto (1 a 10)
+    const table = copas < 100 ? [10, 8, 7, 6, 4, 2, 0, 0, 0, 0] : copas < 400 ? [9, 7, 5, 4, 2, 0, -2, -3, -4, -5] : [8, 6, 4, 2, 0, -2, -4, -5, -6, -7];
+    return table[Math.max(0, Math.min(9, rank - 1))];
+  }
+  if (result === 'draw') return 0;
+  if (result === 'win') return copas < 100 ? 10 : copas < 400 ? 8 : copas < 800 ? 7 : 6;
+  return copas < 50 ? 0 : copas < 150 ? -3 : copas < 400 ? -5 : copas < 800 ? -6 : -7;
+};
+
 PB.Save = (() => {
   const KEY = 'pb.save.v1';
   let data = null;
 
+  // ---------------------------------------------------------------- misiones
+  // n = objetivo diario. Las semanales usan el mismo tipo con objetivo ×5 y mejor premio.
   const MISSIONS = [
-    { type: 'play', n: 3, text: 'Juega 3 partidas' },
-    { type: 'play', n: 5, text: 'Juega 5 partidas' },
-    { type: 'win', n: 2, text: 'Gana 2 partidas' },
-    { type: 'win', n: 4, text: 'Gana 4 partidas' },
-    { type: 'ko', n: 8, text: 'Debilita a 8 Pokémon' },
-    { type: 'ko', n: 15, text: 'Debilita a 15 Pokémon' },
-    { type: 'balls', n: 15, text: 'Recoge 15 Pokéballs en Atrapa Pokéballs' },
-    { type: 'candy', n: 6, text: 'Recoge 6 Caramelos Raros en Niebla Tóxica' },
-    { type: 'snorlax', n: 15000, text: 'Haz 15.000 de daño a Snorlax' },
-    { type: 'goals', n: 2, text: 'Marca 2 goles en Voltorbol' },
-    { type: 'zone', n: 60, text: 'Pasa 60 s en la zona de Territorio' },
-    { type: 'damage', n: 30000, text: 'Haz 30.000 de daño en total' },
+    { type: 'play', n: 3, text: 'Juega {n} partidas' },
+    { type: 'win', n: 2, text: 'Gana {n} partidas' },
+    { type: 'ko', n: 10, text: 'Debilita a {n} Pokémon' },
+    { type: 'balls', n: 15, text: 'Recoge {n} Pokéballs en Atrapa Pokéballs' },
+    { type: 'candy', n: 6, text: 'Recoge {n} Caramelos Raros en Niebla Tóxica' },
+    { type: 'snorlax', n: 15000, text: 'Haz {n} de daño a Snorlax' },
+    { type: 'goals', n: 2, text: 'Marca {n} goles en Voltorbol' },
+    { type: 'zone', n: 60, text: 'Pasa {n} s en la zona de Territorio' },
+    { type: 'damage', n: 30000, text: 'Haz {n} de daño en total' },
+    { type: 'supers', n: 5, text: 'Usa {n} veces el súper' },
+    { type: 'copas', n: 20, text: 'Gana {n} copas' },
   ];
+  // dificultad aproximada (1 = fácil, 3 = difícil) para escalar el premio
+  const HARD = { play: 0.5, win: 1, ko: 0.12, balls: 0.1, candy: 0.25, snorlax: 0.0001, goals: 1, zone: 0.03, damage: 0.00006, supers: 0.3, copas: 0.08 };
+  const fmt = (n) => n.toLocaleString('es-ES');
 
+  function makeMission(group, taken) {
+    const pool = MISSIONS.filter((m) => !taken.has(m.type));
+    const m = pool[Math.floor(Math.random() * pool.length)] || MISSIONS[0];
+    const weekly = group === 'weekly';
+    const n = weekly ? m.n * 5 : m.n;
+    const diff = Math.max(1, Math.min(3, m.n * (HARD[m.type] || 0.5)));
+    const r = Math.random();
+    let reward;
+    if (weekly) {
+      if (r < 0.3) reward = { kind: 'coins', amount: Math.round((150 + diff * 80) / 10) * 10 };
+      else if (r < 0.55) reward = { kind: 'points', amount: Math.round((120 + diff * 60) / 10) * 10 };
+      else if (r < 0.75) reward = { kind: 'great' };
+      else reward = { kind: 'ultra' };
+    } else {
+      if (r < 0.4) reward = { kind: 'coins', amount: Math.round((25 + diff * 20) / 5) * 5 };
+      else if (r < 0.75) reward = { kind: 'points', amount: Math.round((20 + diff * 15) / 5) * 5 };
+      else reward = { kind: 'great' };
+    }
+    return { type: m.type, n, text: m.text.replace('{n}', fmt(n)), progress: 0, reward, claimed: false };
+  }
+
+  function makeMissions(group) {
+    const taken = new Set();
+    const out = [];
+    for (let i = 0; i < 3; i++) {
+      const m = makeMission(group, taken);
+      taken.add(m.type);
+      out.push(m);
+    }
+    return out;
+  }
+
+  // Claves de día y semana (las diarias cambian a las 00:00 y las semanales el lunes)
+  const dayKey = (d = new Date()) => d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  const weekKey = (d = new Date()) => {
+    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const dow = (x.getDay() + 6) % 7; // lunes = 0
+    x.setDate(x.getDate() - dow);
+    return dayKey(x);
+  };
+  function nextReset(group) {
+    const now = new Date();
+    const x = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    if (group === 'weekly') {
+      const dow = (now.getDay() + 6) % 7;
+      x.setDate(now.getDate() + (7 - dow));
+    }
+    return x.getTime() - now.getTime();
+  }
+
+  function checkResets() {
+    const d = get();
+    if (!d.daily || d.daily.key !== dayKey()) d.daily = { key: dayKey(), list: makeMissions('daily') };
+    if (!d.weekly || d.weekly.key !== weekKey()) d.weekly = { key: weekKey(), list: makeMissions('weekly') };
+  }
+
+  // ---------------------------------------------------------------- logros
+  // Cada estadística tiene varios niveles; los premios suben con la dificultad.
+  const ACH_DEFS = [
+    { stat: 'played', name: 'Entrenador', desc: 'Juega {n} partidas', tiers: [5, 25, 100, 300, 1000] },
+    { stat: 'wins', name: 'Ganador', desc: 'Gana {n} partidas', tiers: [1, 10, 50, 150, 500] },
+    { stat: 'kills', name: 'Cazador', desc: 'Debilita a {n} Pokémon', tiers: [10, 100, 500, 2000, 5000] },
+    { stat: 'damage', name: 'Pegada', desc: 'Haz {n} de daño', tiers: [20000, 200000, 1000000, 5000000, 20000000] },
+    { stat: 'supers', name: 'Supermovimiento', desc: 'Usa el súper {n} veces', tiers: [10, 100, 500, 2000] },
+    { stat: 'copas', name: 'Copa Pokémon', desc: 'Llega a {n} copas en total', tiers: [50, 200, 500, 1000, 2500, 5000] },
+    { stat: 'balls', name: 'Coleccionista', desc: 'Recoge {n} Pokéballs', tiers: [10, 100, 500, 2000] },
+    { stat: 'winsGems', name: 'Maestro Pokéball', desc: 'Gana {n} partidas de Atrapa Pokéballs', tiers: [1, 10, 50, 200] },
+    { stat: 'candies', name: 'Goloso', desc: 'Recoge {n} Caramelos Raros', tiers: [10, 100, 500, 1500] },
+    { stat: 'winsShowdown', name: 'Superviviente', desc: 'Queda primero {n} veces en Niebla Tóxica', tiers: [1, 10, 50, 150] },
+    { stat: 'snorlax', name: 'Despertador', desc: 'Haz {n} de daño a Snorlax', tiers: [10000, 100000, 500000, 2000000] },
+    { stat: 'winsHeist', name: 'Ladrón de siestas', desc: 'Gana {n} partidas de Despierta a Snorlax', tiers: [1, 10, 50, 200] },
+    { stat: 'goals', name: 'Goleador', desc: 'Marca {n} goles', tiers: [1, 10, 50, 200] },
+    { stat: 'winsBall', name: 'Crack del Voltorbol', desc: 'Gana {n} partidas de Voltorbol', tiers: [1, 10, 50, 200] },
+    { stat: 'zone', name: 'Guardián', desc: 'Pasa {n} s en la zona de Territorio', tiers: [60, 600, 3000, 10000] },
+    { stat: 'winsZone', name: 'Conquistador', desc: 'Gana {n} partidas de Territorio', tiers: [1, 10, 50, 200] },
+    { stat: 'chests', name: 'Abrecofres', desc: 'Abre {n} cofres', tiers: [1, 10, 50, 200] },
+    { stat: 'unlocked', name: 'Pokédex', desc: 'Consigue {n} Pokémon', tiers: [4, 5, 6] },
+    { stat: 'maxLevel', name: 'Entrenamiento', desc: 'Sube un Pokémon a nivel {n}', tiers: [2, 5, 7, 10] },
+    { stat: 'streak', name: 'Racha', desc: 'Gana {n} partidas seguidas', tiers: [3, 5, 10] },
+  ];
+  const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+  // premio de un logro según su nivel (0 = fácil) y cuántos niveles tiene
+  function achReward(t, count) {
+    const k = count <= 3 ? t + 1 : t; // logros cortos dan un poco más
+    if (k <= 0) return [{ kind: 'coins', amount: 30 }];
+    if (k === 1) return [{ kind: 'coins', amount: 80 }, { kind: 'points', amount: 30 }];
+    if (k === 2) return [{ kind: 'great' }, { kind: 'points', amount: 60 }];
+    if (k === 3) return [{ kind: 'ultra' }];
+    return [{ kind: 'ultra' }, { kind: 'points', amount: 300 }, { kind: 'coins', amount: 500 }];
+  }
+  const ACHIEVEMENTS = [];
+  for (const def of ACH_DEFS) {
+    def.tiers.forEach((n, t) => {
+      ACHIEVEMENTS.push({
+        id: def.stat + '-' + t,
+        stat: def.stat,
+        name: def.name + ' ' + ROMAN[t],
+        desc: def.desc.replace('{n}', fmt(n)),
+        n,
+        tier: t,
+        reward: achReward(t, def.tiers.length),
+      });
+    });
+  }
+
+  function statValue(stat) {
+    const d = get();
+    if (stat === 'copas') return totalCopas();
+    if (stat === 'unlocked') return Object.keys(d.owned).length;
+    if (stat === 'maxLevel') return Math.max(...Object.values(d.owned));
+    if (stat === 'streak') return d.stats.bestStreak || 0;
+    return d.stats[stat] || 0;
+  }
+
+  function achievements() {
+    const d = get();
+    return ACHIEVEMENTS.map((a) => ({ ...a, progress: Math.min(a.n, statValue(a.stat)), claimed: !!d.ach[a.id] }));
+  }
+
+  function claimAchievement(id) {
+    const a = achievements().find((x) => x.id === id);
+    if (!a || a.claimed || a.progress < a.n) return null;
+    get().ach[id] = true;
+    for (const r of a.reward) giveReward(r);
+    persist();
+    return a.reward;
+  }
+
+  // ---------------------------------------------------------------- guardado
   function fresh() {
     const owned = {};
     for (const id of PB.META.starters) owned[id] = 1;
     return {
+      name: 'Entrenador' + Math.floor(1000 + Math.random() * 9000),
+      tag: '#' + Math.random().toString(36).slice(2, 8).toUpperCase(),
       coins: 50,
       points: 0,
       tokens: 0,
       owned, // id -> nivel
+      copas: {}, // id -> copas
       selected: 'charmander',
       chests: ['great'], // regalo de bienvenida
-      missions: [],
-      stats: { played: 0, wins: 0 },
+      daily: null,
+      weekly: null,
+      ach: {},
+      stats: { played: 0, wins: 0, streak: 0, bestStreak: 0 },
     };
   }
 
@@ -86,8 +238,8 @@ PB.Save = (() => {
       data = fresh();
     }
     if (!data.owned[data.selected]) data.selected = Object.keys(data.owned)[0];
-    migrate(data);
-    while (data.missions.length < 3) data.missions.push(newMission());
+    delete data.missions; // formato antiguo
+    checkResets();
     persist();
     return data;
   }
@@ -96,39 +248,29 @@ PB.Save = (() => {
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
   }
 
-  // dificultad aproximada de cada misión (1 = fácil, 3 = difícil) para escalar el premio
-  const HARD = { play: 0.5, win: 1, ko: 0.12, balls: 0.1, candy: 0.25, snorlax: 0.0001, goals: 1, zone: 0.03, damage: 0.00006 };
-
-  function newMission() {
-    const taken = new Set(data ? data.missions.map((m) => m.text) : []);
-    const pool = MISSIONS.filter((m) => !taken.has(m.text));
-    const m = pool[Math.floor(Math.random() * pool.length)] || MISSIONS[0];
-    const diff = Math.max(1, Math.min(3, m.n * (HARD[m.type] || 0.5)));
-    const r = Math.random();
-    let reward;
-    if (r < 0.33) reward = { kind: 'coins', amount: Math.round((30 + diff * 25) / 5) * 5 };
-    else if (r < 0.6) reward = { kind: 'points', amount: Math.round((20 + diff * 20) / 5) * 5 };
-    else if (r < 0.86 || diff < 1.5) reward = { kind: 'great' };
-    else reward = { kind: 'ultra' };
-    return { ...m, progress: 0, reward };
-  }
-
-  // misiones guardadas con el formato antiguo (reward: 'poke' | 'great')
-  function migrate(d) {
-    for (const m of d.missions) {
-      if (typeof m.reward === 'string') m.reward = m.reward === 'poke' ? { kind: 'coins', amount: 50 } : { kind: m.reward };
-    }
-  }
-
   const get = () => data || load();
 
+  function giveReward(r) {
+    const d = get();
+    if (r.kind === 'coins') d.coins += r.amount;
+    else if (r.kind === 'points') d.points += r.amount;
+    else d.chests.push(r.kind);
+  }
+
+  // ---------------------------------------------------------------- perfil
+  function setName(name) {
+    const n = String(name || '').trim().slice(0, 16);
+    if (n.length < 3) return false;
+    get().name = n;
+    persist();
+    return true;
+  }
+
   // ---------------------------------------------------------------- Pokémon
-  function owned(id) {
-    return !!get().owned[id];
-  }
-  function level(id) {
-    return get().owned[id] || 0;
-  }
+  const owned = (id) => !!get().owned[id];
+  const level = (id) => get().owned[id] || 0;
+  const copas = (id) => get().copas[id] || 0;
+  const totalCopas = () => Object.values(get().copas).reduce((a, b) => a + b, 0);
   function select(id) {
     if (!owned(id)) return false;
     get().selected = id;
@@ -147,9 +289,7 @@ PB.Save = (() => {
     persist();
     return true;
   }
-  function unlockCost(id) {
-    return PB.META.rarity[id] ? PB.META.rarity[id].cost : 500;
-  }
+  const unlockCost = (id) => (PB.META.rarity[id] ? PB.META.rarity[id].cost : 500);
   function unlock(id) {
     if (owned(id)) return false;
     const c = unlockCost(id);
@@ -159,9 +299,14 @@ PB.Save = (() => {
     persist();
     return true;
   }
+  function spendCoins(n) {
+    if (get().coins < n) return false;
+    data.coins -= n;
+    persist();
+    return true;
+  }
 
   // ---------------------------------------------------------------- cofres
-  // Abre el primer cofre de la lista y devuelve los premios
   function openChest(index) {
     const d = get();
     const kind = d.chests.splice(index || 0, 1)[0];
@@ -183,50 +328,9 @@ PB.Save = (() => {
     d.coins += res.coins;
     d.points += res.points;
     for (const id of res.pokemon) d.owned[id] = 1;
+    d.stats.chests = (d.stats.chests || 0) + 1;
     persist();
     return res;
-  }
-
-  // ---------------------------------------------------------------- partidas y misiones
-  // Recompensas al terminar una partida. r = { win, draw, rank, mode, me, game }
-  function applyMatch(r) {
-    const d = get();
-    let tokens;
-    if (r.mode === 'showdown') tokens = [0, 50, 40, 40, 30, 30, 20, 20, 15, 10, 10][r.rank || 10] || 10;
-    else tokens = r.win ? 40 : r.draw ? 25 : 15;
-    d.stats.played++;
-    if (r.win) d.stats.wins++;
-    d.tokens += tokens;
-    const newChests = [];
-    while (d.tokens >= PB.META.tokensPerChest) {
-      d.tokens -= PB.META.tokensPerChest;
-      d.chests.push('poke');
-      newChests.push('poke');
-    }
-    // progreso de misiones
-    const me = r.me;
-    const add = { play: 1, win: r.win ? 1 : 0, ko: me.kills, damage: me.dmgDone };
-    if (r.mode === 'gems') add.balls = me.ballsTaken;
-    if (r.mode === 'showdown') add.candy = me.stat;
-    if (r.mode === 'heist') add.snorlax = me.stat;
-    if (r.mode === 'ball') add.goals = me.stat;
-    if (r.mode === 'zone') add.zone = me.stat;
-    for (const m of d.missions) m.progress = Math.min(m.n, m.progress + (add[m.type] || 0));
-    persist();
-    return { tokens, newChests };
-  }
-
-  function claimMission(i) {
-    const d = get();
-    const m = d.missions[i];
-    if (!m || m.progress < m.n) return null;
-    const r = m.reward;
-    if (r.kind === 'coins') d.coins += r.amount;
-    else if (r.kind === 'points') d.points += r.amount;
-    else d.chests.push(r.kind);
-    d.missions[i] = newMission();
-    persist();
-    return r;
   }
 
   // Índice del mejor cofre para abrir primero (Ultra > Super > Poké)
@@ -239,11 +343,84 @@ PB.Save = (() => {
     return -1;
   }
 
+  // ---------------------------------------------------------------- partidas
+  // r = { win, draw, rank, mode, me }
+  function applyMatch(r) {
+    const d = get();
+    checkResets();
+    const me = r.me, id = me.def.id;
+    // copas
+    const before = copas(id);
+    const delta = PB.copasDelta(before, r.win ? 'win' : r.draw ? 'draw' : 'lose', r.mode === 'showdown' ? r.rank || 10 : 0);
+    d.copas[id] = Math.max(0, before + delta);
+    // fichas y cofres
+    let tokens;
+    if (r.mode === 'showdown') tokens = [0, 50, 40, 40, 30, 30, 20, 20, 15, 10, 10][r.rank || 10] || 10;
+    else tokens = r.win ? 40 : r.draw ? 25 : 15;
+    d.tokens += tokens;
+    const newChests = [];
+    while (d.tokens >= PB.META.tokensPerChest) {
+      d.tokens -= PB.META.tokensPerChest;
+      d.chests.push('poke');
+      newChests.push('poke');
+    }
+    // estadísticas
+    const s = d.stats;
+    const inc = (k, v) => { s[k] = (s[k] || 0) + (v || 0); };
+    inc('played', 1);
+    inc('wins', r.win ? 1 : 0);
+    inc('kills', me.kills);
+    inc('damage', Math.round(me.dmgDone));
+    inc('supers', me.supersUsed || 0);
+    s.streak = r.win ? (s.streak || 0) + 1 : 0;
+    s.bestStreak = Math.max(s.bestStreak || 0, s.streak);
+    const winKey = { gems: 'winsGems', showdown: 'winsShowdown', heist: 'winsHeist', ball: 'winsBall', zone: 'winsZone' }[r.mode];
+    if (r.mode === 'showdown' ? r.rank === 1 : r.win) inc(winKey, 1);
+    const add = { play: 1, win: r.win ? 1 : 0, ko: me.kills, damage: me.dmgDone, supers: me.supersUsed || 0, copas: Math.max(0, delta) };
+    if (r.mode === 'gems') { add.balls = me.ballsTaken; inc('balls', me.ballsTaken); }
+    if (r.mode === 'showdown') { add.candy = me.stat; inc('candies', me.stat); }
+    if (r.mode === 'heist') { add.snorlax = me.stat; inc('snorlax', Math.round(me.stat)); }
+    if (r.mode === 'ball') { add.goals = me.stat; inc('goals', me.stat); }
+    if (r.mode === 'zone') { add.zone = me.stat; inc('zone', Math.round(me.stat)); }
+    // misiones
+    for (const m of [...d.daily.list, ...d.weekly.list]) {
+      if (!m.claimed) m.progress = Math.min(m.n, m.progress + (add[m.type] || 0));
+    }
+    persist();
+    return { tokens, newChests, copas: delta, copasNow: d.copas[id] };
+  }
+
+  function missions(group) {
+    checkResets();
+    return get()[group].list;
+  }
+
+  function claimMission(group, i) {
+    const m = missions(group)[i];
+    if (!m || m.claimed || m.progress < m.n) return null;
+    m.claimed = true;
+    giveReward(m.reward);
+    persist();
+    return m.reward;
+  }
+
+  // cuántas cosas hay listas para reclamar (para los avisos rojos)
+  function pending() {
+    checkResets();
+    const d = get();
+    const mis = [...d.daily.list, ...d.weekly.list].filter((m) => !m.claimed && m.progress >= m.n).length;
+    const ach = achievements().filter((a) => !a.claimed && a.progress >= a.n).length;
+    return { missions: mis, achievements: ach };
+  }
+
   function reset() {
     data = fresh();
-    while (data.missions.length < 3) data.missions.push(newMission());
+    checkResets();
     persist();
   }
 
-  return { load, get, persist, owned, level, select, upgradeCost, upgrade, unlockCost, unlock, openChest, nextChest, applyMatch, claimMission, reset };
+  return {
+    load, get, persist, setName, owned, level, copas, totalCopas, select, upgradeCost, upgrade, unlockCost, unlock, spendCoins,
+    openChest, nextChest, applyMatch, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
+  };
 })();

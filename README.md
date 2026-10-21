@@ -23,7 +23,11 @@ The Pokémon Company. Ver [CREDITS.md](CREDITS.md).
 - **Puntos Pokémon**: desbloquean Pokémon nuevos (Raro 300, Épico 600).
 - **Cofres** (Poké Ball, Super Ball, Ultra Ball): dan monedas, Puntos Pokémon y, a veces, un Pokémon.
 - **Fichas**: se ganan en cada partida; con 100 fichas, una Poké Ball.
-- **Misiones**: dan cofres al completarlas.
+- **Copas**: cada Pokémon tiene las suyas; se ganan al ganar y se pierden al perder. El total es la suma.
+- **Misiones** diarias (cambian a las 00:00) y semanales (cambian el lunes, más difíciles y con mejores premios).
+- **Logros**: 84, con premios según la dificultad.
+- **Amigos, clanes (con chat) y ranking**: de momento con un servidor simulado (`js/online.js`).
+  Para jugar online de verdad hay que conectar Firebase (cuentas con Google/correo, base de datos y reglas contra trampas).
 - Todo se guarda en el navegador (`localStorage`, clave `pb.save.v1`).
 
 ## Jugar en local
@@ -49,7 +53,8 @@ y entra en http://localhost:8123
 | `js/game.js` | Simulación de la partida (no dibuja). Preparada para usarse en un servidor en el futuro. |
 | `js/modes.js` | Reglas de cada modo y lo que hacen los bots en cada uno. |
 | `js/save.js` | Progreso: monedas, puntos, niveles, cofres, fichas y misiones. **Aquí se ajusta la economía.** |
-| `js/lobby.js` | Lobby, colección de Pokémon, ficha, modos, misiones y apertura de cofres. |
+| `js/lobby.js` | Lobby y todos los menús: Pokémon, ficha, modos, misiones, logros, perfil, amigos, clan, ranking y cofres. |
+| `js/online.js` | Amigos, clanes, chat y ranking (ahora simulado; aquí se conectará el servidor). |
 | `js/ai.js` | Bots. Generan el mismo tipo de input que un jugador. |
 | `js/world.js` | Colisiones, línea de visión y caminos (A*). |
 | `js/render.js` | Dibujado en Canvas. |

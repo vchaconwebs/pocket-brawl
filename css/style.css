@@ -556,3 +556,145 @@ button { font: inherit; cursor: pointer; }
 .sum { display: flex; flex-direction: column; align-items: center; gap: 10px; animation: pop 0.4s ease; }
 .sum h3 { margin: 0; font-weight: 400; font-size: 22px; color: #ffcf2e; text-shadow: 0 2px 0 #0c1838; }
 .sum-items { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+
+/* ===================================================================== PERFIL EN EL LOBBY */
+.profile-chip {
+  display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; color: #fff; text-align: left;
+  border-radius: 14px; border: 3px solid #0c1838; background: rgba(10, 15, 40, 0.8);
+}
+.profile-chip > img { width: 38px; height: 38px; border-radius: 10px; image-rendering: pixelated; background: rgba(255, 255, 255, 0.1); }
+.profile-chip span { display: flex; flex-direction: column; line-height: 1.1; }
+.profile-chip b { font-weight: 400; font-size: 16px; }
+.profile-chip small { display: flex; align-items: center; gap: 3px; color: #ffcf2e; font-size: 14px; }
+.profile-chip small img, img.cup { width: 16px; height: 16px; image-rendering: pixelated; vertical-align: -2px; }
+.lb-top { justify-content: flex-start; }
+.lb-top .lb-title { flex: 1; text-align: center; }
+
+/* menú de botones del lobby (2 columnas) */
+.lb-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lb-menu .lb-btn { font-size: 15px; padding: 8px 8px; display: flex; align-items: center; gap: 6px; }
+.lb-menu .lb-btn i { font-style: normal; font-size: 18px; }
+
+/* pestañas */
+.tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.tabs button {
+  flex: 1; font-size: 16px; padding: 7px 8px; color: #dfe7ff; border-radius: 10px;
+  border: 3px solid #0c1838; background: #2c3f78; box-shadow: 0 3px 0 #0c1838;
+}
+.tabs button.sel { background: linear-gradient(#ffd84a, #f0a81c); color: #3a2500; }
+.mock-note { margin: 0 0 8px; padding: 5px 10px; border-radius: 8px; background: rgba(255, 200, 60, 0.15); color: #ffd98a; font-size: 12px; text-align: left; }
+
+/* misiones y logros */
+.mission.claimed { opacity: 0.55; }
+.ach .ach-medal { position: relative; font-size: 28px; width: 40px; text-align: center; }
+.ach .ach-medal small { position: absolute; bottom: -2px; right: 0; font-size: 11px; color: #ffcf2e; text-shadow: 0 1px 0 #000; }
+.ach.t0 .ach-medal { filter: sepia(1) saturate(0.6) brightness(0.9); }
+.ach.t1 .ach-medal { filter: grayscale(1) brightness(1.3); }
+.ach-rw { display: flex; flex-direction: column; gap: 2px; min-width: 86px; }
+.rw { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #ffcf2e; }
+.rw img { width: 22px; height: 22px; image-rendering: pixelated; }
+#ach-list { display: flex; flex-direction: column; gap: 8px; }
+
+/* listas de jugadores y clanes */
+.plist { display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.prow { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 12px; background: rgba(0, 0, 0, 0.25); }
+.prow.me { background: rgba(90, 200, 120, 0.25); border: 2px solid #5ad07a; }
+.prow .pos { width: 28px; text-align: center; font-size: 18px; color: #ffcf2e; }
+.prow .av { width: 40px; height: 40px; border-radius: 10px; image-rendering: pixelated; background: rgba(255, 255, 255, 0.08); }
+.prow .av.big, .clan-head .av.big { width: 64px; height: 64px; }
+.pinfo { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.pinfo b { font-weight: 400; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pinfo small { font-size: 12px; color: #9fb0d8; }
+.pcopas { display: flex; align-items: center; gap: 4px; color: #ffcf2e; font-size: 16px; }
+.clanrow { cursor: pointer; }
+.clanrow:hover { background: rgba(255, 255, 255, 0.1); }
+.on { color: #5ad07a; }
+.off { color: #8a94b0; }
+.mini { width: 34px; height: 34px; border-radius: 10px; border: 3px solid #0c1838; background: #5a6a90; color: #fff; font-size: 16px; }
+.mini.ok { background: #3aa858; }
+.tagok { font-size: 12px; color: #9fb0d8; }
+.sep { margin: 0; text-align: center; color: #9fb0d8; }
+.search { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.search input, .form input, .form select, .chat-in input, .pf-name-row input {
+  flex: 1; min-width: 140px; font: inherit; font-size: 16px; padding: 8px 10px; border-radius: 10px;
+  border: 3px solid #0c1838; background: #e8eeff; color: #0c1838;
+}
+
+/* clan */
+.clan-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; text-align: left; }
+.clan-head > div { flex: 1; }
+.clan-head p { margin: 0 0 4px; color: #dfe7ff; font-size: 14px; }
+.clan-head small { color: #9fb0d8; font-size: 13px; }
+.clan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-height: 0; }
+.clan-grid .plist { max-height: 52vh; overflow-y: auto; }
+.chat { display: flex; flex-direction: column; border-radius: 12px; background: rgba(0, 0, 0, 0.3); border: 3px solid #0c1838; min-height: 240px; max-height: 52vh; }
+#chat-log { flex: 1; overflow-y: auto; padding: 8px 10px; text-align: left; font-family: "Pixelify Sans", system-ui, sans-serif; font-size: 14px; }
+#chat-log p { margin: 0 0 6px; color: #dfe7ff; word-wrap: break-word; }
+#chat-log p b { font-weight: 400; color: #7ab4fa; }
+#chat-log p.mine b { color: #7dff8f; }
+#chat-log p small { color: #6a7aa0; font-size: 11px; }
+#chat-log p.sys { color: #ffcf2e; font-size: 12px; text-align: center; }
+.chat-in { display: flex; gap: 6px; padding: 6px; }
+.row.left { justify-content: flex-start; margin: 0 0 10px; }
+.form { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.form label { display: flex; flex-direction: column; gap: 4px; font-size: 15px; color: #cfdcff; }
+.icons { display: flex; gap: 6px; flex-wrap: wrap; }
+.icons button { width: 54px; height: 54px; padding: 2px; border-radius: 10px; border: 3px solid #0c1838; background: #2c3f78; }
+.icons button.sel { background: linear-gradient(#ffd84a, #f0a81c); }
+.icons img { width: 100%; height: 100%; image-rendering: pixelated; border-radius: 6px; }
+
+/* perfil */
+.pf-card { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; text-align: left; }
+.pf-card > img { width: 80px; height: 80px; border-radius: 14px; image-rendering: pixelated; background: rgba(255, 255, 255, 0.1); }
+.pf-card > div { flex: 1; }
+.pf-name-row { display: flex; gap: 6px; }
+.pf-card small { color: #ffcf2e; }
+.pf-card p { margin: 4px 0 0; color: #9fb0d8; font-size: 14px; }
+#pf-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
+#pf-stats div { display: flex; flex-direction: column; padding: 6px; border-radius: 10px; background: rgba(0, 0, 0, 0.25); }
+#pf-stats small { font-size: 11px; color: #9fb0d8; }
+#pf-stats b { font-weight: 400; font-size: 18px; }
+.login-box { padding: 10px; border-radius: 12px; background: rgba(0, 0, 0, 0.25); text-align: left; }
+.login-box b { font-weight: 400; color: #ffcf2e; }
+.login-box p { margin: 4px 0 8px; font-size: 13px; color: #cfdcff; }
+.login-box .row { justify-content: flex-start; margin: 0; }
+
+/* aviso */
+#modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.55); padding: 16px; }
+.modal-box { width: min(360px, 100%); padding: 16px; border-radius: 16px; background: linear-gradient(#2d4a8f, #1e3266); border: 4px solid #0c1838; text-align: center; }
+.modal-box p { margin: 0 0 12px; font-size: 17px; }
+
+/* copas al acabar */
+.copas-change { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.3); }
+.copas-change img { width: 28px; height: 28px; image-rendering: pixelated; }
+.copas-change b { font-weight: 400; font-size: 26px; }
+.copas-change.up b { color: #7dff8f; }
+.copas-change.down b { color: #ff7a7a; }
+.copas-change small { color: #cfdcff; font-size: 13px; }
+#col-grid .lv img.cup { width: 14px; height: 14px; }
+
+@media (max-height: 500px) {
+  .profile-chip > img { width: 30px; height: 30px; }
+  .profile-chip b { font-size: 13px; }
+  .lb-top .lb-title { display: none; }
+  .lb-menu { gap: 5px; }
+  .lb-menu .lb-btn { font-size: 12px; padding: 5px 6px; }
+  .lb-menu .lb-btn i { font-size: 14px; }
+  .clan-grid .plist, .chat { max-height: 58vh; }
+  .chat { min-height: 160px; }
+  #pf-stats { grid-template-columns: repeat(4, 1fr); }
+  .prow { padding: 4px 8px; }
+  .prow .av { width: 32px; height: 32px; }
+}
+@media (max-width: 640px) {
+  .clan-grid { grid-template-columns: 1fr; }
+  #pf-stats { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .lb-top { flex-wrap: wrap; }
+  .lb-top .lb-title { display: none; }
+  .lb-money { margin-left: auto; }
+  .lb { overflow-x: hidden; }
+}
+.lb-money { margin-left: auto; }
+.clan-head .av { border-radius: 12px; image-rendering: pixelated; background: rgba(255, 255, 255, 0.08); }

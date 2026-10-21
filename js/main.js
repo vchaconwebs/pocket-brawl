@@ -19,7 +19,6 @@
   const save = (key, v) => {
     try { localStorage.setItem(key, v); } catch (e) {}
   };
-  let difficulty = load('pb.difficulty', (v) => PB.DIFFICULTY[v], 'normal');
   let gameMode = load('pb.mode', (v) => PB.MODES[v], 'gems');
   let endTimer = 0;
   let spectate = 0;
@@ -59,10 +58,14 @@
       b.lvlMul = k;
       b.maxHp = b.hp = Math.round(b.def.hp * k);
     }
-    const diff = PB.DIFFICULTY[difficulty];
+    // Bots de nivel normal tirando a alto; se vuelven algo mejores con tus copas
+    // (como el emparejamiento: cuantas más copas, rivales más duros)
+    const copas = playerId ? PB.Save.copas(playerId) : 0;
+    const foeSkill = Math.min(0.85, 0.6 + copas / 4000);
+    const allySkill = Math.min(0.75, 0.52 + copas / 5000);
     bots = game.brawlers
       .filter((b) => !b.isPlayer)
-      .map((b) => new PB.Bot(game, b, playerId ? (b.team === 'blue' ? diff.ally : diff.foe) : 0.45));
+      .map((b) => new PB.Bot(game, b, playerId ? (b.team === game.player.team ? allySkill : foeSkill) : 0.5));
     const f = game.player || game.brawlers[0];
     renderer.cam.x = f.x;
     renderer.cam.y = f.y;
@@ -137,11 +140,14 @@
     const reward = PB.Save.applyMatch({ win, draw: game.winner === 'draw', rank: me.rank, mode: M.id, me });
     const d = PB.Save.get();
     const pct = Math.round((100 * d.tokens) / PB.META.tokensPerChest);
-    const ready = d.missions.filter((m) => m.progress >= m.n).length;
+    const pend = PB.Save.pending();
+    const dc = reward.copas;
     $('#end-rewards').innerHTML =
+      `<div class="copas-change ${dc > 0 ? 'up' : dc < 0 ? 'down' : ''}"><img src="${PB.Icons.cup()}" alt=""><b>${dc > 0 ? '+' : ''}${dc}</b><small>${me.def.name}: ${reward.copasNow} copas · Total: ${PB.Save.totalCopas()}</small></div>` +
       `<div class="tokens"><img src="${PB.Icons.ball('poke', 2)}" alt=""><div class="tok-info"><small>+${reward.tokens} fichas</small><span class="bar"><i style="width:${pct}%"></i></span></div><b>${d.tokens}/${PB.META.tokensPerChest}</b></div>` +
       (reward.newChests.length ? `<p class="got">¡Has conseguido ${reward.newChests.length > 1 ? reward.newChests.length + ' Poké Balls' : 'una Poké Ball'}! Ábrela en el lobby.</p>` : '') +
-      (ready ? `<p class="got">Tienes ${ready} misión${ready > 1 ? 'es' : ''} completada${ready > 1 ? 's' : ''} para reclamar.</p>` : '');
+      (pend.missions ? `<p class="got">Tienes ${pend.missions} misión${pend.missions > 1 ? 'es' : ''} para reclamar.</p>` : '') +
+      (pend.achievements ? `<p class="got">¡Tienes ${pend.achievements} logro${pend.achievements > 1 ? 's' : ''} nuevo${pend.achievements > 1 ? 's' : ''}!</p>` : '');
     showScreen('end');
     help().classList.add('hidden');
     PB.Audio.play(res.cls === 'win' ? 'win' : 'lose');
@@ -275,8 +281,6 @@
   PB.Lobby.init({
     getMode: () => gameMode,
     setMode: (id) => { gameMode = id; save('pb.mode', id); newGame(null); },
-    getDifficulty: () => difficulty,
-    setDifficulty: (id) => { difficulty = id; save('pb.difficulty', id); },
   });
 
   PB.Sprites.load(() => fontReady.then(() => {
