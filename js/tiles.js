@@ -73,7 +73,7 @@ PB.Tiles = (() => {
   }
 
   // ------------------------------------------------------------ suelo
-  function paintGrass(P, ox, oy, tx, ty) {
+  function paintGrass(P, ox, oy, tx, ty, plain) {
     for (let y = 0; y < A; y++) for (let x = 0; x < A; x++) {
       const gx = tx * A + x, gy = ty * A + y;
       const band = H(gx >> 3, gy >> 3, 11) * 0.7 + H(gx, gy, 12) * 0.5;
@@ -83,6 +83,7 @@ PB.Tiles = (() => {
       else if (r > 0.988) col = C.grassLight;
       P.set(ox + x, oy + y, col);
     }
+    if (plain) return;
     const d = H(tx, ty, 14);
     const dx = ox + 3 + Math.floor(H(tx, ty, 15) * 10), dy = oy + 4 + Math.floor(H(tx, ty, 16) * 9);
     if (d < 0.22) { // matojo
@@ -196,18 +197,50 @@ PB.Tiles = (() => {
     const P = Pix(world.w * A, world.h * A);
     for (let r = 0; r < world.h; r++) for (let c = 0; c < world.w; c++) {
       const ox = c * A, oy = r * A, t = at(c, r);
-      paintGrass(P, ox, oy, c, r);
+      paintGrass(P, ox, oy, c, r, world.goals.red.length > 0);
       if (t === 'P') paintPath(P, ox, oy, c, r, at);
       else if (t === '~') paintWater(P, ox, oy, c, r, at);
     }
     for (const [list, col, dark] of [[world.spawns.blue, '#5a9cf0', '#3a6cc0'], [world.spawns.red, '#f06a5a', '#c0443a']]) {
       for (const s of list) paintMat(P, Math.floor(s.x / PB.TILE) * A, Math.floor(s.y / PB.TILE) * A, col, dark);
     }
-    // área de las porterías (Voltorbol): hierba cortada a franjas
-    for (const team of ['blue', 'red']) {
-      for (const g of world.goals[team]) {
-        const ox = g.c * A, oy = g.r * A;
-        for (let y = 0; y < A; y++) for (let x = 0; x < A; x++) P.set(ox + x, oy + y, (Math.floor((ox + x) / 4) % 2 ? '#84d266' : '#76c45a'));
+    // campo de Voltorbol: césped a franjas, línea de gol, área y semicírculo
+    if (world.goals.red.length) {
+      const W2 = world.w * A, H2 = world.h * A;
+      const LINE = '#f2f6ee';
+      // franjas de césped (cada 2 casillas), sin pisar agua ni caminos
+      for (let y = 0; y < H2; y++) for (let x = 0; x < W2; x++) {
+        const t2 = at(Math.floor(x / A), Math.floor(y / A));
+        if (t2 === '~' || t2 === 'P') continue;
+        if (Math.floor(y / (A * 2)) % 2 === 0) {
+          const gx = x, gy = y;
+          const r = H(gx, gy, 91);
+          P.set(x, y, r < 0.5 ? '#86d468' : r < 0.95 ? '#80ce62' : '#9ae07a');
+        }
+      }
+      const hline = (x0, x1, y) => { for (let x = Math.max(0, x0); x <= Math.min(W2 - 1, x1); x++) P.set(x, y, LINE); };
+      const vline = (x, y0, y1) => { for (let y = Math.max(0, y0); y <= Math.min(H2 - 1, y1); y++) P.set(x, y, LINE); };
+      for (const team of ['red', 'blue']) {
+        const g = world.goals[team];
+        const c0 = Math.min(...g.map((q) => q.c)), c1 = Math.max(...g.map((q) => q.c));
+        const r0 = Math.min(...g.map((q) => q.r)), r1 = Math.max(...g.map((q) => q.r));
+        const top = r0 < world.h / 2;
+        const mouth = top ? (r1 + 1) * A : r0 * A - 1;
+        hline(0, W2, mouth); // línea de gol
+        const bx0 = (c0 - 2) * A, bx1 = (c1 + 3) * A - 1;
+        const depth = 3 * A;
+        const by = top ? mouth + depth : mouth - depth;
+        vline(bx0, Math.min(mouth, by), Math.max(mouth, by));
+        vline(bx1, Math.min(mouth, by), Math.max(mouth, by));
+        hline(bx0, bx1, by);
+        // semicírculo fuera del área
+        const cx = (bx0 + bx1) / 2, rad = A * 1.5;
+        for (let a = 0; a <= 180; a += 0.5) {
+          const rr = (a * Math.PI) / 180;
+          const x = cx + Math.cos(rr) * rad;
+          const y = by + (top ? 1 : -1) * Math.sin(rr) * rad;
+          P.set(Math.round(x), Math.round(y), LINE);
+        }
       }
     }
     // círculo central del campo (Voltorbol) y líneas

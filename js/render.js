@@ -404,71 +404,91 @@ PB.Renderer = class {
     ctx.drawImage(PB.Tiles.flag(fc, frame), z.x - 14, z.y - 102, 66, 108);
   }
 
-  // Portería de Voltorbol vista desde arriba: suelo con red, marco blanco en "U",
-  // postes con algo de altura y larguero en la boca. Cabe entera en su fila del mapa.
+  // Portería de Voltorbol vista desde arriba (como un campo de fútbol real):
+  // larguero delante, postes con altura hasta la línea de gol, red cuadriculada,
+  // laterales en perspectiva y barra de fondo más baja. Estilo pixel: tubos blancos
+  // con sombra y contorno oscuro, todo alineado a píxeles de 4.
   drawGoal(W, team, myTeam) {
     const R = W.goalRect(team);
     if (!R) return;
     const ctx = this.ctx;
     const top = R.y0 < W.pixelH / 2;
     const col = team === myTeam ? '#3d8bff' : '#ff4d4d';
-    const x0 = R.x0 + 6, x1 = R.x1 - 6;
-    const mouth = top ? R.y1 - 4 : R.y0 + 4; // línea de gol
-    const back = top ? R.y0 + 12 : R.y1 - 12; // fondo de la portería
-    const yA = Math.min(mouth, back), yB = Math.max(mouth, back);
-    const H = 34; // altura de postes y larguero
-    // sombra y red del suelo
+    const snap = (v) => Math.round(v / 4) * 4;
+    const x0 = snap(R.x0 + 8), x1 = snap(R.x1 - 8);
+    const mouth = top ? R.y1 : R.y0; // línea de gol (en el suelo)
+    const backG = top ? R.y0 + 24 : R.y1 - 24; // fondo de la portería (en el suelo)
+    const H = 48, Hb = 16; // altura del larguero y de la barra de fondo
+    const inset = 16; // el fondo es algo más estrecho (perspectiva)
+    const fy = snap(mouth - H); // larguero en pantalla
+    const by = snap(backG - Hb); // barra de fondo en pantalla
+    const bx0 = x0 + inset, bx1 = x1 - inset;
+
+    // sombra en el césped
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(x0, yA, x1 - x0, yB - yA);
-    ctx.save();
     ctx.beginPath();
-    ctx.rect(x0, yA - H, x1 - x0, yB - yA + H);
-    ctx.clip();
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let k = -200; k < x1 - x0 + 200; k += 14) {
-      ctx.moveTo(x0 + k, yA - H);
-      ctx.lineTo(x0 + k + (yB - yA + H), yB);
-      ctx.moveTo(x0 + k, yB);
-      ctx.lineTo(x0 + k + (yB - yA + H), yA - H);
-    }
-    ctx.stroke();
-    ctx.restore();
-    // marco del fondo y laterales en el suelo (contorno oscuro + blanco)
-    const bar = (x, y, w, h) => {
-      ctx.fillStyle = '#1b1418';
-      ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
-      ctx.fillStyle = '#f4f2f6';
-      ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = '#b8b4c2';
-      ctx.fillRect(x, y + h - 2, w, 2);
+    ctx.moveTo(x0 + 10, mouth + 4);
+    ctx.lineTo(x1 + 14, mouth + 4);
+    ctx.lineTo(bx1 + 14, backG + 4);
+    ctx.lineTo(bx0 + 10, backG + 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // red: techo (del larguero a la barra de fondo) y laterales
+    const net = (pts, alpha) => {
+      ctx.save();
+      ctx.beginPath();
+      pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255,255,255,' + alpha * 0.25 + ')';
+      ctx.fill();
+      ctx.clip();
+      ctx.fillStyle = 'rgba(255,255,255,' + alpha + ')';
+      const yA = Math.min(...pts.map((p) => p[1])), yB = Math.max(...pts.map((p) => p[1]));
+      for (let x = x0 - 8; x <= x1 + 8; x += 12) ctx.fillRect(x, yA, 2, yB - yA);
+      for (let y = yA; y <= yB; y += 12) ctx.fillRect(x0 - 8, y, x1 - x0 + 16, 2);
+      ctx.restore();
     };
-    bar(x0, back - 3, x1 - x0, 6);
-    bar(x0 - 3, yA, 6, yB - yA);
-    bar(x1 - 3, yA, 6, yB - yA);
-    // línea de gol del color del equipo
+    net([[x0, fy], [x1, fy], [bx1, by], [bx0, by]], 0.75);
+    net([[x0, fy], [bx0, by], [bx0, backG], [x0, mouth]], 0.5);
+    net([[x1, fy], [bx1, by], [bx1, backG], [x1, mouth]], 0.5);
+
+    // tubo pixel: contorno oscuro, blanco, brillo y sombra
+    const tube = (ax, ay, bx, byy, w) => {
+      const seg = (c, ww) => {
+        ctx.strokeStyle = c;
+        ctx.lineWidth = ww;
+        ctx.lineCap = 'square';
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, byy);
+        ctx.stroke();
+      };
+      seg('#1b1418', w + 4);
+      seg('#c8c4d0', w);
+      seg('#f6f4f8', w - 4);
+    };
+    // fondo y laterales de arriba (más finos, están detrás)
+    tube(bx0, by, bx1, by, 6);
+    tube(x0, fy, bx0, by, 6);
+    tube(x1, fy, bx1, by, 6);
+    // patas del fondo
+    tube(bx0, by, bx0, backG, 4);
+    tube(bx1, by, bx1, backG, 4);
+    // tapones oscuros en las esquinas de atrás
+    ctx.fillStyle = '#2a2630';
+    ctx.fillRect(bx0 - 6, by - 6, 12, 12);
+    ctx.fillRect(bx1 - 6, by - 6, 12, 12);
+    // postes y larguero (delante, más gruesos)
+    tube(x0, fy, x0, mouth, 12);
+    tube(x1, fy, x1, mouth, 12);
+    tube(x0, fy, x1, fy, 12);
+    // brillo del larguero
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillRect(x0 + 4, fy - 4, x1 - x0 - 8, 2);
+    // marca del color del equipo en la base de los postes
     ctx.fillStyle = col;
-    ctx.fillRect(x0, mouth - 4, x1 - x0, 8);
-    // postes en la boca (con altura) y larguero
-    for (const x of [x0, x1]) bar(x - 5, mouth - H, 10, H + 4);
-    bar(x0 - 5, mouth - H - 4, x1 - x0 + 10, 8);
-    // tirantes del larguero hacia el fondo
-    ctx.strokeStyle = '#f4f2f6';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(x0, mouth - H);
-    ctx.lineTo(x0, back);
-    ctx.moveTo(x1, mouth - H);
-    ctx.lineTo(x1, back);
-    ctx.stroke();
-    // banderines en las esquinas
-    for (const x of [x0, x1]) {
-      ctx.fillStyle = '#1b1418';
-      ctx.fillRect(x - 1, mouth - H - 22, 3, 20);
-      ctx.fillStyle = col;
-      ctx.fillRect(x + 2, mouth - H - 22, 12, 8);
-    }
+    for (const x of [x0, x1]) ctx.fillRect(x - 8, mouth - 8, 16, 6);
   }
 
   // Niebla venenosa: todo lo que queda fuera del círculo seguro
