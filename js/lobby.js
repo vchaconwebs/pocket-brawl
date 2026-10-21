@@ -97,22 +97,18 @@ PB.Lobby = (() => {
     $('#mode-ico').src = modeIcon(M.id);
     $('#mode-name').textContent = M.name;
     $('#mode-diff').textContent = 'Bots: ' + PB.DIFFICULTY[api.getDifficulty()].name;
-    // fichas
+    // botón del cofre: la Pokéball, la barra de fichas y cuántos cofres hay para abrir
     const k = d.tokens / PB.META.tokensPerChest;
     $('#tok-fill').style.width = Math.round(k * 100) + '%';
-    $('#tok-txt').textContent = d.tokens + '/' + PB.META.tokensPerChest;
-    // cofres
-    const cz = $('#chests');
-    cz.innerHTML = '';
-    if (!d.chests.length) cz.innerHTML = '<p class="empty">Sin cofres. ¡Juega para conseguir fichas!</p>';
-    d.chests.slice(0, 6).forEach((kind, i) => {
-      const el = document.createElement('button');
-      el.className = 'chest-btn chest-' + kind;
-      el.innerHTML = `<img src="${ballIcon(kind, 3)}" alt=""><span>${PB.META.chests[kind].name}</span>`;
-      el.onclick = () => openChestScreen(i);
-      cz.appendChild(el);
-    });
-    if (d.chests.length > 6) cz.insertAdjacentHTML('beforeend', `<p class="empty">+${d.chests.length - 6} más</p>`);
+    $('#tok-txt').textContent = d.tokens + '/' + PB.META.tokensPerChest + ' fichas';
+    const ni = PB.Save.nextChest();
+    const kind = ni >= 0 ? d.chests[ni] : 'poke';
+    $('#cw-img').src = ballIcon(kind, 4);
+    $('#cw-label').textContent = d.chests.length ? '¡Abrir ' + PB.META.chests[kind].name + '!' : 'Próxima Poké Ball';
+    const cnt = $('#cw-count');
+    cnt.textContent = d.chests.length;
+    cnt.classList.toggle('hidden', !d.chests.length);
+    $('#chest-widget').classList.toggle('ready', d.chests.length > 0);
     // misiones listas para reclamar
     const ready = d.missions.filter((m) => m.progress >= m.n).length;
     const badge = $('#mis-badge');
@@ -255,6 +251,13 @@ PB.Lobby = (() => {
     show('modepick');
   }
 
+  // Icono y texto de un premio de misión
+  function rewardInfo(r) {
+    if (r.kind === 'coins') return { icon: coinIcon(), label: '+' + r.amount };
+    if (r.kind === 'points') return { icon: starIcon(), label: '+' + r.amount };
+    return { icon: ballIcon(r.kind, 2), label: PB.META.chests[r.kind].name };
+  }
+
   // ------------------------------------------------------------------ misiones
   function showMissions() {
     const d = PB.Save.get();
@@ -265,12 +268,13 @@ PB.Lobby = (() => {
       const el = document.createElement('div');
       el.className = 'mission' + (done ? ' done' : '');
       const pct = Math.round((100 * m.progress) / m.n);
+      const rw = rewardInfo(m.reward);
       el.innerHTML =
-        `<img src="${ballIcon(m.reward, 2)}" alt="">` +
-        `<div class="ms-body"><b>${m.text}</b><span class="bar"><i style="width:${pct}%"></i></span><small>${Math.floor(m.progress)} / ${m.n}</small></div>`;
+        `<div class="ms-body"><b>${m.text}</b><span class="bar"><i style="width:${pct}%"></i></span><small>${Math.floor(m.progress)} / ${m.n}</small></div>` +
+        `<div class="ms-reward"><img src="${rw.icon}" alt=""><span>${rw.label}</span></div>`;
       const btn = document.createElement('button');
       btn.className = 'act ' + (done ? 'gold' : 'gray');
-      btn.textContent = done ? 'Reclamar' : PB.META.chests[m.reward].name;
+      btn.textContent = done ? 'Reclamar' : 'En curso';
       btn.disabled = !done;
       btn.onclick = () => { PB.Save.claimMission(i); PB.Audio.play('ready'); showMissions(); };
       el.appendChild(btn);
@@ -280,44 +284,216 @@ PB.Lobby = (() => {
   }
 
   // ------------------------------------------------------------------ cofres
+  // Fases: idle (flota) -> shake (tiembla al tocar) -> burst (revienta) -> reward (premios uno a uno) -> summary
+  const CHEST_COL = { poke: [255, 90, 60], great: [80, 150, 255], ultra: [255, 210, 60] };
+  let fx = []; // partículas de la apertura
+
+  function openNextChest() {
+    const i = PB.Save.nextChest();
+    if (i >= 0) openChestScreen(i);
+  }
+
   function openChestScreen(index) {
     const kind = PB.Save.get().chests[index];
     if (!kind) return;
-    chest = { kind, index, state: 'idle', res: null, t: 0, shown: 0 };
+    chest = { kind, index, state: 'idle', res: null, t: 0, items: [], cur: -1 };
+    fx = [];
     $('#chest-name').textContent = PB.META.chests[kind].name;
-    $('#chest-rewards').innerHTML = '';
+    $('#chest-reward').innerHTML = '';
+    $('#chest-summary').innerHTML = '';
+    $('#chest-buttons').classList.add('hidden');
     $('#chest-hint').textContent = 'Toca para abrir';
     show('chestopen');
+    resizeFx();
   }
 
-  function chestTap() {
-    if (!chest) return;
+  function resizeFx() {
+    const cv = $('#chest-fx');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(window.innerWidth * dpr);
+    cv.height = Math.round(window.innerHeight * dpr);
+    cv.style.width = window.innerWidth + 'px';
+    cv.style.height = window.innerHeight + 'px';
+  }
+
+  function rewardCard(it, big) {
+    return `<div class="reward ${it.cls || ''} ${big ? 'big' : ''}"><img src="${it.icon}" alt=""><b>${it.title}</b><span>${it.sub}</span></div>`;
+  }
+
+  function chestTap(e) {
+    if (!chest || (e && e.target.closest('button'))) return;
     if (chest.state === 'idle') {
-      chest.res = PB.Save.openChest(chest.index);
-      chest.state = 'open';
+      chest.state = 'shake';
       chest.t = 0;
-      PB.Audio.play('release');
-      const items = [];
-      if (chest.res.coins) items.push(`<div class="reward"><img src="${coinIcon()}"><b>+${chest.res.coins}</b><span>monedas</span></div>`);
-      if (chest.res.points) items.push(`<div class="reward"><img src="${starIcon()}"><b>+${chest.res.points}</b><span>Puntos Pokémon</span></div>`);
-      for (const id of chest.res.pokemon) {
-        const b = PB.brawlerById(id);
-        items.push(`<div class="reward new"><img src="${portrait(b)}"><b>¡${b.name}!</b><span>Nuevo Pokémon</span></div>`);
-      }
-      chest.items = items;
-      $('#chest-hint').textContent = 'Toca para continuar';
-    } else if (chest.shown < chest.items.length) {
-      revealNext();
-    } else {
-      chest = null;
-      show('lobby');
+      $('#chest-hint').textContent = '';
+      PB.Audio.play('tick');
+    } else if (chest.state === 'reward') {
+      nextReward();
+    } else if (chest.state === 'summary' && !PB.Save.get().chests.length) {
+      closeChest();
     }
   }
 
-  function revealNext() {
-    const html = chest.items[chest.shown++];
-    $('#chest-rewards').insertAdjacentHTML('beforeend', html);
-    PB.Audio.play(html.includes('new') ? 'win' : 'candy');
+  function burst() {
+    chest.state = 'burst';
+    chest.t = 0;
+    chest.res = PB.Save.openChest(chest.index);
+    const res = chest.res;
+    const items = [];
+    if (res.coins) items.push({ icon: coinIcon(), title: '+' + res.coins, sub: 'monedas' });
+    if (res.points) items.push({ icon: starIcon(), title: '+' + res.points, sub: 'Puntos Pokémon' });
+    for (const id of res.pokemon) {
+      const b = PB.brawlerById(id);
+      items.push({ icon: portrait(b), title: '¡' + b.name + '!', sub: 'Nuevo Pokémon', cls: 'new', pokemon: true });
+    }
+    chest.items = items;
+    chest.cur = -1;
+    PB.Audio.play('boom', { big: true });
+    PB.Audio.play('release');
+    if (navigator.vibrate) navigator.vibrate(60);
+    // chispas y estrellas
+    const W = window.innerWidth, H = window.innerHeight;
+    const [r, g, bb] = CHEST_COL[chest.kind];
+    for (let i = 0; i < 70; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 150 + Math.random() * 520;
+      fx.push({ x: W / 2, y: H * 0.42, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120, t: 0, life: 0.8 + Math.random() * 0.9, size: 4 + Math.random() * 7, col: i % 3 ? `rgb(${r},${g},${bb})` : '#ffffff', star: i % 4 === 0 });
+    }
+  }
+
+  function nextReward() {
+    chest.cur++;
+    if (chest.cur < chest.items.length) {
+      const it = chest.items[chest.cur];
+      $('#chest-reward').innerHTML = rewardCard(it, true);
+      $('#chest-hint').textContent = chest.cur < chest.items.length - 1 ? 'Toca para el siguiente premio' : 'Toca para continuar';
+      PB.Audio.play(it.pokemon ? 'win' : 'candy');
+      const W = window.innerWidth, H = window.innerHeight;
+      for (let i = 0; i < (it.pokemon ? 40 : 16); i++) {
+        const a = Math.random() * Math.PI * 2, sp = 80 + Math.random() * 260;
+        fx.push({ x: W / 2, y: H * 0.42, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0, life: 0.7 + Math.random() * 0.5, size: 3 + Math.random() * 5, col: it.pokemon ? '#ffd23a' : '#ffffff', star: true });
+      }
+    } else {
+      // resumen de todo lo que ha salido
+      chest.state = 'summary';
+      $('#chest-reward').innerHTML = '<div class="sum"><h3>Has conseguido</h3><div class="sum-items">' + chest.items.map((it) => rewardCard(it, false)).join('') + '</div></div>';
+      const left = PB.Save.get().chests.length;
+      $('#chest-buttons').classList.toggle('hidden', !left);
+      if (left) {
+        const nk = PB.Save.get().chests[PB.Save.nextChest()];
+        $('#chest-again').textContent = 'Abrir ' + PB.META.chests[nk].name + ' (' + left + ')';
+        $('#chest-hint').textContent = '';
+      } else $('#chest-hint').textContent = 'Toca para volver';
+    }
+  }
+
+  function closeChest() {
+    chest = null;
+    fx = [];
+    show('lobby');
+  }
+
+  // Dibuja la apertura: rayos de luz, la Pokéball y las partículas
+  function drawChest(dt) {
+    const cv = $('#chest-fx'), c = cv.getContext('2d');
+    const dpr = cv.width / window.innerWidth;
+    const W = window.innerWidth, H = window.innerHeight;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, W, H);
+    c.imageSmoothingEnabled = false;
+    const cx = W / 2, cy = H * 0.42;
+    const [r, g, bb] = CHEST_COL[chest.kind];
+    const px = Math.max(6, Math.min(12, Math.min(W, H) / 40));
+    chest.t += dt;
+    const st = chest.state;
+
+    // rayos de luz girando detrás
+    const power = st === 'idle' ? 0.35 : st === 'shake' ? 0.35 + chest.t : st === 'burst' ? 1 : 0.55;
+    c.save();
+    c.translate(cx, cy);
+    c.rotate(t * 0.4);
+    for (let i = 0; i < 12; i++) {
+      c.rotate((Math.PI * 2) / 12);
+      const grd = c.createLinearGradient(0, 0, 0, -Math.max(W, H));
+      grd.addColorStop(0, `rgba(${r},${g},${bb},${0.35 * power})`);
+      grd.addColorStop(1, `rgba(${r},${g},${bb},0)`);
+      c.fillStyle = grd;
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.lineTo(-40, -Math.max(W, H));
+      c.lineTo(40, -Math.max(W, H));
+      c.closePath();
+      c.fill();
+    }
+    c.restore();
+    // halo
+    const halo = c.createRadialGradient(cx, cy, 0, cx, cy, px * 20);
+    halo.addColorStop(0, `rgba(255,255,255,${0.25 + 0.3 * power})`);
+    halo.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = halo;
+    c.fillRect(cx - px * 20, cy - px * 20, px * 40, px * 40);
+
+    const S = PB.Pokeball.SIZE * px;
+    if (st === 'idle' || st === 'shake') {
+      let ang = 0, oy = Math.sin(t * 2.5) * px * 1.2, ox = 0;
+      if (st === 'idle') {
+        const w = (t % 2) < 0.5 ? Math.sin((t % 2) * 25) * 0.18 : 0; // se balancea de vez en cuando
+        ang = w;
+      } else {
+        const k = Math.min(1, chest.t / 0.8);
+        ang = Math.sin(chest.t * 45) * (0.1 + k * 0.3);
+        ox = Math.sin(chest.t * 60) * px * k;
+        if (Math.floor(chest.t * 10) !== Math.floor((chest.t - dt) * 10)) PB.Audio.play('tick');
+        if (chest.t > 0.8) burst();
+      }
+      // sombra
+      c.fillStyle = 'rgba(0,0,0,0.35)';
+      c.beginPath();
+      c.ellipse(cx, cy + S * 0.62, S * 0.4, S * 0.08, 0, 0, Math.PI * 2);
+      c.fill();
+      PB.Pokeball.draw(c, cx + ox, cy + oy, px, { kind: chest.kind, angle: ang, variant: st === 'shake' && Math.floor(chest.t * 12) % 2 ? 'glow' : undefined });
+    } else {
+      // las dos mitades salen volando y se desvanecen
+      const k = Math.min(1, chest.t / 0.6);
+      if (k < 1) {
+        const sp = PB.Pokeball.sprite('closed', chest.kind);
+        const half = sp.height / 2;
+        c.globalAlpha = 1 - k;
+        c.save();
+        c.translate(cx - k * px * 6, cy - k * px * 18);
+        c.rotate(-k * 0.8);
+        c.drawImage(sp, 0, 0, sp.width, half, -S / 2, -S / 2, S, S / 2);
+        c.restore();
+        c.save();
+        c.translate(cx + k * px * 6, cy + k * px * 14);
+        c.rotate(k * 0.6);
+        c.drawImage(sp, 0, half, sp.width, half, -S / 2, 0, S, S / 2);
+        c.restore();
+        c.globalAlpha = 1;
+      }
+      // destello blanco
+      if (st === 'burst') {
+        c.fillStyle = `rgba(255,255,255,${Math.max(0, 0.9 - chest.t * 2)})`;
+        c.fillRect(0, 0, W, H);
+        if (chest.t > 0.45) { chest.state = 'reward'; nextReward(); }
+      }
+    }
+    // partículas
+    for (const f of fx) {
+      f.t += dt;
+      f.x += f.vx * dt;
+      f.y += f.vy * dt;
+      f.vy += 260 * dt;
+      f.vx *= 0.98;
+      const a = Math.max(0, 1 - f.t / f.life);
+      c.globalAlpha = a;
+      c.fillStyle = f.col;
+      if (f.star) {
+        c.fillRect(f.x - f.size / 2, f.y - 1, f.size, 2);
+        c.fillRect(f.x - 1, f.y - f.size / 2, 2, f.size);
+      } else c.fillRect(f.x - f.size / 2, f.y - f.size / 2, f.size, f.size);
+    }
+    c.globalAlpha = 1;
+    fx = fx.filter((f) => f.t < f.life);
   }
 
   // ------------------------------------------------------------------ animación de los canvas
@@ -349,25 +525,7 @@ PB.Lobby = (() => {
     } else if (current === 'detail' && detailId) {
       drawHero($('#dt-cv'), PB.brawlerById(detailId).dex, 4, PB.Save.owned(detailId));
     } else if (current === 'chestopen' && chest) {
-      chest.t += dt;
-      const cv = $('#chest-cv'), c = cv.getContext('2d');
-      c.clearRect(0, 0, cv.width, cv.height);
-      c.imageSmoothingEnabled = false;
-      const cx = cv.width / 2, cy = cv.height / 2;
-      if (chest.state === 'idle') {
-        const shake = Math.sin(t * 18) * 0.12 * (Math.sin(t * 2) > 0 ? 1 : 0.2);
-        PB.Pokeball.draw(c, cx, cy + Math.sin(t * 3) * 6, 10, { kind: chest.kind, angle: shake });
-      } else {
-        const k = Math.min(1, chest.t / 0.5);
-        const g = c.createRadialGradient(cx, cy, 0, cx, cy, 160);
-        g.addColorStop(0, `rgba(255,255,255,${0.9 * (1 - k * 0.6)})`);
-        g.addColorStop(1, 'rgba(255,255,255,0)');
-        c.fillStyle = g;
-        c.fillRect(0, 0, cv.width, cv.height);
-        PB.Pokeball.draw(c, cx, cy, 10, { kind: chest.kind, variant: 'open' });
-        // los premios van saliendo solos
-        if (chest.shown < chest.items.length && chest.t > 0.45 + chest.shown * 0.45) revealNext();
-      }
+      drawChest(dt);
     }
   }
 
@@ -377,7 +535,6 @@ PB.Lobby = (() => {
     PB.Save.load();
     $('#ico-coin').src = coinIcon();
     $('#ico-star').src = starIcon();
-    $('#ico-tok').src = ballIcon('poke', 2);
     $('#lb-hero').onclick = showCollection;
     $('#btn-pokemon').onclick = showCollection;
     $('#btn-missions').onclick = showMissions;
@@ -385,6 +542,13 @@ PB.Lobby = (() => {
     for (const e of document.querySelectorAll('[data-back]')) e.onclick = () => show(e.dataset.back);
     $('#dt-back').onclick = showCollection;
     $('#chestopen').onclick = chestTap;
+    $('#chest-widget').onclick = () => {
+      if (PB.Save.get().chests.length) openNextChest();
+      else { flashIn('#chest-widget'); PB.Audio.play('tick'); }
+    };
+    $('#chest-again').onclick = (e) => { e.stopPropagation(); openNextChest(); };
+    $('#chest-close').onclick = (e) => { e.stopPropagation(); closeChest(); };
+    window.addEventListener('resize', () => { if (current === 'chestopen') resizeFx(); });
   }
 
   return { init, show, tick, refresh: refreshLobby, get current() { return current; } };

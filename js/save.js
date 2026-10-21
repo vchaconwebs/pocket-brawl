@@ -86,6 +86,7 @@ PB.Save = (() => {
       data = fresh();
     }
     if (!data.owned[data.selected]) data.selected = Object.keys(data.owned)[0];
+    migrate(data);
     while (data.missions.length < 3) data.missions.push(newMission());
     persist();
     return data;
@@ -95,12 +96,28 @@ PB.Save = (() => {
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
   }
 
+  // dificultad aproximada de cada misión (1 = fácil, 3 = difícil) para escalar el premio
+  const HARD = { play: 0.5, win: 1, ko: 0.12, balls: 0.1, candy: 0.25, snorlax: 0.0001, goals: 1, zone: 0.03, damage: 0.00006 };
+
   function newMission() {
     const taken = new Set(data ? data.missions.map((m) => m.text) : []);
     const pool = MISSIONS.filter((m) => !taken.has(m.text));
     const m = pool[Math.floor(Math.random() * pool.length)] || MISSIONS[0];
-    const big = m.n >= 4 && m.type !== 'goals';
-    return { ...m, progress: 0, reward: big || Math.random() < 0.3 ? 'great' : 'poke' };
+    const diff = Math.max(1, Math.min(3, m.n * (HARD[m.type] || 0.5)));
+    const r = Math.random();
+    let reward;
+    if (r < 0.33) reward = { kind: 'coins', amount: Math.round((30 + diff * 25) / 5) * 5 };
+    else if (r < 0.6) reward = { kind: 'points', amount: Math.round((20 + diff * 20) / 5) * 5 };
+    else if (r < 0.86 || diff < 1.5) reward = { kind: 'great' };
+    else reward = { kind: 'ultra' };
+    return { ...m, progress: 0, reward };
+  }
+
+  // misiones guardadas con el formato antiguo (reward: 'poke' | 'great')
+  function migrate(d) {
+    for (const m of d.missions) {
+      if (typeof m.reward === 'string') m.reward = m.reward === 'poke' ? { kind: 'coins', amount: 50 } : { kind: m.reward };
+    }
   }
 
   const get = () => data || load();
@@ -203,10 +220,23 @@ PB.Save = (() => {
     const d = get();
     const m = d.missions[i];
     if (!m || m.progress < m.n) return null;
-    d.chests.push(m.reward);
+    const r = m.reward;
+    if (r.kind === 'coins') d.coins += r.amount;
+    else if (r.kind === 'points') d.points += r.amount;
+    else d.chests.push(r.kind);
     d.missions[i] = newMission();
     persist();
-    return m.reward;
+    return r;
+  }
+
+  // Índice del mejor cofre para abrir primero (Ultra > Super > Poké)
+  function nextChest() {
+    const d = get();
+    for (const k of ['ultra', 'great', 'poke']) {
+      const i = d.chests.indexOf(k);
+      if (i >= 0) return i;
+    }
+    return -1;
   }
 
   function reset() {
@@ -215,5 +245,5 @@ PB.Save = (() => {
     persist();
   }
 
-  return { load, get, persist, owned, level, select, upgradeCost, upgrade, unlockCost, unlock, openChest, applyMatch, claimMission, reset };
+  return { load, get, persist, owned, level, select, upgradeCost, upgrade, unlockCost, unlock, openChest, nextChest, applyMatch, claimMission, reset };
 })();

@@ -10,7 +10,7 @@
   <meta name="description" content="Pocket Brawl: fangame gratuito de combates 3v3 en el navegador. Sin ánimo de lucro.">
   <title>Pocket Brawl</title>
   <link rel="preload" href="assets/fonts/PixelifySans.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=13">
+  <link rel="stylesheet" href="css/style.css?v=15">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -31,10 +31,14 @@
       <aside class="lb-left">
         <button class="lb-btn" id="btn-pokemon">Pokémon</button>
         <button class="lb-btn" id="btn-missions">Misiones <span class="badge hidden" id="mis-badge">0</span></button>
-        <div class="lb-box">
-          <h4>Cofres</h4>
-          <div id="chests"></div>
-        </div>
+        <button class="chest-widget" id="chest-widget">
+          <span class="cw-ball"><img id="cw-img" alt=""><span class="cw-badge hidden" id="cw-count">0</span></span>
+          <span class="cw-info">
+            <b id="cw-label">Poké Ball</b>
+            <span class="bar"><i id="tok-fill"></i></span>
+            <small id="tok-txt">0/100 fichas</small>
+          </span>
+        </button>
       </aside>
 
       <button class="lb-center" id="lb-hero" title="Cambiar Pokémon">
@@ -52,11 +56,6 @@
       </aside>
 
       <footer class="lb-bottom">
-        <div class="tokens">
-          <img id="ico-tok" alt="">
-          <div class="tok-info"><small>Fichas para la próxima Poké Ball</small><span class="bar"><i id="tok-fill"></i></span></div>
-          <b id="tok-txt">0/100</b>
-        </div>
         <p class="legal">
           Fangame gratuito y sin ánimo de lucro, no afiliado a Nintendo, Creatures, GAME FREAK ni The Pokémon Company.
           Sprites de <a href="https://github.com/PMDCollab/SpriteCollab" target="_blank" rel="noopener">PMD SpriteCollab</a> (CC BY-NC 4.0) ·
@@ -116,10 +115,15 @@
 
   <!-- ABRIR COFRE -->
   <div id="chestopen" class="screen hidden">
-    <div class="chest-stage">
+    <canvas id="chest-fx"></canvas>
+    <div class="chest-ui">
       <h2 id="chest-name"></h2>
-      <canvas id="chest-cv" width="320" height="260"></canvas>
-      <div id="chest-rewards"></div>
+      <div id="chest-reward"></div>
+      <div id="chest-summary"></div>
+      <div id="chest-buttons" class="row hidden">
+        <button class="act gold" id="chest-again"></button>
+        <button class="act blue" id="chest-close">Cerrar</button>
+      </div>
       <p id="chest-hint"></p>
     </div>
   </div>
@@ -148,21 +152,21 @@
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=13"></script>
-  <script src="js/data.js?v=13"></script>
-  <script src="js/sprites.js?v=13"></script>
-  <script src="js/vfx.js?v=13"></script>
-  <script src="js/pokeball.js?v=13"></script>
-  <script src="js/tiles.js?v=13"></script>
-  <script src="js/world.js?v=13"></script>
-  <script src="js/game.js?v=13"></script>
-  <script src="js/modes.js?v=13"></script>
-  <script src="js/ai.js?v=13"></script>
-  <script src="js/audio.js?v=13"></script>
-  <script src="js/render.js?v=13"></script>
-  <script src="js/input.js?v=13"></script>
-  <script src="js/save.js?v=13"></script>
-  <script src="js/lobby.js?v=13"></script>
-  <script src="js/main.js?v=13"></script>
+  <script src="js/sprite-data.js?v=15"></script>
+  <script src="js/data.js?v=15"></script>
+  <script src="js/sprites.js?v=15"></script>
+  <script src="js/vfx.js?v=15"></script>
+  <script src="js/pokeball.js?v=15"></script>
+  <script src="js/tiles.js?v=15"></script>
+  <script src="js/world.js?v=15"></script>
+  <script src="js/game.js?v=15"></script>
+  <script src="js/modes.js?v=15"></script>
+  <script src="js/ai.js?v=15"></script>
+  <script src="js/audio.js?v=15"></script>
+  <script src="js/render.js?v=15"></script>
+  <script src="js/input.js?v=15"></script>
+  <script src="js/save.js?v=15"></script>
+  <script src="js/lobby.js?v=15"></script>
+  <script src="js/main.js?v=15"></script>
 </body>
 </html>
