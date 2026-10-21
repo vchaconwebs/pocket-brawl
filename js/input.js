@@ -63,7 +63,7 @@ PB.Input = class {
     this.touch = true;
     const L = this.layout(window.innerWidth, window.innerHeight);
     const p = { x: e.clientX, y: e.clientY };
-    const s = { id: e.pointerId, origin: p, pos: { ...p } };
+    const s = { id: e.pointerId, origin: p, pos: { ...p }, t0: performance.now() };
     if (Math.hypot(p.x - L.super.x, p.y - L.super.y) < L.sr * 1.4 && !this.sticks.super) {
       s.origin = { ...L.super };
       s.pos = { ...p };
@@ -98,7 +98,9 @@ PB.Input = class {
       this.sticks[name] = null;
       if (name === 'move' || cancel) continue;
       const v = this.stickVec(s, name === 'super' ? L.sr : L.r);
-      if (v.len < 0.2) this.pending[name] = { auto: true };
+      // toque rápido o casi sin arrastrar = disparo automático al enemigo más cercano
+      const quick = performance.now() - s.t0 < 220;
+      if (v.len < 0.35 || (quick && v.len < 0.7)) this.pending[name] = { auto: true };
       else this.pending[name] = { dx: v.x, dy: v.y, frac: v.len };
     }
   }

@@ -520,7 +520,7 @@ PB.Renderer = class {
       ctx.fill();
       const y = g.y - 14 - g.z + (g.z > 0 ? 0 : Math.sin(this.ctxTime(g) * 4) * 2);
       if (g.z <= 0) this.glow(g.x, y, 24, 'rgba(120,180,255,0.4)');
-      ctx.drawImage(PB.Tiles.candy(), g.x - 18, y - 12, 36, 24);
+      ctx.drawImage(PB.Tiles.candy(), g.x - 20, y - 20, 40, 40);
       return;
     }
     const sh = Math.max(0.4, 1 - g.z / 200);
@@ -752,7 +752,7 @@ PB.Renderer = class {
     // Caramelos Raros (Niebla Tóxica)
     if (b.power > 0) {
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(PB.Tiles.candy(), x - w / 2 - 34, y - 6, 24, 16);
+      ctx.drawImage(PB.Tiles.candy(), x - w / 2 - 34, y - 8, 22, 22);
       ctx.font = '13px "Pixelify Sans", system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.lineWidth = 4;
@@ -1019,7 +1019,8 @@ PB.Renderer = class {
       this.outlined('Quedan ' + alive, cx + 6, 36, 20, '#ffffff');
       const me = view.player;
       if (me) {
-        PB.Tiles.draw(ctx, PB.Tiles.candy(), 14, 60);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(PB.Tiles.candy(), 18, 56, 44, 44);
         this.outlined('×' + me.power, 74, 84, 20, '#9ad4ff', 'left');
         if (!me.dead && Math.hypot(me.x - game.gas.x, me.y - game.gas.y) > game.gas.r) {
           this.outlined('¡Sal de la niebla!', cx, 84, 20, Math.floor(game.clock * 4) % 2 ? '#d58cff' : '#ffffff');

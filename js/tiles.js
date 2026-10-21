@@ -414,22 +414,37 @@ PB.Tiles = (() => {
     });
   }
 
-  // Caramelo Raro (12 x 8)
+  // Caramelo Raro (18 x 18): caramelo lavanda en diagonal con un lazo de envoltorio
+  // en cada punta, brillos blancos y contorno oscuro.
   function candy() {
     return cached('candy', () => {
-      const P = Pix(12, 8);
-      const rows = [
-        '.ll......ll.',
-        'lwl.bbbb.lwl',
-        '.llbBBwBbll.',
-        '..lBBBBBBl..',
-        '.llbBBBBbll.',
-        'lwl.bbbb.lwl',
-        '.ll......ll.',
-      ];
-      const pal = { l: '#9ad4ff', w: '#e8f6ff', b: '#3a5cc8', B: '#5a86ea' };
-      rows.forEach((row, y) => [...row].forEach((ch, x) => { if (pal[ch]) P.set(x, y, pal[ch]); }));
-      outline(P, '#1c2a68');
+      const S = 18, cc = (S - 1) / 2;
+      const bodyA = 4.2, bodyB = 3.8, neck = 4.4, wrapEnd = 8.2, flare = 2.4;
+      const C2 = { d: '#4652b8', m: '#7484e0', l: '#a2b2f4', w: '#e2e8ff' };
+      const P = Pix(S, S);
+      for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+        const px = x - cc, py = y - cc;
+        const u = (px - py) / Math.SQRT2, v = (px + py) / Math.SQRT2; // a lo largo / a lo ancho
+        let ch = null;
+        if ((u * u) / (bodyA * bodyA) + (v * v) / (bodyB * bodyB) <= 1) {
+          const lit = (-px * 0.55 - py * 0.85) / bodyB;
+          ch = lit > 0.6 ? 'w' : lit > 0.15 ? 'l' : lit > -0.45 ? 'm' : 'd';
+        } else {
+          const au = Math.abs(u);
+          if (au >= neck && au <= wrapEnd) {
+            const k = (au - neck) / (wrapEnd - neck);
+            const half = 0.6 + k * flare;
+            if (Math.abs(v) <= half && !(au > wrapEnd - 1 && Math.abs(v) < 0.6)) {
+              ch = v < -half * 0.3 ? 'w' : v < half * 0.4 ? 'l' : 'm';
+              if (k < 0.2) ch = 'd';
+            }
+          }
+        }
+        if (ch) P.set(x, y, C2[ch]);
+      }
+      // brillos
+      P.set(7, 7, '#ffffff'); P.set(8, 6, '#ffffff'); P.set(10, 9, '#e2e8ff');
+      outline(P, '#141632');
       return P.done();
     });
   }

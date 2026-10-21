@@ -282,13 +282,14 @@ PB.Game = class {
   // Resuelve el apuntado (manual o automático) -> { ang, dist }
   aim(b, aim, range) {
     if (aim && aim.auto) {
+      // apuntado automático: el enemigo visible más cercano (aunque esté algo lejos)
       let best = null, bd = Infinity;
       for (const e of this.enemiesOf(b)) {
-        if (!this.visibleTo(e, b.team)) continue;
+        if (!this.visibleTo(e, b.team) || e.spawnT > 0) continue;
         const d = Math.hypot(e.x - b.x, e.y - b.y);
-        if (d < bd && d < range * 1.1) { bd = d; best = e; }
+        if (d < bd && d < Math.max(range * 1.8, 520)) { bd = d; best = e; }
       }
-      if (best) return { ang: Math.atan2(best.y - b.y, best.x - b.x), dist: bd };
+      if (best) return { ang: Math.atan2(best.y - b.y, best.x - b.x), dist: Math.min(bd, range) };
       const objs = this.objectTargets(b, range * 1.05).sort((p, q) => p.d - q.d);
       if (objs.length) return { ang: Math.atan2(objs[0].y - b.y, objs[0].x - b.x), dist: Math.hypot(objs[0].x - b.x, objs[0].y - b.y) };
       return { ang: b.facing, dist: range };

@@ -74,7 +74,7 @@
     c.fillStyle = { gems: '#3a7a3a', showdown: '#5a2a78', zone: '#2a4a8a' }[id] || '#333';
     c.fillRect(0, 0, 40, 40);
     if (id === 'gems') PB.Pokeball.draw(c, 20, 20, 2, {});
-    else if (id === 'showdown') c.drawImage(PB.Tiles.candy(), 2, 8, 36, 24);
+    else if (id === 'showdown') c.drawImage(PB.Tiles.candy(), 2, 2, 36, 36);
     else {
       c.fillStyle = '#4a3420';
       c.fillRect(12, 6, 3, 30);
