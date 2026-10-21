@@ -182,6 +182,16 @@ PB.Input = class {
     if (this.pending.attack) inp.attack = fromFrac(this.pending.attack, false);
     if (this.pending.super) inp.super = fromFrac(this.pending.super, true);
     this.pending = { attack: null, super: null };
+    // vista girada (equipo rojo): arriba en pantalla es abajo en el mapa
+    // (el ratón ya se pasa al mapa con la vista girada; los joysticks y el teclado, no)
+    if (renderer.flip) {
+      inp.mx = -inp.mx;
+      inp.my = -inp.my;
+      if (this.touch) {
+        for (const k of ['attack', 'super']) if (inp[k] && inp[k].dx !== undefined) inp[k] = Object.assign({}, inp[k], { dx: -inp[k].dx, dy: -inp[k].dy });
+        if (out.aim && !out.aim.cancel) out.aim.ang += Math.PI;
+      }
+    }
     return out;
   }
 

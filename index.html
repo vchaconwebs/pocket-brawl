@@ -32,7 +32,7 @@
    "offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
   </script>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=55">
+  <link rel="stylesheet" href="css/style.css?v=56">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -251,7 +251,14 @@
       <div class="login-box">
         <b>Cuenta</b>
         <p id="pf-acc-text">Juegas como invitado: tu progreso se guarda en este navegador. Entra con Google para guardarlo en la nube y no perderlo.</p>
-        <div class="row"><button class="act blue" id="pf-google">Entrar con Google</button><button class="act gray hidden" id="pf-logout">Cerrar sesión</button></div>
+        <div class="row"><button class="act blue" id="pf-google">Entrar con Google</button><button class="act blue" id="pf-mail">Entrar con correo</button><button class="act gray hidden" id="pf-logout">Cerrar sesión</button></div>
+        <div class="mail-form hidden" id="pf-mail-form">
+          <input id="pf-mail-email" type="email" autocomplete="email" placeholder="Correo electrónico">
+          <input id="pf-mail-pass" type="password" autocomplete="current-password" placeholder="Contraseña (mínimo 6)">
+          <div class="row"><button class="act gold" id="pf-mail-login">Entrar</button><button class="act blue" id="pf-mail-create">Crear cuenta</button></div>
+          <button class="linkbtn" id="pf-mail-forgot">¿Has olvidado la contraseña?</button>
+          <small>Crear cuenta guarda en ella el progreso de este navegador. Entrar abre una cuenta que ya tenías.</small>
+        </div>
       </div>
     </div>
   </div>
@@ -368,30 +375,30 @@
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=55"></script>
-  <script src="js/data.js?v=55"></script>
-  <script src="js/roster-data.js?v=55"></script>
-  <script src="js/i18n-data.js?v=55"></script>
-  <script src="js/i18n-names.js?v=55"></script>
-  <script src="js/i18n.js?v=55"></script>
-  <script src="js/sprites.js?v=55"></script>
-  <script src="js/vfx.js?v=55"></script>
-  <script src="js/roster.js?v=55"></script>
-  <script src="js/pokeball.js?v=55"></script>
-  <script src="js/tiles.js?v=55"></script>
-  <script src="js/world.js?v=55"></script>
-  <script src="js/game.js?v=55"></script>
-  <script src="js/net.js?v=55"></script>
-  <script src="js/modes.js?v=55"></script>
-  <script src="js/ai.js?v=55"></script>
-  <script src="js/audio.js?v=55"></script>
-  <script src="js/render.js?v=55"></script>
-  <script src="js/input.js?v=55"></script>
-  <script src="js/settings.js?v=55"></script>
-  <script src="js/pixui.js?v=55"></script>
-  <script src="js/save.js?v=55"></script>
-  <script src="js/online.js?v=55"></script>
-  <script src="js/lobby.js?v=55"></script>
-  <script src="js/main.js?v=55"></script>
+  <script src="js/sprite-data.js?v=56"></script>
+  <script src="js/data.js?v=56"></script>
+  <script src="js/roster-data.js?v=56"></script>
+  <script src="js/i18n-data.js?v=56"></script>
+  <script src="js/i18n-names.js?v=56"></script>
+  <script src="js/i18n.js?v=56"></script>
+  <script src="js/sprites.js?v=56"></script>
+  <script src="js/vfx.js?v=56"></script>
+  <script src="js/roster.js?v=56"></script>
+  <script src="js/pokeball.js?v=56"></script>
+  <script src="js/tiles.js?v=56"></script>
+  <script src="js/world.js?v=56"></script>
+  <script src="js/game.js?v=56"></script>
+  <script src="js/net.js?v=56"></script>
+  <script src="js/modes.js?v=56"></script>
+  <script src="js/ai.js?v=56"></script>
+  <script src="js/audio.js?v=56"></script>
+  <script src="js/render.js?v=56"></script>
+  <script src="js/input.js?v=56"></script>
+  <script src="js/settings.js?v=56"></script>
+  <script src="js/pixui.js?v=56"></script>
+  <script src="js/save.js?v=56"></script>
+  <script src="js/online.js?v=56"></script>
+  <script src="js/lobby.js?v=56"></script>
+  <script src="js/main.js?v=56"></script>
 </body>
 </html>

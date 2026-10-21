@@ -748,13 +748,22 @@ PB.Lobby = (() => {
     const a = PB.Online.account();
     const g = a && !a.anonymous;
     $('#pf-acc-text').textContent = !a ? PB.T('Sin conexión: tu progreso se guarda en este navegador.')
-      : g ? PB.T('Has entrado con Google ({email}). Tu progreso se guarda en la nube.', { email: a.email })
+      : g ? PB.T('Has entrado como {email}. Tu progreso se guarda en la nube.', { email: a.email })
       : PB.T('Juegas como invitado: tu progreso se guarda en este navegador. Entra con Google para guardarlo en la nube y no perderlo.');
     $('#pf-google').classList.toggle('hidden', !!g);
+    $('#pf-mail').classList.toggle('hidden', !!g);
+    $('#pf-mail-form').classList.add('hidden');
     $('#pf-logout').classList.toggle('hidden', !g);
   }
   async function googleLogin() {
-    const r = await PB.Online.loginGoogle();
+    afterLogin(await PB.Online.loginGoogle());
+  }
+  async function mailLogin(create) {
+    const email = $('#pf-mail-email').value, pass = $('#pf-mail-pass').value;
+    if (!email || !pass) return modal(PB.T('Escribe tu correo y tu contraseña.'));
+    afterLogin(await PB.Online.emailAccount(email, pass, create));
+  }
+  async function afterLogin(r) {
     if (r.cancelled) return;
     if (r.error) return modal(r.error);
     if (r.switched && r.save) {
@@ -765,7 +774,7 @@ PB.Lobby = (() => {
       }
     }
     PB.Audio.play('win');
-    toast(PB.T('Progreso guardado en tu cuenta de Google'));
+    toast(PB.T('Progreso guardado en tu cuenta'));
     renderAccount();
   }
 
@@ -1422,6 +1431,16 @@ PB.Lobby = (() => {
     });
     PB.Online.on('party', (info) => { if (info && info.kicked) toast(PB.T('Has salido de la sala')); });
     $('#pf-google').onclick = googleLogin;
+    $('#pf-mail').onclick = () => { $('#pf-mail-form').classList.toggle('hidden'); $('#pf-mail-email').focus(); };
+    $('#pf-mail-login').onclick = () => mailLogin(false);
+    $('#pf-mail-create').onclick = () => mailLogin(true);
+    $('#pf-mail-pass').onkeydown = (e) => { if (e.key === 'Enter') mailLogin(false); };
+    $('#pf-mail-forgot').onclick = async () => {
+      const email = $('#pf-mail-email').value;
+      if (!email) return modal(PB.T('Escribe tu correo y te mandamos un enlace para cambiar la contraseña.'));
+      const r = await PB.Online.resetPassword(email);
+      modal(r.error || PB.T('Te hemos enviado un correo para cambiar la contraseña.'));
+    };
     $('#pf-logout').onclick = async () => { if (await modal(PB.T('¿Cerrar sesión? En este navegador volverás a jugar como invitado.'), true)) PB.Online.logout(); };
     // enlace de invitación: ?sala=CODIGO
     const sala = new URLSearchParams(location.search).get('sala');

@@ -1767,3 +1767,9 @@ h1.lose { color: #ff8a7a; }
 #ld-sub { margin: 0; color: #cfdcff; font-size: 16px; min-height: 20px; }
 #ld-cancel { min-width: 160px; }
 #cl-reqs h3 { margin: 10px 0 4px; font-weight: 400; color: #ffcf2e; }
+
+/* entrar con correo */
+.mail-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.mail-form input { font: inherit; font-size: 16px; padding: 6px 8px; color: #fff; background: #10183a; border: 3px solid #141824; box-shadow: inset 0 0 0 2px #3a4a8a; }
+.mail-form small { color: #a9b8e8; font-size: 12px; }
+.linkbtn { background: none; border: 0; color: #9ad4ff; font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; align-self: flex-start; padding: 0; }

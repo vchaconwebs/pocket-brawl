@@ -32,8 +32,29 @@ PB.Renderer = class {
   }
 
   toWorld(sx, sy) {
-    const c = this.cam;
-    return { x: (sx - this.cw / 2) / c.scale + c.x, y: (sy - this.ch / 2) / c.scale + c.y };
+    const c = this.cam, k = this.flip ? -1 : 1;
+    return { x: (k * (sx - this.cw / 2)) / c.scale + c.x, y: (k * (sy - this.ch / 2)) / c.scale + c.y };
+  }
+
+  // Vista girada 180° (si juegas en el equipo rojo, tu base queda abajo, como en Brawl Stars).
+  // Lo que tiene "altura" (Pokémon, árboles, textos) se dibuja derecho alrededor de su punto de apoyo.
+  up(x, y, fn) {
+    if (!this.flip) return fn();
+    const c = this.ctx;
+    c.save();
+    c.translate(x, y);
+    c.rotate(Math.PI);
+    c.translate(-x, -y);
+    fn();
+    c.restore();
+  }
+  // igual, pero además el Pokémon mira hacia donde se mueve en pantalla
+  upFacing(o, fn) {
+    if (!this.flip) return fn();
+    const f = o.facing;
+    o.facing = f + Math.PI;
+    this.up(o.x, o.y, fn);
+    o.facing = f;
   }
 
   announce(text, color, sub, life) {
@@ -62,16 +83,19 @@ PB.Renderer = class {
     const focus = view.focus;
     const team = view.team;
     const t = game.clock;
+    const flip = (this.flip = !!view.flip);
+    const fk = flip ? -1 : 1;
 
     // cámara (con controles táctiles en vertical, el jugador más arriba para que no lo tapen los joysticks)
     const lift = view.touch && this.ch > this.cw ? 150 : 0;
     if (focus) {
       this.cam.x += (focus.x - this.cam.x) * 0.15;
-      this.cam.y += (focus.y + (lift || -60) - this.cam.y) * 0.15;
+      this.cam.y += (focus.y + fk * (lift || -60) - this.cam.y) * 0.15;
     }
     const halfW = this.cw / 2 / this.cam.scale, halfH = this.ch / 2 / this.cam.scale;
     this.cam.x = W.pixelW < halfW * 2 ? W.pixelW / 2 : Math.max(halfW - 60, Math.min(W.pixelW - halfW + 60, this.cam.x));
-    this.cam.y = Math.max(halfH - 150, Math.min(W.pixelH - halfH + 80 + (lift ? lift + 60 : 0), this.cam.y));
+    const mTop = 150, mBot = 80 + (lift ? lift + 60 : 0);
+    this.cam.y = Math.max(halfH - (flip ? mBot : mTop), Math.min(W.pixelH - halfH + (flip ? mTop : mBot), this.cam.y));
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#2c5a3a';
@@ -79,7 +103,7 @@ PB.Renderer = class {
     const s = this.cam.scale * this.dpr;
     const sk = PB.Settings.get('shake') ? game.shake : 0;
     const shx = (Math.random() - 0.5) * sk, shy = (Math.random() - 0.5) * sk;
-    ctx.setTransform(s, 0, 0, s, (this.cw / 2 - this.cam.x * this.cam.scale + shx) * this.dpr, (this.ch / 2 - this.cam.y * this.cam.scale + shy) * this.dpr);
+    ctx.setTransform(fk * s, 0, 0, fk * s, (this.cw / 2 - fk * this.cam.x * this.cam.scale + shx) * this.dpr, (this.ch / 2 - fk * this.cam.y * this.cam.scale + shy) * this.dpr);
     ctx.imageSmoothingEnabled = false;
 
     const vx0 = this.cam.x - halfW - T, vx1 = this.cam.x + halfW + T;
@@ -128,7 +152,7 @@ PB.Renderer = class {
     for (const z of game.zones) this.drawZone(z, t, team);
     // trampas y orbes de los súper
     for (const m of game.mines) this.drawMine(m, t, team);
-    for (const tu of game.turrets) this.drawTurret(tu, t);
+    for (const tu of game.turrets) this.up(tu.x, tu.y, () => this.drawTurret(tu, t));
 
     // indicador de apuntado (debajo de los personajes)
     if (view.aim && !view.aim.cancel && focus && !focus.dead && game.started) this.drawAim(focus, view.aim);
@@ -156,17 +180,20 @@ PB.Renderer = class {
     for (const f of game.fx) {
       if (f.kind === 'faint' || f.kind === 'release' || f.kind === 'ghost') items.push({ k: f.kind, y: f.y, f });
     }
-    items.sort((a, b) => a.y - b.y);
+    items.sort((a, b) => fk * (a.y - b.y));
     for (const it of items) {
-      if (it.k === 'wall') this.drawWall(it.c, it.r, it.tt);
-      else if (it.k === 'ball') this.drawBall(it.g);
-      else if (it.k === 'b') this.drawBrawler(it.b, game, team);
-      else if (it.k === 'faint') this.drawFaint(it.f);
-      else if (it.k === 'release') this.drawRelease(it.f);
-      else if (it.k === 'ghost') this.drawGhost(it.f);
-      else if (it.k === 'struct') this.drawSnorlax(it.st, game, team);
-      else if (it.k === 'voltorb') this.drawVoltorb(it.v, game);
-      else if (it.k === 'goal') this.drawGoal(W, it.tm, team);
+      if (it.k === 'wall') this.up(it.c * T + T / 2, it.r * T + T / 2, () => this.drawWall(it.c, it.r, it.tt));
+      else if (it.k === 'ball') this.up(it.g.x, it.g.y, () => this.drawBall(it.g));
+      else if (it.k === 'b') this.upFacing(it.b, () => this.drawBrawler(it.b, game, team));
+      else if (it.k === 'faint') this.upFacing(it.f, () => this.drawFaint(it.f));
+      else if (it.k === 'release') this.up(it.f.x, it.f.y, () => this.drawRelease(it.f));
+      else if (it.k === 'ghost') this.upFacing(it.f, () => this.drawGhost(it.f));
+      else if (it.k === 'struct') this.up(it.st.x, it.st.y, () => this.drawSnorlax(it.st, game, team));
+      else if (it.k === 'voltorb') this.up(it.v.x, it.v.y, () => this.drawVoltorb(it.v, game));
+      else if (it.k === 'goal') {
+        const Rg = W.goalRect(it.tm);
+        this.up((Rg.x0 + Rg.x1) / 2, (Rg.y0 + Rg.y1) / 2, () => this.drawGoal(W, it.tm, team));
+      }
     }
 
     // proyectiles
@@ -188,13 +215,13 @@ PB.Renderer = class {
       for (const b of game.brawlers) {
         if (!b.dead && b.moving && Math.abs(b.x - cx) < 40 && Math.abs(b.y - cy) < 40) rustle = true;
       }
-      this.drawBush(c, r, near ? 0.5 : 1, t, rustle);
+      this.up(cx, cy, () => this.drawBush(c, r, near ? 0.5 : 1, t, rustle));
     }
     // aliados dentro de arbustos se ven en semitransparente
     for (const b of game.brawlers) {
       if (b.dead || b.team !== team || !game.inBush(b)) continue;
       ctx.globalAlpha = 0.5;
-      this.drawBrawler(b, game, team, true);
+      this.upFacing(b, () => this.drawBrawler(b, game, team, true));
       ctx.globalAlpha = 1;
     }
 
@@ -253,7 +280,7 @@ PB.Renderer = class {
     // barras de vida y nombres
     for (const b of game.brawlers) {
       if (b.dead || !game.visibleTo(b, team) || b.spawnT > 0.2) continue;
-      this.drawOverhead(b, game, team, focus);
+      this.up(b.x, b.y, () => this.drawOverhead(b, game, team, focus));
     }
 
     // textos de daño
@@ -268,9 +295,11 @@ PB.Renderer = class {
       ctx.lineWidth = 5;
       ctx.lineJoin = 'round';
       ctx.strokeStyle = '#000';
-      ctx.strokeText(f.text, f.x, f.y);
-      ctx.fillStyle = f.color;
-      ctx.fillText(f.text, f.x, f.y);
+      this.up(f.x, f.y, () => {
+        ctx.strokeText(f.text, f.x, f.y);
+        ctx.fillStyle = f.color;
+        ctx.fillText(f.text, f.x, f.y);
+      });
     }
     ctx.globalAlpha = 1;
 
@@ -428,7 +457,7 @@ PB.Renderer = class {
     const R = W.goalRect(team);
     if (!R) return;
     const ctx = this.ctx;
-    const top = R.y0 < W.pixelH / 2;
+    const top = (R.y0 < W.pixelH / 2) !== !!this.flip;
     const col = team === myTeam ? '#3d8bff' : '#ff4d4d';
     const snap = (v) => Math.round(v / 4) * 4;
     const x0 = snap(R.x0 + 8), x1 = snap(R.x1 - 8);
@@ -938,7 +967,7 @@ PB.Renderer = class {
       ctx.fill();
       ctx.stroke();
       const y = p.y - p.z - 10;
-      PB.VFX.draw(ctx, look.shape || 'rock', pal, p.x, y, { scale: look.scale || 1.4, angle: p.t * 10, frame });
+      this.up(p.x, p.y, () => PB.VFX.draw(ctx, look.shape || 'rock', pal, p.x, y, { scale: look.scale || 1.4, angle: p.t * 10, frame }));
       return;
     }
     const sc = (look.scale || 1) * (p.powered ? 1.4 : 1);

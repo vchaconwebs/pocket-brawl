@@ -158,6 +158,44 @@ PB.Online = (() => {
       return err('No se ha podido iniciar sesión.');
     }
   }
+  // Correo y contraseña. "Crear cuenta" convierte la cuenta de invitado (se queda el progreso);
+  // "Entrar" abre una cuenta que ya existía (y se puede recuperar su progreso de la nube).
+  const mailErr = (e) => {
+    const c = e && e.code;
+    if (c === 'auth/email-already-in-use' || c === 'auth/credential-already-in-use') return err('Ese correo ya tiene cuenta. Pulsa Entrar.');
+    if (c === 'auth/invalid-email') return err('Ese correo no es válido.');
+    if (c === 'auth/weak-password') return err('La contraseña debe tener al menos 6 caracteres.');
+    if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/user-not-found' || c === 'auth/invalid-login-credentials') return err('Correo o contraseña incorrectos.');
+    if (c === 'auth/too-many-requests') return err('Demasiados intentos. Prueba más tarde.');
+    return err('No se ha podido iniciar sesión.');
+  };
+  async function emailAccount(email, pass, create) {
+    if (!(await start())) return err('Sin conexión.');
+    email = String(email || '').trim();
+    try {
+      if (create) {
+        const cred = fb.auth.EmailAuthProvider.credential(email, pass);
+        const r = await auth.currentUser.linkWithCredential(cred);
+        user = r.user;
+        saveCloud(true);
+        return { ok: true, email };
+      }
+      const r = await auth.signInWithEmailAndPassword(email, pass);
+      user = r.user;
+      uid = user.uid;
+      const s = await fs.collection('users').doc(uid).collection('private').doc('save').get();
+      return { ok: true, email, switched: true, save: s.exists ? s.data().json : null };
+    } catch (e) { return mailErr(e); }
+  }
+  async function resetPassword(email) {
+    if (!(await start())) return err('Sin conexión.');
+    try {
+      auth.languageCode = PB.lang || 'es';
+      await auth.sendPasswordResetEmail(String(email || '').trim());
+      return { ok: true };
+    } catch (e) { return mailErr(e); }
+  }
+
   async function logout() {
     if (!auth) return;
     await auth.signOut();
@@ -837,7 +875,7 @@ PB.Online = (() => {
     start,
     status: () => ({ online: !!uid, uid }),
     on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); },
-    account, loginGoogle, logout, saveCloud,
+    account, loginGoogle, emailAccount, resetPassword, logout, saveCloud,
     me: async () => (await start(), viewUser(uid, myDoc)),
     topPlayers, topClans,
     searchClans, getClan, myClan, createClan, joinClan, leaveClan, clanRequests, answerClanRequest,

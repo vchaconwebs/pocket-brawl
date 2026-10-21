@@ -594,6 +594,7 @@
       focus = null;
     }
     renderer.draw(game, {
+      flip: !!(me && mode !== 'menu' && !game.mode.ffa && me.team === 'red'),
       focus,
       team: me ? me.team : focus ? focus.team : 'blue',
       player: mode === 'play' ? me : null,
