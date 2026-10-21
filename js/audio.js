@@ -214,6 +214,14 @@ PB.Audio = {
         [523, 659, 784, 1046, 1318].forEach((f, i) => this.tone(f, 0.18, { vol: 0.15, delay: i * 0.08 }));
         this.noise(0.8, { filter: 'highpass', freq: 3000, vol: 0.1 });
         break;
+      case 'ui': // pulsar un botón: "clic" pixel con un toque de subida
+        this.tone(1046, 0.045, { vol: 0.07 });
+        this.tone(1568, 0.06, { vol: 0.06, delay: 0.035 });
+        break;
+      case 'uiBack': // volver: el mismo clic pero bajando
+        this.tone(988, 0.045, { vol: 0.07 });
+        this.tone(659, 0.07, { vol: 0.06, delay: 0.035 });
+        break;
       case 'win': this.jingle('victory'); break;
       case 'lose': this.jingle('defeat'); break;
     }
@@ -377,4 +385,11 @@ PB.Audio = {
   };
   window.addEventListener('pointerdown', start);
   window.addEventListener('keydown', start);
+  // sonido al pulsar cualquier botón de los menús
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('button, a.act, .evo-st, .sp-mon');
+    if (!b || b.disabled) return;
+    PB.Audio.init();
+    PB.Audio.play(b.classList.contains('back') || b.id === 'back' || b.id === 'pz-quit' ? 'uiBack' : 'ui');
+  }, true);
 })();
