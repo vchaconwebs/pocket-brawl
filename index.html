@@ -11,8 +11,26 @@
   <link rel="apple-touch-icon" href="assets/icons/icon-180.png">
   <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="description" content="PokéVersus: fangame gratuito de combates 3v3 en el navegador. Sin ánimo de lucro.">
-  <title>PokéVersus</title>
+  <meta name="description" content="PokéVersus: fangame gratuito de combates 3v3 con Pokémon en el navegador. Más de 900 Pokémon, evoluciones en partida, 5 modos y juego con amigos. Sin ánimo de lucro.">
+  <title>PokéVersus · Combates 3v3 gratis en el navegador</title>
+  <link rel="canonical" href="https://pokeversus.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PokéVersus">
+  <meta property="og:url" content="https://pokeversus.com/">
+  <meta property="og:title" content="PokéVersus · Combates 3v3 gratis en el navegador">
+  <meta property="og:description" content="Fangame gratuito de combates 3v3 con Pokémon. Juega en el navegador, en PC o móvil. Free 3v3 Pokémon fan game in your browser.">
+  <meta property="og:image" content="https://pokeversus.com/assets/icons/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://pokeversus.com/assets/icons/og.png">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"VideoGame","name":"PokéVersus","url":"https://pokeversus.com/",
+   "description":"Fangame gratuito y sin ánimo de lucro de combates 3v3 con Pokémon en el navegador.",
+   "image":"https://pokeversus.com/assets/icons/og.png","genre":["Action","Multiplayer"],"gamePlatform":["Web browser","PC","Mobile"],
+   "applicationCategory":"Game","inLanguage":["es","en","pt","fr","it","de"],"isAccessibleForFree":true,
+   "offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
+  </script>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="css/style.css?v=51">
 </head>
@@ -20,6 +38,7 @@
   <canvas id="game"></canvas>
 
   <div id="loading" class="screen"><h1>Cargando…</h1></div>
+  <noscript><h1>PokéVersus</h1><p>Fangame gratuito de combates 3v3 con Pokémon en el navegador. Activa JavaScript para jugar. / Free 3v3 Pokémon fan game. Enable JavaScript to play.</p></noscript>
 
   <!-- LOBBY -->
   <div id="lobby" class="screen hidden">
