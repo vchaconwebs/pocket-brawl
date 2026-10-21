@@ -110,8 +110,8 @@ PB.MODES = {
     },
     update(g, dt) {
       const gas = g.gas;
-      // la niebla empieza a cerrarse a los 20 s y llega al mínimo a los 2 min
-      const k = Math.max(0, Math.min(1, (g.time - 20) / 100));
+      // la niebla empieza a cerrarse a los 30 s y llega al mínimo a los 2:40
+      const k = Math.max(0, Math.min(1, (g.time - 30) / 130));
       gas.r = gas.maxR + (gas.minR - gas.maxR) * k;
       if (k > 0 && !gas.warn) { gas.warn = true; g.events.push({ type: 'gas' }); }
       gas.tickT -= dt;
@@ -155,10 +155,10 @@ PB.MODES = {
         const d = dist(it, b);
         if (d < cd && dist(it, gas) < gas.r - 60) { cd = d; candy = it; }
       }
-      if (candy && cd < 600 && (!info.foe || info.fd > 350)) return { goal: candy, avoidFight: g.time < 45 };
+      if (candy && cd < 600 && (!info.foe || info.fd > 350)) return { goal: candy, avoidFight: g.time < 80 };
       // solo va a por otros si va bien de vida y no es más débil (al principio prefiere las cajas)
       const stronger = info.foe && b.power >= (info.foe.power || 0);
-      if (info.foe && info.fd < 380 && info.hpF > 0.6 && stronger && (g.time > 25 || b.power >= 2)) return { goal: info.foe };
+      if (info.foe && info.fd < 380 && info.hpF > 0.6 && stronger && (g.time > 60 || b.power >= 3)) return { goal: info.foe };
       // romper la caja más cercana
       const T = PB.TILE, W = g.world;
       let crate = null, crd = Infinity;
@@ -168,7 +168,7 @@ PB.MODES = {
         const d = dist(p, b);
         if (d < crd && dist(p, gas) < gas.r - 100) { crd = d; crate = { x: p.x, y: p.y, crate: { c, r: rr } }; }
       }
-      if (crate) return { goal: crate, target: crate, avoidFight: g.time < 45 && b.power < 3 };
+      if (crate) return { goal: crate, target: crate, avoidFight: g.time < 80 && b.power < 4 };
       return { goal: { x: gas.x, y: gas.y } };
     },
     result(g, me) {
@@ -181,12 +181,12 @@ PB.MODES = {
   heist: {
     id: 'heist', name: 'Despierta a Snorlax', map: 'heist', statName: 'Daño a Snorlax',
     desc: '3 contra 3. Cada equipo protege a su Snorlax dormido. Gana quien despierte (debilite) antes al Snorlax rival.',
-    rules: { matchTime: 150 },
+    rules: { matchTime: 180 },
     setup(g) {
       let id = 0;
       for (const team of ['red', 'blue']) {
         const p = g.world.snorlax[team];
-        g.structures.push({ id: id++, kind: 'snorlax', team, x: p.x, y: p.y, r: 46, hp: 12000, maxHp: 12000, flashT: 0, zT: 0 });
+        g.structures.push({ id: id++, kind: 'snorlax', team, x: p.x, y: p.y, r: 46, hp: 30000, maxHp: 30000, flashT: 0, zT: 0 });
         g.world.blockCircle(p.x, p.y, 40);
       }
     },
@@ -391,7 +391,7 @@ PB.MODES = {
       const prev = z.owner;
       z.owner = inside.blue && !inside.red ? 'blue' : inside.red && !inside.blue ? 'red' : inside.blue && inside.red ? 'contested' : null;
       if (z.owner === 'blue' || z.owner === 'red') {
-        g.progress[z.owner] = Math.min(100, g.progress[z.owner] + 1.6 * dt);
+        g.progress[z.owner] = Math.min(100, g.progress[z.owner] + 2.4 * dt);
         if (g.progress[z.owner] >= 100) g.end(z.owner);
       }
       if (prev !== z.owner && (z.owner === 'blue' || z.owner === 'red')) g.events.push({ type: 'zoneTaken', team: z.owner });

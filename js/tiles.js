@@ -378,9 +378,63 @@ PB.Tiles = (() => {
     });
   }
 
+  // Bandera de Territorio (22 x 36): mástil con pomo dorado, tela ondeando con una
+  // Pokéball pintada y base de piedra. color: neutral | blue | red | contested
+  const FLAG = {
+    neutral: ['#f2f0ea', '#c4c0cc', '#ffffff', '#8e8a96'],
+    blue: ['#3a7ad8', '#2456a8', '#7ab4fa', '#163a78'],
+    red: ['#e2483a', '#a82e26', '#ff8c7a', '#701a16'],
+    contested: ['#f8c030', '#c08a10', '#ffe488', '#7a5408'],
+  };
+  function flag(color, frame) {
+    return cached('flag' + color + frame, () => {
+      const P = Pix(22, 36);
+      const F = FLAG[color] || FLAG.neutral;
+      // tela: cada columna se desplaza para que ondee
+      for (let x = 6; x < 21; x++) {
+        const k = (x - 6) / 14;
+        const off = Math.round(Math.sin(x * 0.55 + frame * 1.6) * 1.6 * k);
+        for (let y = 4; y < 15; y++) {
+          const yy = y + off;
+          let col = F[0];
+          if (y === 4) col = F[2];
+          else if (y >= 13) col = F[1];
+          else if (Math.sin(x * 0.55 + frame * 1.6 - 0.6) * k > 0.45) col = F[1]; // pliegue en sombra
+          else if (Math.sin(x * 0.55 + frame * 1.6 + 0.8) * k > 0.6) col = F[2]; // pliegue con luz
+          P.set(x, yy, col);
+        }
+        // Pokéball pintada en el centro de la tela
+        if (x >= 10 && x <= 16) {
+          for (let y = 6; y <= 12; y++) {
+            const d = Math.hypot(x - 13, y - 9);
+            if (d > 3.5) continue;
+            let c = y < 9 ? (color === 'neutral' ? '#e8331c' : '#ffffff') : '#e8e4ee';
+            if (y === 9) c = '#1b1418';
+            if (x === 13 && y === 9) c = '#ffffff';
+            P.set(x, y + off, c);
+          }
+        }
+      }
+      // mástil
+      for (let y = 3; y < 33; y++) {
+        P.set(4, y, '#e6e2ea');
+        P.set(5, y, '#9c98a6');
+      }
+      // pomo dorado
+      for (const [x, y, c] of [[4, 0, '#fff0a0'], [5, 0, '#f8d030'], [3, 1, '#f8d030'], [4, 1, '#fff6c0'], [5, 1, '#f8d030'], [6, 1, '#c89a10'], [4, 2, '#f8d030'], [5, 2, '#c89a10']]) P.set(x, y, c);
+      // base de piedra
+      for (let y = 31; y < 36; y++) for (let x = 1; x < 9; x++) {
+        if ((y === 31 && (x === 1 || x === 8)) ) continue;
+        P.set(x, y, y === 31 ? '#c4ced8' : y >= 34 ? '#5c6672' : '#9ca8b4');
+      }
+      outline(P, F[3] === '#8e8a96' ? '#3c424e' : '#1b1418');
+      return P.done();
+    });
+  }
+
   function draw(ctx, cv, x, y) {
     ctx.drawImage(cv, Math.round(x), Math.round(y), cv.width * PX, cv.height * PX);
   }
 
-  return { floor, outsideFloor, rock, tree, tallGrass, crate, candy, draw, H, A, PX };
+  return { floor, outsideFloor, rock, tree, tallGrass, crate, candy, flag, draw, H, A, PX };
 })();

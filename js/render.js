@@ -116,6 +116,8 @@ PB.Renderer = class {
 
     // zona de Territorio
     if (game.zone) this.drawHotZone(game.zone, t, team);
+    // porterías (parte de detrás)
+    if (game.voltorb) for (const tm of ['red', 'blue']) this.drawGoal(W, tm, false, team);
 
     // grietas del suelo (Magnitud)
     for (const f of game.fx) if (f.kind === 'crack') this.drawCrack(f);
@@ -154,6 +156,9 @@ PB.Renderer = class {
       else if (it.k === 'struct') this.drawSnorlax(it.st, game, team);
       else if (it.k === 'voltorb') this.drawVoltorb(it.v, game);
     }
+
+    // porterías (parte de delante)
+    if (game.voltorb) for (const tm of ['red', 'blue']) this.drawGoal(W, tm, true, team);
 
     // proyectiles
     for (const p of game.projectiles) if (inView(p.x, p.y, 80)) this.drawShot(p, t);
@@ -384,14 +389,75 @@ PB.Renderer = class {
     ctx.lineDashOffset = -t * 20;
     ctx.stroke();
     ctx.setLineDash([]);
-    // bandera pixel en el centro
-    ctx.fillStyle = '#4a3420';
-    ctx.fillRect(z.x - 2, z.y - 56, 4, 56);
-    ctx.fillStyle = `rgb(${col})`;
-    const wave = Math.floor(t * 4) % 2 ? 2 : 0;
-    ctx.fillRect(z.x + 2, z.y - 56 + wave, 28, 16);
+    // bandera pixel art en el centro (del color de quien controla la zona)
+    const fc = z.owner === 'contested' ? 'contested' : z.owner ? (z.owner === team ? 'blue' : 'red') : 'neutral';
+    const frame = Math.floor(t * 6) % 4;
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(z.x + 2, z.y - 44 + wave, 28, 4);
+    ctx.beginPath();
+    ctx.ellipse(z.x + 2, z.y + 4, 18, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (z.owner && z.owner !== 'contested') this.glow(z.x + 20, z.y - 70, 46, z.owner === team ? 'rgba(80,150,255,0.35)' : 'rgba(255,80,70,0.35)');
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(PB.Tiles.flag(fc, frame), z.x - 14, z.y - 102, 66, 108);
+  }
+
+  // Porterías de Voltorbol: postes, larguero y red. Las de arriba se ven por detrás
+  // de los jugadores y las de abajo por delante (front = true).
+  drawGoal(W, team, front, myTeam) {
+    const R = W.goalRect(team);
+    if (!R) return;
+    const ctx = this.ctx;
+    const top = R.y0 < W.pixelH / 2;
+    const col = team === myTeam ? '#3d8bff' : '#ff4d4d';
+    const depth = 46; // profundidad de la portería (hacia fuera del campo)
+    const x0 = R.x0 - 6, x1 = R.x1 + 6;
+    const mouth = top ? R.y1 : R.y0; // línea de gol
+    const back = top ? R.y0 - depth : R.y1 + depth;
+    if (!front) {
+      // red: fondo oscuro y malla
+      const y0 = Math.min(mouth, back), y1 = Math.max(mouth, back);
+      ctx.fillStyle = 'rgba(20,30,40,0.35)';
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let x = x0; x <= x1; x += 16) { ctx.moveTo(x, y0); ctx.lineTo(x, y1); }
+      for (let y = y0; y <= y1; y += 16) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+      ctx.stroke();
+      // línea de gol del color del equipo
+      ctx.fillStyle = col;
+      ctx.fillRect(R.x0, mouth - 4, R.x1 - R.x0, 8);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(R.x0, mouth - 1, R.x1 - R.x0, 2);
+    }
+    if (front === !top) {
+      // postes y larguero (pixel art: blanco con sombra y contorno)
+      const post = (x) => {
+        const yA = Math.min(mouth, back) - (top ? 0 : 0), yB = Math.max(mouth, back);
+        ctx.fillStyle = '#1b1418';
+        ctx.fillRect(x - 7, yA - 30, 14, yB - yA + 34);
+        ctx.fillStyle = '#f4f2f6';
+        ctx.fillRect(x - 5, yA - 28, 6, yB - yA + 30);
+        ctx.fillStyle = '#b8b4c2';
+        ctx.fillRect(x + 1, yA - 28, 4, yB - yA + 30);
+      };
+      post(x0);
+      post(x1);
+      const by = (top ? back : mouth) - 30;
+      ctx.fillStyle = '#1b1418';
+      ctx.fillRect(x0 - 7, by - 2, x1 - x0 + 14, 14);
+      ctx.fillStyle = '#f4f2f6';
+      ctx.fillRect(x0 - 5, by, x1 - x0 + 10, 6);
+      ctx.fillStyle = '#b8b4c2';
+      ctx.fillRect(x0 - 5, by + 6, x1 - x0 + 10, 4);
+      // banderines del color del equipo en las esquinas
+      for (const x of [x0, x1]) {
+        ctx.fillStyle = col;
+        ctx.fillRect(x - 4, by - 18, 12, 10);
+        ctx.fillStyle = '#1b1418';
+        ctx.fillRect(x - 5, by - 18, 2, 18);
+      }
+    }
   }
 
   // Niebla venenosa: todo lo que queda fuera del círculo seguro
@@ -850,7 +916,7 @@ PB.Renderer = class {
     }
 
     if (me) {
-      if (me.dead) {
+      if (me.dead && !me.out) {
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.fillRect(0, H / 2 - 40, W, 70);
         this.outlined('Vuelves en ' + Math.ceil(me.respawnT), W / 2, H / 2 + 8, 30, '#ffffff');
