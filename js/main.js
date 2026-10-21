@@ -157,6 +157,7 @@
     clearTimeout(slow);
     starting = false;
     newGame(id, opts);
+    PB.Audio.music(SONG_OF[gameMode] || 'battle');
     mode = 'play';
     paused = false;
     input.enabled = true;
@@ -167,7 +168,11 @@
     setTimeout(() => help().classList.add('hidden'), 6000);
   }
 
+  // música de cada modo
+  const SONG_OF = { gems: 'battle', heist: 'battle', showdown: 'showdown', ball: 'arena', zone: 'arena' };
+
   function toMenu() {
+    PB.Audio.music('menu');
     mode = 'menu';
     paused = false;
     input.enabled = false;
@@ -196,6 +201,7 @@
   $('#pz-quit').onclick = toMenu;
 
   function showEnd() {
+    PB.Audio.music(null);
     mode = 'end';
     input.enabled = false;
     $('#btn-pause').classList.add('hidden');
@@ -295,7 +301,7 @@
             renderer.announce('¡' + ev.from + ' ha evolucionado a ' + ev.to + '!', '#ffe066', '', 1.6);
           } else if (near(ev.b)) PB.Audio.play('ready');
           break;
-        case 'super': if (ev.b === me || near(ev.b)) PB.Audio.play('super'); break;
+        case 'super': if (ev.b === me || near(ev.b)) PB.Audio.play('super', { type: ev.b.def.super.type || ev.b.def.atkType, me: ev.b === me }); break;
         case 'superReady': if (ev.b === me) { PB.Audio.play('ready'); PB.vibrate(30); } break;
         case 'boom': PB.Audio.play('boom', { big: ev.big }); break;
         case 'wall': PB.Audio.play('wall'); break;

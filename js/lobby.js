@@ -1235,6 +1235,8 @@ PB.Lobby = (() => {
       html =
         `<div class="st-row"><div><b>Volumen</b><small id="vol-txt">${S.get('volume')} %</small></div>` +
         `<input type="range" class="px-range" id="st-vol" min="0" max="100" step="5" value="${S.get('volume')}"></div>` +
+        `<div class="st-row"><div><b>Música</b><small id="mus-txt">${S.get('music')} %</small></div>` +
+        `<input type="range" class="px-range" id="st-mus" min="0" max="100" step="5" value="${S.get('music')}"></div>` +
         toggle('muted', 'Silenciar todo') +
         toggle('vibration', 'Vibración', 'Al recibir golpes fuertes, súper listo y cofres (en móviles que lo permitan)') +
         `<div class="st-row"><div><b>Probar sonido</b></div><button class="act blue" id="st-test">▶ Probar</button></div>`;
@@ -1280,6 +1282,8 @@ PB.Lobby = (() => {
       vol.oninput = () => { S.set('volume', +vol.value); $('#vol-txt').textContent = vol.value + ' %'; };
       vol.onchange = () => { PB.Audio.init(); PB.Audio.play('ball'); };
     }
+    const mus = $('#st-mus');
+    if (mus) mus.oninput = () => { S.set('music', +mus.value); $('#mus-txt').textContent = mus.value + ' %'; PB.Audio.init(); };
     const test = $('#st-test');
     if (test) test.onclick = () => { PB.Audio.init(); PB.Audio.play('win'); PB.vibrate(40); };
     const prof = $('#st-profile');

@@ -4,6 +4,7 @@ PB.Settings = (() => {
   const DEFAULTS = {
     // sonido
     volume: 70, // 0-100
+    music: 45, // volumen de la música 0-100
     muted: false,
     vibration: true,
     // gráficos
@@ -38,7 +39,10 @@ PB.Settings = (() => {
   }
   // aplica lo que afecta a otros módulos
   function apply() {
-    if (PB.Audio) PB.Audio.setVolume(get('muted') ? 0 : get('volume') / 100);
+    if (PB.Audio) {
+      PB.Audio.setVolume(get('muted') ? 0 : get('volume') / 100);
+      PB.Audio.setMusicVolume(get('music') / 100);
+    }
     if (PB.PixUI && document.documentElement) PB.PixUI.installSkins();
   }
   return { load, get, set, reset, apply, DEFAULTS };

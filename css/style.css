@@ -1624,3 +1624,33 @@ h1.lose { color: #ff8a7a; }
 .pslot:not(.filled) { width: 22% !important; height: 46% !important; bottom: 14%; }
 .pslot.left:not(.filled) { left: 4% !important; } .pslot.right:not(.filled) { right: 4% !important; }
 @media (max-height: 500px) { .pslot:not(.filled) { height: 42% !important; } .pslot .plus { font-size: 22px; } }
+
+/* PC: el lobby ocupa toda la pantalla (sin márgenes enormes a los lados) y crece con ella */
+@media (min-width: 1100px) and (min-height: 640px) {
+  .lb {
+    max-width: none !important; margin: 0 !important;
+    grid-template-columns: clamp(280px, 21vw, 480px) 1fr clamp(330px, 23vw, 500px) !important;
+    padding: 1.6vh 2vw 1vh !important; gap: 2vh 2.2vw !important;
+  }
+  .hero-stage { max-width: min(1100px, 100%) !important; }
+  .tile { min-height: clamp(62px, 7.5vh, 96px) !important; font-size: clamp(22px, 1.55vw, 34px) !important; }
+  .tile .ib { width: clamp(44px, 3vw, 64px) !important; height: clamp(44px, 3vw, 64px) !important; }
+  .tile .ib .pxi { width: 72% !important; height: 72% !important; }
+  .lb-icons .tile { min-height: clamp(66px, 8vh, 104px) !important; }
+  .lb-top .lb-title { font-size: clamp(44px, 3.4vw, 72px) !important; }
+  .profile-chip img#pf-avatar { width: clamp(52px, 3.6vw, 76px) !important; height: clamp(52px, 3.6vw, 76px) !important; }
+  .profile-chip b { font-size: clamp(20px, 1.4vw, 30px) !important; }
+  .lb-money .pill { font-size: clamp(22px, 1.5vw, 32px) !important; }
+  .lb-money .pill img { width: clamp(28px, 1.9vw, 40px) !important; height: clamp(28px, 1.9vw, 40px) !important; }
+  .cw-ball { width: clamp(88px, 6vw, 124px) !important; height: clamp(88px, 6vw, 124px) !important; }
+  .cw-ball img { width: 70% !important; height: 70% !important; }
+  .cw-info b { font-size: clamp(20px, 1.4vw, 30px) !important; }
+  .hero-plate { font-size: clamp(30px, 2.1vw, 44px) !important; }
+  .lq-head b { font-size: clamp(22px, 1.4vw, 30px) !important; }
+  .lq-row small { font-size: clamp(15px, 0.95vw, 20px) !important; }
+  .pass-btn .pb-medal { width: clamp(54px, 3.6vw, 76px) !important; height: clamp(54px, 3.6vw, 76px) !important; font-size: clamp(26px, 1.8vw, 38px) !important; }
+  .pass-btn .pb-top b { font-size: clamp(24px, 1.7vw, 36px) !important; }
+  .mode-card img { width: clamp(72px, 5vw, 104px) !important; height: clamp(72px, 5vw, 104px) !important; }
+  .mode-card b { font-size: clamp(26px, 1.8vw, 38px) !important; }
+  .lb-right .big { font-size: clamp(44px, 3.2vw, 66px) !important; }
+}
