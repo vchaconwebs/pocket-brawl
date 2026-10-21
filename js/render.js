@@ -297,7 +297,7 @@ PB.Renderer = class {
       // barra de vida (siempre visible)
       ctx.fillStyle = '#111';
       ctx.fillRect(x + 4, y - 30, T - 8, 10);
-      ctx.fillStyle = '#5a8ef0';
+      ctx.fillStyle = '#ffd23a';
       ctx.fillRect(x + 6, y - 28, ((T - 12) * hp) / 3000, 6);
       ctx.fillStyle = 'rgba(255,255,255,0.35)';
       ctx.fillRect(x + 6, y - 28, ((T - 12) * hp) / 3000, 2);

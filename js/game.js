@@ -579,7 +579,7 @@ PB.Game = class {
       W.version++;
       for (let i = 0; i < 14; i++) {
         const a = Math.random() * Math.PI * 2, s = 60 + Math.random() * 200;
-        this.px(x, y, ['#3e6ad8', '#9ad4ff', '#e8f6ff'][i % 3], { vx: Math.cos(a) * s, vy: Math.sin(a) * s, z: 20, vz: 200 + Math.random() * 250, life: 0.9, size: 7 });
+        this.px(x, y, ['#6e4220', '#b07640', '#a4acb8'][i % 3], { vx: Math.cos(a) * s, vy: Math.sin(a) * s, z: 20, vz: 200 + Math.random() * 250, life: 0.9, size: 7 });
       }
       this.dropCandy(x, y, 1);
       this.events.push({ type: 'wall' });
