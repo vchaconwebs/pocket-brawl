@@ -1076,6 +1076,17 @@ PB.Renderer = class {
       ctx.globalAlpha = Math.min(1, 5 - age);
       const ours = f.team === team;
       ctx.font = '13px "Jersey 10", system-ui, sans-serif';
+      if (f.info) {
+        // aviso (alguien se ha desconectado): solo texto
+        const txt = f.killer + ' ' + f.victim, tw = ctx.measureText(txt).width + 24;
+        const px = W - tw - 10 - (this.safeR || 0);
+        UI.panel(ctx, px, fy, tw, 30, { p: 2, fill: 'rgba(40,40,60,0.85)' });
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#ffe9a8';
+        ctx.fillText(txt, px + 12, fy + 20);
+        fy += 34;
+        continue;
+      }
       const t1 = f.killer || '?', t2 = f.victim || '';
       const w1 = ctx.measureText(t1).width, w2 = ctx.measureText(t2).width;
       const pw = w1 + w2 + 92;

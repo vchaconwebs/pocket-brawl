@@ -477,6 +477,25 @@ PB.Save = (() => {
     return { tokens, newChests, copas: delta, copasNow: d.copas[id], coins: MR.coins, points: MR.points, rainbow: MR.rainbow || 0, bonus, bonusLeft: d.bonusLeft, passXp, passUp };
   }
 
+  // Abandonar una partida en red (cerrar la página o perder la conexión y no volver):
+  // cuenta como derrota en copas. Varios abandonos seguidos dan un rato sin poder buscar partida.
+  function applyAbandon(info) {
+    const d = get();
+    const id = info.id;
+    if (d.copas[id] !== undefined) d.copas[id] = Math.max(0, copas(id) + PB.copasDelta(copas(id), 'lose', info.mode === 'showdown' ? 10 : 0));
+    const now = Date.now();
+    d.abandons = (d.abandons || []).filter((t) => now - t < 60 * 60 * 1000);
+    d.abandons.push(now);
+    d.stats.played = (d.stats.played || 0) + 1;
+    persist();
+  }
+  // segundos que faltan para poder jugar online otra vez (0 = ya puedes)
+  function abandonWait() {
+    const list = (get().abandons || []).filter((t) => Date.now() - t < 60 * 60 * 1000);
+    if (list.length < 3) return 0;
+    return Math.max(0, Math.ceil((list[list.length - 1] + 5 * 60 * 1000 * (list.length - 2) - Date.now()) / 1000));
+  }
+
   function missions(group) {
     checkResets();
     return get()[group].list;
@@ -568,6 +587,6 @@ PB.Save = (() => {
     load, get, persist, setName, owned, level, copas, totalCopas, select, upgradeCost, upgrade, unlockCost, unlock, spendCoins,
     pass, claimPass, claimPassExtra,
     needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, branch, lineOf, setBranch,
-    openChest, nextChest, applyMatch, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
+    openChest, nextChest, applyMatch, applyAbandon, abandonWait, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
   };
 })();

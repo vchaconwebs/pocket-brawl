@@ -22,6 +22,9 @@
   let gameMode = load('pb.mode', (v) => PB.MODES[v], 'gems');
   let endTimer = 0;
   let spectate = 0;
+  // Partida en red (null = partida normal en este navegador):
+  // { role: 'host'|'client', link, seats: { peerId: idx }, myIdx, host|client, remotes, sendT, inT, lastIn }
+  let net = null;
 
   const shuffle = (a) => {
     for (let i = a.length - 1; i > 0; i--) {
@@ -68,16 +71,17 @@
     const list = [];
     const all = [].concat(opts.ffa || [], opts.blue || [], opts.red || []);
     all.forEach((id, i) => {
-      const shiny = !!playerId && i === 0 && PB.Save.skin(id) === 'shiny';
+      const shiny = opts.shiny ? !!opts.shiny[i] : !!playerId && i === 0 && PB.Save.skin(id) === 'shiny';
       for (const dex of opts.lines[i] || PB.brawlerById(id).line) list.push({ dex, shiny });
     });
     return list;
   }
 
-  function newGame(playerId, opts) {
+  function newGame(playerId, opts, myIdx) {
     opts = opts || plan(playerId);
     PB.Sprites.ensure(spritesFor(opts, playerId));
     game = new PB.Game(opts);
+    if (opts.humans) return setupNetGame(opts, myIdx);
     if (game.player) game.player.shiny = PB.Save.skin(playerId) === 'shiny';
     // nombre del entrenador de cada uno (para la pantalla final)
     const names = shuffle(PB.TRAINER_NAMES.slice());
@@ -109,6 +113,147 @@
     renderer.cam.x = f.x;
     renderer.cam.y = f.y;
     spectate = 0;
+  }
+
+  // Partida en red: opts.humans[idx] = { name, lvl, shiny } de cada persona; el resto, bots.
+  function setupNetGame(opts, myIdx) {
+    const names = opts.names || shuffle(PB.TRAINER_NAMES.slice());
+    const humanLvls = Object.values(opts.humans).map((h) => h.lvl || 1);
+    const avg = Math.round(humanLvls.reduce((a, b) => a + b, 0) / humanLvls.length);
+    game.brawlers.forEach((b, i) => {
+      const h = opts.humans[i];
+      b.isPlayer = i === myIdx;
+      b.isBot = !h;
+      b.trainer = b.name = h ? h.name : names[i % names.length];
+      b.shiny = !!(h && h.shiny);
+      const lvl = h ? h.lvl || 1 : opts.botLvls ? opts.botLvls[i] : Math.max(1, Math.min(PB.META.maxLevel, avg + Math.floor(Math.random() * 3) - 1));
+      b.lvl = lvl;
+      b.lvlMul = PB.levelMul(lvl);
+      b.maxHp = b.hp = Math.round(b.def.hp * b.lvlMul);
+    });
+    const me = game.brawlers[myIdx];
+    game.brawlers.forEach((b, i) => { b.friend = !!opts.humans[i] && i !== myIdx && !game.mode.ffa && b.team === me.team; });
+    // los bots solo piensan en el anfitrión (los demás ven lo que él les manda)
+    const skill = Math.min(0.85, 0.6 + (opts.copas || 0) / 4000);
+    bots = net && net.role === 'host' ? game.brawlers.filter((b) => !opts.humans[b.idx]).map((b) => new PB.Bot(game, b, skill)) : [];
+    renderer.cam.x = me.x;
+    renderer.cam.y = me.y;
+    spectate = 0;
+  }
+
+  // Empieza una partida en red. link = canal hacia los demás (lo crea js/online.js):
+  //   link.send(peerId | null, msg), link.onMessage = (peerId, msg) => ..., link.onLeave = (peerId) => ..., link.close()
+  // host: opts.humans[idx] y seats (peerId -> idx) ya decididos; client: espera el mensaje 'start' del anfitrión.
+  async function startNetMatch({ role, link, opts, seats, myIdx }) {
+    net = { role, link, seats: seats || {}, myIdx, remotes: {}, sendT: 0, inT: 0, lastIn: '', fullT: 0, gone: false };
+    if (bgTimer) bgTimer.postMessage(role === 'host');
+    link.onMessage = (peer, m) => onNetMessage(peer, m);
+    link.onLeave = (peer) => onNetLeave(peer);
+    if (role === 'host') {
+      for (const [peer, idx] of Object.entries(net.seats)) net.remotes[idx] = new PB.Net.Remote();
+      // nombres y niveles de los bots: los decide el anfitrión para que todos vean lo mismo
+      const n = [].concat(opts.ffa || [], opts.blue || [], opts.red || []).length;
+      const lv = Object.values(opts.humans).map((h) => h.lvl || 1);
+      const avg = Math.round(lv.reduce((a, b) => a + b, 0) / lv.length);
+      opts.names = shuffle(PB.TRAINER_NAMES.slice());
+      opts.botLvls = Array.from({ length: n }, () => Math.max(1, Math.min(PB.META.maxLevel, avg + Math.floor(Math.random() * 3) - 1)));
+      link.send(null, { k: 'start', opts, seats: net.seats });
+      await beginMatch(opts, myIdx);
+    }
+  }
+
+  async function beginMatch(opts, myIdx) {
+    goLandscape();
+    PB.Audio.init();
+    PB.Settings.apply();
+    gameMode = opts.mode;
+    $('#loading h1').textContent = PB.T('Preparando a los Pokémon…');
+    showScreen('loading');
+    await PB.Sprites.ensure(spritesFor(opts, null));
+    newGame(null, opts, myIdx);
+    if (net.role === 'host') net.host = new PB.Net.Host(game);
+    else { net.client = new PB.Net.Client(game, myIdx); net.link.send(net.hostPeer, { k: 'hello' }); }
+    // en red, la partida no se para aunque abras el menú
+    try { localStorage.setItem('pb.netMatch', JSON.stringify({ t: Date.now(), mode: opts.mode, id: game.brawlers[myIdx].def.id })); } catch (e) {}
+    PB.Audio.music(SONG_OF[gameMode] || 'battle');
+    mode = 'play';
+    paused = false;
+    input.enabled = true;
+    endTimer = 0;
+    hideScreens();
+    $('#btn-pause').classList.remove('hidden');
+  }
+
+  function onNetMessage(peer, m) {
+    if (!net) return;
+    if (net.role === 'host') {
+      const idx = net.seats[peer];
+      if (idx === undefined) return;
+      if (m.k === 'i') net.remotes[idx] && net.remotes[idx].push(m);
+      else if (m.k === 'hello' && net.host) net.link.send(peer, Object.assign({ k: 's', ack: 0 }, net.host.snapshot(true)));
+      else if (m.k === 'bye') onNetLeave(peer);
+    } else {
+      if (m.k === 'start' && !game_isNet()) { net.hostPeer = peer; net.seats = m.seats; beginMatch(m.opts, net.myIdx); }
+      else if (m.k === 's' && net.client) net.client.apply(m);
+      else if (m.k === 'bye') onNetLeave(peer);
+    }
+  }
+  const game_isNet = () => !!(net && (net.host || net.client));
+
+  // alguien se va: en el anfitrión, su Pokémon pasa a ser un bot; si se va el anfitrión, la partida no cuenta
+  function onNetLeave(peer) {
+    if (!net) return;
+    if (net.role === 'host') {
+      const idx = net.seats[peer];
+      if (idx === undefined) return;
+      delete net.seats[peer];
+      delete net.remotes[idx];
+      const b = game.brawlers[idx];
+      if (b && !game.winner) {
+        b.isBot = true;
+        bots.push(new PB.Bot(game, b, 0.6));
+        game.feed.push({ killer: b.name, kdex: null, victim: PB.T('se ha desconectado'), vdex: null, team: b.team, t: game.time, info: true });
+      }
+    } else if (peer === net.hostPeer && mode === 'play' && !game.winner) {
+      endNet();
+      try { localStorage.removeItem('pb.netMatch'); } catch (e) {}
+      PB.Lobby.toast(PB.T('El anfitrión se ha desconectado. Esta partida no cuenta.'));
+      toMenu();
+    }
+  }
+
+  function endNet() {
+    if (!net) return;
+    if (bgTimer) bgTimer.postMessage(false);
+    try { net.link.send(null, { k: 'bye' }); } catch (e) {}
+    try { net.link.close(); } catch (e) {}
+    net = null;
+  }
+
+  // Cada fotograma en red: el anfitrión manda fotos; los demás, sus controles
+  function netStep(dt, read) {
+    if (net.role === 'host') {
+      net.host.takeEvents(game.events);
+      net.sendT -= dt;
+      net.fullT -= dt;
+      if (net.sendT <= 0) {
+        net.sendT = 0.05;
+        const full = net.fullT <= 0;
+        if (full) net.fullT = 4;
+        const snap = net.host.snapshot(full);
+        for (const [peer, idx] of Object.entries(net.seats)) net.link.send(peer, Object.assign({ k: 's', ack: net.remotes[idx] ? net.remotes[idx].ack : 0 }, snap));
+      }
+    } else if (net.client) {
+      const inp = read && mode === 'play' && !paused ? read.input : {};
+      net.inT -= dt;
+      const key = Math.round((inp.mx || 0) * 10) + ',' + Math.round((inp.my || 0) * 10);
+      if (inp.attack || inp.super || key !== net.lastIn || net.inT <= 0) {
+        net.inT = 0.1;
+        net.lastIn = key;
+        net.link.send(net.hostPeer, Object.assign({ k: 'i' }, net.client.input(inp)));
+      }
+      net.client.step(dt, inp);
+    }
   }
 
   function showScreen(id) {
@@ -172,6 +317,12 @@
   const SONG_OF = { gems: 'battle', heist: 'battle', showdown: 'showdown', ball: 'arena', zone: 'arena' };
 
   function toMenu() {
+    // salir a mitad de una partida en red cuenta como abandono (derrota)
+    if (net && mode === 'play' && game && !game.winner && (net.client || net.host)) {
+      try { PB.Save.applyAbandon(JSON.parse(localStorage.getItem('pb.netMatch'))); } catch (e) {}
+    }
+    endNet();
+    try { localStorage.removeItem('pb.netMatch'); } catch (e) {}
     PB.Audio.music('menu');
     mode = 'menu';
     paused = false;
@@ -186,13 +337,14 @@
   let paused = false;
   function pause() {
     if (mode !== 'play' || game.winner) return;
+    if (net) { input.enabled = false; showScreen('pause'); return; } // en red el juego sigue
     paused = true;
     input.enabled = false;
     showScreen('pause');
   }
   function resume() {
     paused = false;
-    input.enabled = true;
+    input.enabled = mode === 'play';
     hideScreens();
   }
   $('#btn-pause').onclick = pause;
@@ -201,6 +353,7 @@
   $('#pz-quit').onclick = toMenu;
 
   function showEnd() {
+    try { localStorage.removeItem('pb.netMatch'); } catch (e) {}
     PB.Audio.music(null);
     mode = 'end';
     input.enabled = false;
@@ -332,9 +485,23 @@
   }
 
   let last = performance.now();
-  function frame(now) {
+  function frame(now, bg) {
     const dt = Math.min(1 / 30, (now - last) / 1000);
     last = now;
+    if (bg) {
+      // en segundo plano: solo simular y mandar, sin dibujar
+      if (net && net.host && !game.winner) {
+        const inputs = {};
+        for (const bot of bots) inputs[bot.b.idx] = bot.think(dt);
+        if (game.player) inputs[game.player.idx] = {};
+        for (const idx in net.remotes) inputs[idx] = net.remotes[idx].take();
+        game.update(dt, inputs);
+        netStep(dt, null);
+        game.events.length = 0;
+      }
+      return;
+    }
+    lastDraw = now;
 
     // móvil en vertical durante la partida: pausa hasta que se gire
     if (mode === 'play' && mustRotate()) {
@@ -345,11 +512,16 @@
 
     const read = input.read(game, renderer);
     const me = game.player;
-    if (!paused) {
+    if (net && net.client) {
+      netStep(dt, read);
+      handleEvents();
+    } else if (!paused || net) {
       const inputs = {};
       for (const bot of bots) inputs[bot.b.idx] = bot.think(dt);
-      if (me) inputs[me.idx] = read.input;
+      if (me) inputs[me.idx] = input.enabled ? read.input : {};
+      if (net && net.host) for (const idx in net.remotes) inputs[idx] = net.remotes[idx].take();
       game.update(dt, inputs);
+      if (net && net.host) netStep(dt, read);
       handleEvents();
     }
 
@@ -381,8 +553,20 @@
     requestAnimationFrame(frame);
   }
 
+  // Si la pestaña del anfitrión se oculta, el navegador para requestAnimationFrame:
+  // un temporizador en un Worker (que no se frena) mantiene la partida viva para los demás.
+  let bgTimer = null;
+  try {
+    const src = 'let t=null;onmessage=(e)=>{clearInterval(t);if(e.data)t=setInterval(()=>postMessage(0),33)}';
+    bgTimer = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    // si hace rato que no se dibuja (pestaña oculta o frenada), avanza la partida desde aquí
+    bgTimer.onmessage = () => { if (net && net.host && performance.now() - lastDraw > 150) frame(performance.now(), true); };
+  } catch (e) {}
+  let lastDraw = 0;
+
   // acceso para depurar desde la consola: PB.debug.game
-  PB.debug = { get game() { return game; }, input, renderer };
+  PB.debug = { get game() { return game; }, get net() { return net; }, input, renderer };
+  PB.Match = { startNet: (o) => startNetMatch(o), get busy() { return mode === 'play'; } };
 
   // Esperar a la fuente pixel (si tarda más de 2 s, se sigue igualmente)
   const fontReady = document.fonts && document.fonts.load
@@ -395,8 +579,15 @@
     backToPause: () => showScreen('pause'),
     getMode: () => gameMode,
     start: () => startMatch(),
+    startNet: (o) => startNetMatch(o),
     setMode: (id) => { gameMode = id; save('pb.mode', id); newGame(null); },
   });
+
+  try {
+    const left = JSON.parse(localStorage.getItem('pb.netMatch') || 'null');
+    localStorage.removeItem('pb.netMatch');
+    if (left && Date.now() - left.t < 15 * 60 * 1000 && PB.Save.applyAbandon) PB.Save.applyAbandon(left);
+  } catch (e) {}
 
   PB.Sprites.load(() => fontReady.then(() => {
     $('#loading').classList.add('hidden');
