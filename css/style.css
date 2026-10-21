@@ -1506,3 +1506,73 @@ h1.lose { color: #ff8a7a; }
   .lq-row.claimed small::after { content: ' ✓'; color: #7dff8f; }
   .lb-quests:hover { filter: brightness(1.1); }
 }
+
+/* =====================================================================
+   SALA CON AMIGOS: huecos junto a tu Pokémon y pantalla para invitar
+   ===================================================================== */
+.party-slots { grid-area: center; position: relative; pointer-events: none; z-index: 2; }
+.pslot {
+  pointer-events: auto; position: absolute; top: 34%; width: 74px; display: flex; flex-direction: column; align-items: center; gap: 0;
+  padding: 4px 2px; font: inherit; color: #fff; cursor: pointer; line-height: 1.05;
+  background: rgba(10, 16, 40, 0.55); border: 3px dashed rgba(255, 255, 255, 0.45); text-shadow: 1px 1px 0 #02040c;
+}
+.pslot.left { left: 2%; }
+.pslot.right { right: 2%; }
+.pslot .plus { font-size: 34px; line-height: 0.9; color: #ffe066; }
+.pslot small { font-size: 12px; color: #c8d4ff; }
+.pslot:hover { background: rgba(30, 50, 110, 0.75); }
+.pslot.filled { border-style: solid; border-color: #141824; background: rgba(30, 50, 110, 0.85); box-shadow: inset 0 0 0 2px #5ab0ff; }
+.pslot.filled.ready { box-shadow: inset 0 0 0 2px #7dff8f; }
+.pslot.filled.ready small { color: #7dff8f; }
+.pslot img { width: 44px; height: 44px; image-rendering: pixelated; }
+.pslot b { font-weight: normal; font-size: 12px; max-width: 68px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pslot .crown { position: absolute; top: -10px; font-style: normal; color: #ffd23a; font-size: 16px; }
+#play.waiting { filter: saturate(0.5) brightness(0.85); }
+.pt-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 10px; text-align: left; }
+.pt-box { background: rgba(0, 0, 0, 0.25); box-shadow: 0 0 0 2px #141824; padding: 6px 10px 10px; display: flex; flex-direction: column; gap: 6px; }
+.pt-box h3, .pt-title { margin: 0; font-weight: normal; font-size: 18px; color: #ffe066; text-align: left; }
+.pt-title { margin: 10px 0 4px; }
+.pt-hint { color: #c8d4ff; font-size: 13px; margin: 0; }
+.pt-code { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pt-code small { color: #c8d4ff; }
+.pt-code b { font-weight: normal; font-size: 30px; letter-spacing: 4px; color: #fff; background: #10183a; padding: 0 10px; box-shadow: 0 0 0 3px #141824, inset 0 0 0 2px #ffd23a; }
+.pt-members { display: flex; flex-direction: column; gap: 4px; }
+.pt-mem, .pt-friend { display: flex; align-items: center; gap: 8px; padding: 3px 6px; background: rgba(255, 255, 255, 0.06); box-shadow: 0 0 0 2px #141824; }
+.pt-mem.me { box-shadow: 0 0 0 2px #141824, inset 0 0 0 2px #7dff8f; }
+.pt-mem img, .pt-friend img { width: 34px; height: 34px; image-rendering: pixelated; }
+.pt-mem span, .pt-friend span { flex: 1; display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
+.pt-mem b, .pt-friend b { font-weight: normal; font-size: 16px; }
+.pt-mem b i { font-style: normal; color: #ffd23a; font-size: 12px; }
+.pt-mem small, .pt-friend small { font-size: 12px; color: #c8d4ff; }
+.pt-mem.invited small { color: #ffe066; }
+.pt-join { display: flex; gap: 6px; }
+.pt-join input { flex: 1; min-width: 0; font: inherit; font-size: 22px; letter-spacing: 3px; text-transform: uppercase; color: #fff; background: #10183a; border: 3px solid #141824; box-shadow: inset 0 0 0 2px var(--frame, #e8b838); padding: 2px 8px; }
+#pt-friends { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; }
+.pt-friend.off { opacity: 0.55; }
+.pt-friend small { color: #7dff8f; }
+.pt-friend.off small { color: #c8d4ff; }
+.pt-on { color: #7dff8f; font-size: 13px; }
+.pt-off { color: #8f9ac0; font-size: 13px; }
+.bot-tag { font-style: normal; font-size: 10px; margin-left: 5px; padding: 0 4px; vertical-align: 2px; background: #3a4466; color: #c8d4ff; box-shadow: 0 0 0 1px #141824; text-shadow: none; }
+.bot-tag.friend { background: #2a9a3a; color: #fff; }
+#toast {
+  position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 50; padding: 4px 14px; font-size: 16px; color: #fff;
+  background: rgba(14, 20, 48, 0.95); box-shadow: 0 0 0 3px #141824, inset 0 0 0 2px #ffd23a; pointer-events: none; max-width: 90vw; text-align: center;
+}
+@media (max-height: 500px) {
+  .pslot { width: 60px; top: 28%; }
+  .pslot img { width: 32px; height: 32px; }
+  .pslot .plus { font-size: 26px; }
+  .pslot small { font-size: 10px; }
+  .pt-code b { font-size: 22px; }
+  .pt-join input { font-size: 18px; }
+}
+@media (max-width: 640px) { .pt-grid { grid-template-columns: 1fr; } }
+@media (min-width: 1100px) and (min-height: 640px) {
+  .pslot { width: 110px; top: 30%; padding: 8px 4px; }
+  .pslot.left { left: 4%; } .pslot.right { right: 4%; }
+  .pslot img { width: 64px; height: 64px; }
+  .pslot .plus { font-size: 52px; }
+  .pslot b { font-size: 16px; max-width: 100px; }
+  .pslot small { font-size: 14px; }
+}

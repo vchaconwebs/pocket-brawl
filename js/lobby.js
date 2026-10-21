@@ -151,6 +151,8 @@ PB.Lobby = (() => {
     const pend = PB.Save.pending();
     setBadge('#mis-badge', pend.missions);
     setBadge('#pass-badge', pend.pass);
+    PB.Online.updateMe();
+    renderPartySlots();
     // misiones de hoy (panel que solo se ve en PC)
     $('#lq-reset').textContent = timeLeft(PB.Save.nextReset('daily'));
     $('#lq-list').innerHTML = PB.Save.missions('daily').map((m) => {
@@ -411,6 +413,130 @@ PB.Lobby = (() => {
     if (r.kind === 'points') return { icon: starIcon(), label: '+' + r.amount };
     if (r.kind === 'rainbow') return { icon: rainbowIcon(), label: '+' + r.amount };
     return { icon: ballIcon(r.kind, 2), label: PB.META.chests[r.kind].name };
+  }
+
+  // ------------------------------------------------------------------ jugar con amigos (sala)
+  let toastT = null;
+  function toast(text) {
+    const e = $('#toast');
+    e.textContent = text;
+    e.classList.remove('hidden');
+    clearTimeout(toastT);
+    toastT = setTimeout(() => e.classList.add('hidden'), 2600);
+  }
+
+  const partyOthers = (p) => p.members.filter((m) => !m.me);
+  const memberPortrait = (m) => {
+    const b = PB.brawlerById(m.fav) || PB.BRAWLERS[0];
+    return PB.Sprites.portraitURL(b.dex);
+  };
+
+  // los dos huecos al lado de tu Pokémon en el lobby
+  function renderPartySlots() {
+    const p = PB.Online.party();
+    const others = p ? partyOthers(p) : [];
+    let html = '';
+    for (let i = 0; i < 2; i++) {
+      const m = others[i];
+      const side = i === 0 ? 'left' : 'right';
+      if (m) {
+        html += `<button class="pslot ${side} filled${m.ready ? ' ready' : ''}" data-i="${i}">` +
+          (p.leader === m.id ? '<i class="crown">★</i>' : '') +
+          `<img src="${memberPortrait(m)}" alt=""><b>${m.name}</b><small>${m.ready ? '¡Listo!' : 'Esperando…'}</small></button>`;
+      } else {
+        html += `<button class="pslot ${side}" data-i="${i}"><span class="plus">+</span><small>Invitar</small></button>`;
+      }
+    }
+    $('#party-slots').innerHTML = html;
+    $('#party-slots').querySelectorAll('.pslot').forEach((e) => (e.onclick = showParty));
+    // botón de jugar: el jefe juega; los demás marcan "listo"
+    const play = $('#play');
+    if (p && p.leader !== 'me') {
+      const meM = p.members.find((m) => m.me);
+      play.textContent = meM.ready ? 'CANCELAR' : '¡LISTO!';
+      play.classList.toggle('waiting', !!meM.ready);
+    } else {
+      play.textContent = '¡JUGAR!';
+      play.classList.toggle('waiting', !!p && !p.members.every((m) => m.ready));
+    }
+  }
+
+  async function showParty() {
+    show('party');
+    renderParty();
+    const fl = $('#pt-friends');
+    fl.innerHTML = '<p class="sub">Cargando…</p>';
+    const friends = await PB.Online.friends();
+    renderFriendsInvite(friends);
+  }
+
+  function renderParty() {
+    const p = PB.Online.party();
+    const box = $('#pt-room');
+    if (!p) {
+      box.innerHTML = '<p class="pt-hint">La sala se crea cuando la necesitas: al invitar a alguien o al pedir tu código.</p>' +
+        '<button class="act gold" id="pt-create">Crear sala</button>';
+      $('#pt-create').onclick = async () => { await PB.Online.createParty(); PB.Audio.play('ball'); renderParty(); };
+      return;
+    }
+    const lead = p.leader === 'me';
+    box.innerHTML =
+      `<div class="pt-code"><small>Código</small><b>${p.code}</b>` +
+      `<button class="act blue" id="pt-copy">Copiar</button><button class="act blue" id="pt-share">Enviar</button></div>` +
+      '<div class="pt-members">' + p.members.map((m) =>
+        `<div class="pt-mem${m.me ? ' me' : ''}"><img src="${memberPortrait(m)}" alt=""><span><b>${m.me ? 'Tú' : m.name}${p.leader === m.id ? ' <i>★ jefe</i>' : ''}</b>` +
+        `<small>${(PB.brawlerById(m.fav) || {}).name || ''} · ${m.ready ? '¡Listo!' : 'Esperando…'}</small></span>` +
+        (lead && !m.me ? `<button class="mini" data-kick="${m.id}">Echar</button>` : '') + '</div>').join('') +
+      Object.keys(p.invited || {}).map(() => '<div class="pt-mem invited"><span><small>Invitación enviada…</small></span></div>').join('') +
+      `</div><button class="act red" id="pt-leave">Salir de la sala</button>`;
+    const link = location.origin + location.pathname + '?sala=' + p.code;
+    $('#pt-copy').onclick = () => { navigator.clipboard && navigator.clipboard.writeText(link); toast('Enlace copiado: ' + p.code); };
+    $('#pt-share').onclick = () => {
+      if (navigator.share) navigator.share({ title: 'Pocket Brawl', text: '¡Únete a mi sala en Pocket Brawl! Código ' + p.code, url: link }).catch(() => {});
+      else { navigator.clipboard && navigator.clipboard.writeText(link); toast('Enlace copiado: ' + p.code); }
+    };
+    box.querySelectorAll('[data-kick]').forEach((e) => (e.onclick = () => PB.Online.kick(e.dataset.kick)));
+    $('#pt-leave').onclick = () => { PB.Online.leaveParty(); PB.Audio.play('tick'); };
+  }
+
+  function renderFriendsInvite(friends) {
+    const p = PB.Online.party();
+    const fl = $('#pt-friends');
+    if (!friends.length) { fl.innerHTML = '<p class="sub">Aún no tienes amigos. Añádelos desde el menú Amigos.</p>'; return; }
+    fl.innerHTML = friends.map((f) => {
+      const inParty = p && p.members.some((m) => m.id === f.id);
+      const invited = p && p.invited && p.invited[f.id];
+      const btn = !f.online ? '<span class="pt-off">Desconectado</span>'
+        : inParty ? '<span class="pt-on">En tu sala</span>'
+        : invited ? '<span class="pt-on">Invitado…</span>'
+        : `<button class="act gold" data-inv="${f.id}">Invitar</button>`;
+      return `<div class="pt-friend${f.online ? '' : ' off'}"><img src="${memberPortrait(f)}" alt=""><span><b>${f.name}</b><small>${f.online ? '● Conectado' : 'Desconectado'} · ${f.copas} copas</small></span>${btn}</div>`;
+    }).join('');
+    fl.querySelectorAll('[data-inv]').forEach((e) => (e.onclick = async () => {
+      if (!PB.Online.party()) await PB.Online.createParty();
+      const r = await PB.Online.invite(e.dataset.inv);
+      if (r.error) toast(r.error); else { PB.Audio.play('ball'); toast('Invitación enviada'); }
+      renderParty();
+      renderFriendsInvite(await PB.Online.friends());
+    }));
+  }
+
+  // ¿Se puede empezar? (si estás en una sala de otro, el botón es "¡Listo!")
+  function playPressed() {
+    const p = PB.Online.party();
+    if (!p) return true;
+    const meM = p.members.find((m) => m.me);
+    if (p.leader !== 'me') {
+      PB.Online.setReady(!meM.ready);
+      PB.Audio.play(meM.ready ? 'tick' : 'ready');
+      return false;
+    }
+    if (PB.MODES[api.getMode()].ffa && p.members.length > 1) {
+      modal('Niebla Tóxica es todos contra todos: no se puede jugar en grupo. Cambia de modo o sal de la sala.');
+      return false;
+    }
+    if (!p.members.every((m) => m.ready)) { toast('Esperando a que todos estén listos'); return false; }
+    return true;
   }
 
   // ------------------------------------------------------------------ pase de temporada
@@ -1160,6 +1286,25 @@ PB.Lobby = (() => {
     $('#btn-mode').onclick = showModes;
     $('#btn-pass').onclick = showPass;
     $('#lb-quests').onclick = () => showMissions('daily');
+    $('#pt-go').onclick = async () => {
+      const r = await PB.Online.joinByCode($('#pt-code').value);
+      if (r.error) return toast(r.error);
+      PB.Audio.play('ready');
+      $('#pt-code').value = '';
+      show('lobby');
+    };
+    $('#pt-code').onkeydown = (e) => { if (e.key === 'Enter') $('#pt-go').click(); };
+    PB.Online.on('party', (info) => {
+      if (info && info.joined) toast('¡' + info.joined + ' se ha unido a tu sala!');
+      if (info && info.declined) toast(info.declined + ' no puede jugar ahora');
+      if (info && info.joinedRoom) toast('Te has unido a la sala de ' + info.joinedRoom);
+      if (current === 'lobby') renderPartySlots();
+      if (current === 'party') { renderParty(); PB.Online.friends().then(renderFriendsInvite); }
+    });
+    PB.Online.on('partyStart', () => { if (current === 'lobby' && api.start) api.start(); });
+    // enlace de invitación: ?sala=CODIGO
+    const sala = new URLSearchParams(location.search).get('sala');
+    if (sala) PB.Online.joinByCode(sala).then((r) => { if (r.error) toast(r.error); history.replaceState(null, '', location.pathname); });
     $('#ps-all').onclick = claimAllPass;
     fillIcons();
     // la Pokéball como imagen para el CSS (cabeceras, botón de jugar, tarjetas)
@@ -1198,5 +1343,5 @@ PB.Lobby = (() => {
     window.addEventListener('resize', () => { if (current === 'chestopen') resizeFx(); });
   }
 
-  return { init, show, tick, openSettings, refresh: refreshLobby, get current() { return current; } };
+  return { init, show, tick, openSettings, refresh: refreshLobby, playPressed, get current() { return current; } };
 })();

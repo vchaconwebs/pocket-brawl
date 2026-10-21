@@ -43,7 +43,11 @@
       if (playerId) list[0] = playerId;
       opts.ffa = list;
     } else if (playerId) {
-      opts.blue = [playerId, ...shuffle(ids.filter((i) => i !== playerId)).slice(0, 2)];
+      // los de tu sala juegan contigo; los huecos que falten, bots
+      const party = PB.Online.party();
+      const mates = party ? party.members.filter((m) => !m.me).map((m) => m.fav).filter((id) => PB.brawlerById(id)) : [];
+      opts.partyNames = party ? party.members.filter((m) => !m.me).map((m) => m.name) : [];
+      opts.blue = [playerId, ...mates, ...shuffle(ids.filter((i) => i !== playerId)).slice(0, 2 - mates.length)];
       opts.red = shuffle(ids.slice()).slice(0, 3);
     } else {
       opts.blue = shuffle(ids.slice()).slice(0, 3);
@@ -77,7 +81,12 @@
     if (game.player) game.player.shiny = PB.Save.skin(playerId) === 'shiny';
     // nombre del entrenador de cada uno (para la pantalla final)
     const names = shuffle(PB.TRAINER_NAMES.slice());
-    game.brawlers.forEach((b, i) => { b.trainer = b.isPlayer ? PB.Save.get().name : names[i % names.length]; });
+    game.brawlers.forEach((b, i) => {
+      const friend = !game.mode.ffa && opts.partyNames && b.team === (game.player || {}).team && i >= 1 && i <= opts.partyNames.length;
+      b.trainer = b.isPlayer ? PB.Save.get().name : friend ? opts.partyNames[i - 1] : names[i % names.length];
+      b.friend = !!friend;
+      b.isBot = !b.isPlayer && !friend; // los que rellenan la partida
+    });
     // niveles: el jugador usa el suyo; los bots, uno parecido para que sea justo
     const myLvl = playerId ? PB.Save.level(playerId) : 1;
     for (const b of game.brawlers) {
@@ -206,7 +215,7 @@
       return `<div class="end-row${b.isPlayer ? ' me' : ''}">` +
         (M.ffa ? `<span class="er-rank">#${b.rank || '-'}</span>` : '') +
         `<span class="er-pt"><img src="${PB.Sprites.portraitURL(dex)}" alt="">${b === mvp ? '<i class="er-mvp">MVP</i>' : ''}</span>` +
-        `<span class="er-name"><b>${b.trainer || b.name}</b><small>${PB.stageName(b, b.stage)}${lvl}</small></span>` +
+        `<span class="er-name"><b>${b.trainer || b.name}${b.isBot ? '<i class="bot-tag">BOT</i>' : b.friend ? '<i class="bot-tag friend">AMIGO</i>' : ''}</b><small>${PB.stageName(b, b.stage)}${lvl}</small></span>` +
         `<span class="er-st"><b>${b.kills}</b><small>K.O.</small></span>` +
         `<span class="er-st"><b>${b.deaths}</b><small>Caídas</small></span>` +
         `<span class="er-st"><b>${statTxt(b)}</b><small>${M.statName}</small></span>` +
@@ -246,13 +255,13 @@
     PB.Audio.play(res.cls === 'win' ? 'win' : 'lose');
   }
 
-  $('#play').onclick = startMatch;
+  $('#play').onclick = () => { if (PB.Lobby.playPressed()) startMatch(); };
   $('#again').onclick = startMatch;
   $('#back').onclick = toMenu;
   window.addEventListener('keydown', (e) => {
     if (e.target && e.target.tagName === 'INPUT') return;
     if (e.key === 'Escape' && mode === 'play') (paused ? resume() : pause());
-    if (e.key === 'Enter' && mode !== 'play' && PB.Lobby.current === 'lobby') startMatch();
+    if (e.key === 'Enter' && mode !== 'play' && PB.Lobby.current === 'lobby' && PB.Lobby.playPressed()) startMatch();
     if (e.key.toLowerCase() === 'm') PB.Settings.set('muted', !PB.Settings.get('muted'));
   });
   // si la pestaña se oculta en mitad de la partida, pausar
@@ -377,6 +386,7 @@
   PB.Lobby.init({
     backToPause: () => showScreen('pause'),
     getMode: () => gameMode,
+    start: () => startMatch(),
     setMode: (id) => { gameMode = id; save('pb.mode', id); newGame(null); },
   });
 

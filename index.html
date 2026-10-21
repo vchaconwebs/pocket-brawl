@@ -10,7 +10,7 @@
   <meta name="description" content="Pocket Brawl: fangame gratuito de combates 3v3 en el navegador. Sin ánimo de lucro.">
   <title>Pocket Brawl</title>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=38">
+  <link rel="stylesheet" href="css/style.css?v=39">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -58,6 +58,8 @@
         <span class="hero-plate"><b id="hero-name"></b><span id="hero-lvl"></span></span>
         <span class="hint">Toca para cambiar</span>
       </button>
+
+      <div class="party-slots" id="party-slots"></div>
 
       <aside class="lb-right">
         <button class="lb-quests" id="lb-quests"><span class="lq-head"><b>Misiones de hoy</b><small id="lq-reset"></small></span><span id="lq-list"></span></button>
@@ -143,6 +145,26 @@
   </div>
 
   <!-- MISIONES -->
+  <!-- JUGAR CON AMIGOS (sala) -->
+  <div id="party" class="screen hidden">
+    <div class="panel wide">
+      <div class="pn-head"><button class="back" data-back="lobby">←</button><h2>Jugar con amigos</h2></div>
+      <div class="pt-grid">
+        <div class="pt-box"><h3>Tu sala</h3><div id="pt-room"></div></div>
+        <div class="pt-box">
+          <h3>Unirse con código</h3>
+          <div class="pt-join"><input id="pt-code" maxlength="6" placeholder="ABC123" autocomplete="off" autocapitalize="characters"><button class="act blue" id="pt-go">Unirse</button></div>
+          <small class="pt-hint">Pide a tu amigo el código de su sala o abre el enlace que te mande.</small>
+        </div>
+      </div>
+      <h3 class="pt-title">Amigos conectados</h3>
+      <div id="pt-friends"></div>
+      <p class="mock-note">Vista previa: los amigos son simulados hasta que conectemos el servidor.</p>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+
   <div id="passscreen" class="screen hidden">
     <div class="panel wide">
       <div class="pn-head"><button class="back" data-back="lobby">←</button><h2>Pase de temporada</h2></div>
@@ -317,26 +339,26 @@
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=38"></script>
-  <script src="js/data.js?v=38"></script>
-  <script src="js/roster-data.js?v=38"></script>
-  <script src="js/sprites.js?v=38"></script>
-  <script src="js/vfx.js?v=38"></script>
-  <script src="js/roster.js?v=38"></script>
-  <script src="js/pokeball.js?v=38"></script>
-  <script src="js/tiles.js?v=38"></script>
-  <script src="js/world.js?v=38"></script>
-  <script src="js/game.js?v=38"></script>
-  <script src="js/modes.js?v=38"></script>
-  <script src="js/ai.js?v=38"></script>
-  <script src="js/audio.js?v=38"></script>
-  <script src="js/render.js?v=38"></script>
-  <script src="js/input.js?v=38"></script>
-  <script src="js/settings.js?v=38"></script>
-  <script src="js/pixui.js?v=38"></script>
-  <script src="js/save.js?v=38"></script>
-  <script src="js/online.js?v=38"></script>
-  <script src="js/lobby.js?v=38"></script>
-  <script src="js/main.js?v=38"></script>
+  <script src="js/sprite-data.js?v=39"></script>
+  <script src="js/data.js?v=39"></script>
+  <script src="js/roster-data.js?v=39"></script>
+  <script src="js/sprites.js?v=39"></script>
+  <script src="js/vfx.js?v=39"></script>
+  <script src="js/roster.js?v=39"></script>
+  <script src="js/pokeball.js?v=39"></script>
+  <script src="js/tiles.js?v=39"></script>
+  <script src="js/world.js?v=39"></script>
+  <script src="js/game.js?v=39"></script>
+  <script src="js/modes.js?v=39"></script>
+  <script src="js/ai.js?v=39"></script>
+  <script src="js/audio.js?v=39"></script>
+  <script src="js/render.js?v=39"></script>
+  <script src="js/input.js?v=39"></script>
+  <script src="js/settings.js?v=39"></script>
+  <script src="js/pixui.js?v=39"></script>
+  <script src="js/save.js?v=39"></script>
+  <script src="js/online.js?v=39"></script>
+  <script src="js/lobby.js?v=39"></script>
+  <script src="js/main.js?v=39"></script>
 </body>
 </html>

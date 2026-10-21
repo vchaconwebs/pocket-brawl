@@ -10,7 +10,7 @@ PB.Online = (() => {
   const MAX = () => PB.META.clanMax;
   const wait = (v) => new Promise((r) => setTimeout(() => r(v), 60 + Math.random() * 120));
   const listeners = {};
-  const emit = (ev) => (listeners[ev] || []).forEach((f) => f());
+  const emit = (ev, data) => (listeners[ev] || []).forEach((f) => f(data));
 
   // generador aleatorio con semilla: el "mundo" de prueba es siempre el mismo
   function rng(seed) {
@@ -179,6 +179,11 @@ PB.Online = (() => {
     return out;
   }
 
+  // grupo actual (en memoria: al recargar la página se sale del grupo, como al cerrar la app)
+  let party = null;
+  const partyMe = (leader) => ({ id: 'me', name: PB.Save.get().name, fav: PB.Save.get().selected, ready: !!leader, me: true });
+  const randomFav = (p) => (PB.brawlerById(p.fav) ? p.fav : PB.BRAWLERS[Math.floor(Math.random() * PB.BRAWLERS.length)].id);
+
   return {
     // estado de la conexión
     status: () => ({ online: false, mock: true }),
@@ -282,6 +287,79 @@ PB.Online = (() => {
         }, 1500 + Math.random() * 3000);
       }
       return wait({ ok: true });
+    },
+
+    // ------------------------------------------------ grupo (sala para jugar juntos)
+    // La sala no existe hasta que la creas (al pulsar "+", invitar o pedir el código):
+    // así no hay nada abierto en el servidor mientras juegas solo.
+    party: () => party,
+    createParty() {
+      load();
+      if (!party) {
+        const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let code = '';
+        for (let i = 0; i < 6; i++) code += A[Math.floor(Math.random() * A.length)];
+        party = { code, leader: 'me', max: 3, members: [partyMe(true)] };
+        emit('party');
+      }
+      return wait(party);
+    },
+    invite(id) {
+      load();
+      if (!party) return wait({ error: 'Primero crea la sala.' });
+      if (party.members.length >= party.max) return wait({ error: 'La sala está llena (máximo 3).' });
+      if (party.members.some((m) => m.id === id)) return wait({ error: 'Ya está en tu sala.' });
+      const p = player(id);
+      if (!p || !online(id)) return wait({ error: 'No está conectado.' });
+      party.invited = party.invited || {};
+      party.invited[id] = true;
+      emit('party');
+      // simulado: casi siempre acepta en unos segundos
+      setTimeout(() => {
+        if (!party || !party.invited || !party.invited[id]) return;
+        delete party.invited[id];
+        if (Math.random() < 0.8 && party.members.length < party.max) {
+          party.members.push({ id, name: p.name, fav: randomFav(p), ready: false });
+          emit('party', { joined: p.name });
+          setTimeout(() => { const m = party && party.members.find((x) => x.id === id); if (m) { m.ready = true; emit('party'); } }, 1200 + Math.random() * 2000);
+        } else emit('party', { declined: p.name });
+      }, 2000 + Math.random() * 2500);
+      return wait({ ok: true });
+    },
+    joinByCode(code) {
+      load();
+      code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (code.length !== 6) return wait({ error: 'El código tiene 6 letras o números.' });
+      if (party && party.code === code) return wait({ error: 'Ya estás en esa sala.' });
+      // simulado: entras en la sala de otro entrenador, que es el jefe
+      const host = world.players[(code.charCodeAt(0) * 7 + code.charCodeAt(5)) % world.players.length];
+      party = { code, leader: host.id, max: 3, members: [{ id: host.id, name: host.name, fav: randomFav(host), ready: true }, partyMe(false)] };
+      emit('party', { joinedRoom: host.name });
+      return wait(party);
+    },
+    setReady(v) {
+      if (!party) return;
+      const m = party.members.find((x) => x.me);
+      m.ready = !!v;
+      emit('party');
+      // simulado: el jefe empieza cuando estáis todos listos
+      if (party.leader !== 'me' && party.members.every((x) => x.ready)) setTimeout(() => party && party.members.every((x) => x.ready) && emit('partyStart'), 1500);
+    },
+    updateMe() {
+      if (!party) return;
+      const m = party.members.find((x) => x.me);
+      m.fav = PB.Save.get().selected;
+      m.name = PB.Save.get().name;
+      emit('party');
+    },
+    kick(id) {
+      if (!party || party.leader !== 'me') return;
+      party.members = party.members.filter((m) => m.id !== id);
+      emit('party');
+    },
+    leaveParty() {
+      party = null;
+      emit('party');
     },
 
     // ------------------------------------------------ amigos
