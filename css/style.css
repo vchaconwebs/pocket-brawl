@@ -1682,3 +1682,61 @@ h1.lose { color: #ff8a7a; }
 .sec-red { border-image-source: var(--sk-red) !important; }
 .tile.donate .ib { animation: heartbeat 1.6s ease-in-out infinite; }
 @keyframes heartbeat { 0%, 60%, 100% { transform: scale(1); } 70% { transform: scale(1.12); } 80% { transform: scale(1); } 90% { transform: scale(1.08); } }
+
+/* =====================================================================
+   MÓVIL (iPhone y demás en horizontal): zona segura y lobby compacto
+   ===================================================================== */
+:root { --sal: env(safe-area-inset-left, 0px); --sar: env(safe-area-inset-right, 0px); --sab: env(safe-area-inset-bottom, 0px); }
+.lb { padding-left: calc(10px + var(--sal)) !important; padding-right: calc(10px + var(--sar)) !important; }
+.screen > .panel { margin-left: calc(8px + var(--sal)) !important; margin-right: calc(8px + var(--sar)) !important; }
+#btn-pause { left: calc(10px + var(--sal)) !important; }
+.lb-top-icons { display: none; }
+@media (max-height: 520px) {
+  .lb { gap: 4px 8px !important; padding-top: 4px !important; padding-bottom: 2px !important;
+        grid-template-columns: minmax(118px, 0.7fr) minmax(240px, 2fr) minmax(150px, 0.9fr) !important; }
+  .lb-top { gap: 6px !important; }
+  .lb-top-icons { display: flex; gap: 4px; margin-left: auto; }
+  .lb-top-icons .lb-icons { display: flex; gap: 4px; }
+  .lb-top-icons .tile { min-height: 0 !important; width: 38px; height: 38px; padding: 0 !important; border-width: 8px !important; border-image-width: 8px !important; }
+  .lb-top-icons .tile .ib { width: 24px !important; height: 24px !important; box-shadow: none !important; }
+  .lb-top-icons .tile .ib .pxi { width: 18px !important; height: 18px !important; }
+  .lb-top-icons .tile .badge { right: -10px !important; top: -10px !important; transform: none !important; min-width: 18px; height: 18px; font-size: 11px; line-height: 12px; padding: 0 4px; }
+  .lb-money { margin-left: 0 !important; gap: 4px !important; }
+  .lb-money .pill { font-size: 14px !important; padding: 0 6px 0 2px !important; border-width: 8px !important; border-image-width: 8px !important; }
+  .lb-money .pill img { width: 18px !important; height: 18px !important; }
+  .lb-money .icon-btn .pxi { width: 22px !important; height: 22px !important; }
+  .profile-chip { border-width: 8px !important; border-image-width: 8px !important; }
+  .profile-chip img#pf-avatar { width: 30px !important; height: 30px !important; }
+  .profile-chip b { font-size: 13px !important; }
+  .lb-left { gap: 4px !important; justify-content: flex-start !important; }
+  .lb-menu { gap: 4px !important; }
+  .tile { min-height: 34px !important; font-size: 13px !important; border-width: 9px !important; border-image-width: 9px !important; }
+  .tile .ib { width: 24px !important; height: 24px !important; }
+  .tile .ib .pxi { width: 18px !important; height: 18px !important; }
+  .chest-widget { border-width: 9px !important; border-image-width: 9px !important; }
+  .cw-ball { width: 46px !important; height: 46px !important; border-width: 6px !important; border-image-width: 6px !important; }
+  .cw-ball img { width: 30px !important; height: 30px !important; }
+  .cw-info b { font-size: 12px !important; }
+  .cw-info small { font-size: 10px !important; }
+  .cw-info .bar { height: 8px !important; }
+  .hero-plate { font-size: 15px !important; padding: 0 10px !important; border-width: 8px !important; border-image-width: 8px !important; }
+  .lb-right { gap: 5px !important; }
+  .pass-btn, .mode-card { border-width: 9px !important; border-image-width: 9px !important; }
+  .pass-btn .pb-medal { width: 26px !important; height: 26px !important; font-size: 14px !important; }
+  .mode-card img { width: 32px !important; height: 32px !important; }
+  .mode-card b { font-size: 13px !important; }
+  .mode-card small { font-size: 10px !important; }
+  .lb-right .big { font-size: 20px !important; padding-top: 2px !important; padding-bottom: 4px !important; }
+  .lb-right .big::after { width: 26px !important; height: 26px !important; }
+  .lb-top .lb-title { display: none !important; }
+  .pslot:not(.filled) { width: 20% !important; height: 40% !important; }
+}
+/* pantallas aún más bajas (Safari con la barra de direcciones visible) */
+@media (max-height: 380px) {
+  .tile { min-height: 30px !important; font-size: 12px !important; }
+  .cw-ball { width: 40px !important; height: 40px !important; }
+  .cw-info small { display: none; }
+  .lb-right .big { font-size: 18px !important; }
+  .mode-card small { display: none; }
+  .hero-plate { font-size: 13px !important; }
+}

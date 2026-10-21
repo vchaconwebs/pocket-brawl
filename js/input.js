@@ -46,7 +46,8 @@ PB.Input = class {
     const k = { 'pequeño': 0.82, mediano: 1, grande: 1.2 }[PB.Settings.get('joySize')] || 1;
     const r = Math.min(70, Math.max(48, Math.min(W, H) * 0.11)) * k;
     const left = PB.Settings.get('leftHanded');
-    const near = r + 40, far = W - r - 40;
+    const S = PB.safe ? PB.safe() : { l: 0, r: 0, b: 0 };
+    const near = r + 40 + S.l, far = W - r - 40 - S.r;
     const atkX = left ? near : far, moveX = left ? far : near;
     const dir = left ? 1 : -1; // el súper va hacia el centro de la pantalla
     return {

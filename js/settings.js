@@ -52,6 +52,13 @@ PB.Settings = (() => {
   return { load, get, set, reset, apply, DEFAULTS };
 })();
 
+// Márgenes de la zona segura (isla o notch del móvil en horizontal), en píxeles
+PB.safe = () => {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (k) => parseFloat(cs.getPropertyValue(k)) || 0;
+  return { l: v('--sal'), r: v('--sar'), b: v('--sab') };
+};
+
 // Vibración respetando el ajuste
 PB.vibrate = (ms) => {
   if (PB.Settings.get('vibration') && navigator.vibrate) navigator.vibrate(ms);

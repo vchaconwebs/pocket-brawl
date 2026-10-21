@@ -16,6 +16,8 @@ PB.Renderer = class {
     this.dpr = dpr;
     this.cw = window.innerWidth;
     this.ch = window.innerHeight;
+    const sf = PB.safe ? PB.safe() : { r: 0 };
+    this.safeR = sf.r;
     this.cv.width = Math.round(this.cw * dpr);
     this.cv.height = Math.round(this.ch * dpr);
     this.cv.style.width = this.cw + 'px';
@@ -1077,7 +1079,7 @@ PB.Renderer = class {
       const t1 = f.killer || '?', t2 = f.victim || '';
       const w1 = ctx.measureText(t1).width, w2 = ctx.measureText(t2).width;
       const pw = w1 + w2 + 92;
-      const px = W - pw - 10;
+      const px = W - pw - 10 - (this.safeR || 0);
       UI.panel(ctx, px, fy, pw, 30, { p: 2, fill: ours ? 'rgba(30,70,150,0.85)' : 'rgba(140,30,40,0.85)' });
       const por = (dex, x2) => {
         const img = PB.Sprites.portrait(dex);

@@ -1350,6 +1350,12 @@ PB.Lobby = (() => {
     $('#btn-missions').onclick = () => showMissions();
     $('#btn-mode').onclick = showModes;
     $('#btn-pass').onclick = showPass;
+    // en pantallas bajas (móvil en horizontal) los iconos pequeños suben a la barra de arriba
+    const icons = document.querySelector('.lb-icons'), menu = document.querySelector('.lb-menu'), top = $('#lb-top-icons');
+    const mq = window.matchMedia('(max-height: 520px)');
+    const placeIcons = () => (mq.matches ? top.appendChild(icons) : menu.appendChild(icons));
+    placeIcons();
+    if (mq.addEventListener) mq.addEventListener('change', placeIcons); else mq.addListener(placeIcons);
     // donar: abre Ko-fi en otra pestaña (no da nada dentro del juego)
     $('#btn-donate').onclick = () => { if (PB.DONATE_URL) window.open(PB.DONATE_URL, '_blank', 'noopener'); };
     $('#lb-quests').onclick = () => showMissions('daily');
