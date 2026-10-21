@@ -10,7 +10,7 @@
   <meta name="description" content="Pocket Brawl: fangame gratuito de combates 3v3 en el navegador. Sin ánimo de lucro.">
   <title>Pocket Brawl</title>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=35">
+  <link rel="stylesheet" href="css/style.css?v=36">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -62,8 +62,8 @@
       <aside class="lb-right">
         <button class="pass-btn" id="btn-pass">
           <span class="badge hidden" id="pass-badge">0</span>
+          <span class="pb-medal" id="pass-lv">0</span>
           <span class="pb-top"><b>Pase</b><small id="pass-season"></small></span>
-          <span class="pb-lv">Nv. <b id="pass-lv">0</b></span>
           <span class="bar"><i id="pass-fill"></i></span>
         </button>
         <button class="mode-card" id="btn-mode">
@@ -144,14 +144,17 @@
   <!-- MISIONES -->
   <div id="passscreen" class="screen hidden">
     <div class="panel wide">
-      <div class="pn-head"><button class="back" data-back="lobby">←</button><h2 id="ps-title">Pase de temporada</h2><span class="rar-tag" id="ps-free">GRATIS</span></div>
-      <div class="ps-info">
-        <div class="ps-lv"><b id="ps-level">0</b><small>nivel</small></div>
-        <div class="ps-bar"><span class="bar"><i id="ps-fill"></i></span><small id="ps-xp"></small></div>
-        <button class="act gold" id="ps-all">Reclamar todo</button>
+      <div class="pn-head"><button class="back" data-back="lobby">←</button><h2>Pase de temporada</h2></div>
+      <div class="ps-hero">
+        <div class="ps-medal"><small>NIVEL</small><b id="ps-level">0</b></div>
+        <div class="ps-mid">
+          <div class="ps-name"><span id="ps-title">Temporada 1</span><em>GRATIS</em></div>
+          <div class="ps-xpbar"><i id="ps-fill"></i><span id="ps-xp"></span></div>
+          <div class="ps-how" id="ps-how"></div>
+        </div>
+        <div class="ps-side"><span class="ps-timer" id="ps-ends"></span><button class="act gold" id="ps-all">Reclamar</button></div>
       </div>
       <div id="ps-track"></div>
-      <p class="sub" id="ps-ends"></p>
     </div>
   </div>
 
@@ -313,26 +316,26 @@
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=35"></script>
-  <script src="js/data.js?v=35"></script>
-  <script src="js/roster-data.js?v=35"></script>
-  <script src="js/sprites.js?v=35"></script>
-  <script src="js/vfx.js?v=35"></script>
-  <script src="js/roster.js?v=35"></script>
-  <script src="js/pokeball.js?v=35"></script>
-  <script src="js/tiles.js?v=35"></script>
-  <script src="js/world.js?v=35"></script>
-  <script src="js/game.js?v=35"></script>
-  <script src="js/modes.js?v=35"></script>
-  <script src="js/ai.js?v=35"></script>
-  <script src="js/audio.js?v=35"></script>
-  <script src="js/render.js?v=35"></script>
-  <script src="js/input.js?v=35"></script>
-  <script src="js/settings.js?v=35"></script>
-  <script src="js/pixui.js?v=35"></script>
-  <script src="js/save.js?v=35"></script>
-  <script src="js/online.js?v=35"></script>
-  <script src="js/lobby.js?v=35"></script>
-  <script src="js/main.js?v=35"></script>
+  <script src="js/sprite-data.js?v=36"></script>
+  <script src="js/data.js?v=36"></script>
+  <script src="js/roster-data.js?v=36"></script>
+  <script src="js/sprites.js?v=36"></script>
+  <script src="js/vfx.js?v=36"></script>
+  <script src="js/roster.js?v=36"></script>
+  <script src="js/pokeball.js?v=36"></script>
+  <script src="js/tiles.js?v=36"></script>
+  <script src="js/world.js?v=36"></script>
+  <script src="js/game.js?v=36"></script>
+  <script src="js/modes.js?v=36"></script>
+  <script src="js/ai.js?v=36"></script>
+  <script src="js/audio.js?v=36"></script>
+  <script src="js/render.js?v=36"></script>
+  <script src="js/input.js?v=36"></script>
+  <script src="js/settings.js?v=36"></script>
+  <script src="js/pixui.js?v=36"></script>
+  <script src="js/save.js?v=36"></script>
+  <script src="js/online.js?v=36"></script>
+  <script src="js/lobby.js?v=36"></script>
+  <script src="js/main.js?v=36"></script>
 </body>
 </html>

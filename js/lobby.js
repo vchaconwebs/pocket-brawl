@@ -411,29 +411,45 @@ PB.Lobby = (() => {
   function showPass() {
     const p = PB.Save.pass();
     const M = PB.META.pass;
-    $('#ps-title').textContent = 'Pase · Temporada ' + p.season;
+    $('#ps-title').textContent = 'Temporada ' + p.season;
     $('#ps-level').textContent = p.level;
     $('#ps-fill').style.width = Math.round(p.progress * 100) + '%';
-    $('#ps-xp').textContent = p.level >= p.max
-      ? '¡Pase completado! Cada ' + M.xpPerLevel + ' EXP de más: una Poké Ball'
-      : Math.floor(p.xp % M.xpPerLevel) + ' / ' + M.xpPerLevel + ' EXP · victoria +' + M.xpWin + ', derrota +' + M.xpLose + ', misión +' + M.xpMission;
-    $('#ps-ends').textContent = 'La temporada termina en ' + timeLeft(p.endsIn) + '. Al empezar la siguiente, el pase vuelve al nivel 0.';
+    $('#ps-xp').textContent = p.level >= p.max ? '¡Completado!' : Math.floor(p.xp % M.xpPerLevel) + ' / ' + M.xpPerLevel + ' EXP';
+    $('#ps-how').innerHTML = `<span>Victoria <b>+${M.xpWin}</b></span><span>Derrota <b>+${M.xpLose}</b></span><span>Misión <b>+${M.xpMission}</b></span>`;
+    $('#ps-ends').textContent = timeLeft(p.endsIn);
     const ready = p.rewards.filter((r) => r.ready && !r.claimed).length + p.extra;
     $('#ps-all').disabled = !ready;
-    $('#ps-all').textContent = ready ? 'Reclamar todo (' + ready + ')' : 'Nada que reclamar';
-    const track = $('#ps-track');
-    track.innerHTML = p.rewards.map((r) => {
+    $('#ps-all').textContent = ready ? '¡Reclamar ' + ready + '!' : 'Todo reclamado';
+    // color de la tarjeta según el premio principal
+    const tone = (it) => (it.kind === 'ultra' ? 'ultra' : it.kind === 'great' ? 'great' : it.kind === 'poke' ? 'poke' : it.kind === 'rainbow' ? 'rainbow' : it.kind === 'coins' ? 'coins' : 'points');
+    const icon = (it) => (['poke', 'great', 'ultra'].includes(it.kind) ? ballIcon(it.kind, 3) : rewardInfo(it).icon);
+    const label = (it) => (['poke', 'great', 'ultra'].includes(it.kind) ? PB.META.chests[it.kind].name : rewardInfo(it).label);
+    const cols = p.rewards.map((r) => {
       const st = r.claimed ? 'claimed' : r.ready ? 'ready' : 'locked';
-      const big = r.lvl % 5 === 0 ? ' big5' : '';
-      return `<button class="ps-node ${st}${big}" data-lvl="${r.lvl}" ${st === 'ready' ? '' : 'disabled'}>` +
-        `<span class="ps-n">${r.lvl}</span>` +
-        r.items.map((it) => { const ri = rewardInfo(it); return `<span class="ps-it"><img src="${ri.icon}" alt=""><small>${ri.label}</small></span>`; }).join('') +
-        `<span class="ps-st">${r.claimed ? '✓' : r.ready ? '¡Reclamar!' : '🔒'}</span></button>`;
-    }).join('') + (p.extra > 0 ? `<button class="ps-node ready extra" data-lvl="extra"><span class="ps-n">+</span><span class="ps-it"><img src="${ballIcon('poke', 2)}" alt=""><small>× ${p.extra}</small></span><span class="ps-st">¡Reclamar!</span></button>` : '');
-    track.querySelectorAll('.ps-node.ready').forEach((e) => (e.onclick = () => claimPassNode(e.dataset.lvl)));
+      const main = r.items[0];
+      const fill = r.lvl <= p.level ? 1 : r.lvl === p.level + 1 ? p.progress : 0;
+      const kind = r.lvl === p.max ? ' final' : r.lvl % 5 === 0 ? ' milestone' : '';
+      return `<div class="ps-col ${st}${kind}" style="--fill:${fill}">` +
+        (r.lvl === p.max ? '<span class="ps-ribbon">¡Premio final!</span>' : r.lvl % 5 === 0 ? '<span class="ps-ribbon small">Hito</span>' : '') +
+        `<button class="ps-card t-${tone(main)}" data-lvl="${r.lvl}" ${st === 'ready' ? '' : 'disabled'}>` +
+        r.items.map((it, i) => `<span class="ps-item${i ? ' sub' : ''}"><img src="${icon(it)}" alt=""><b>${label(it)}</b></span>`).join('') +
+        `<span class="ps-state">${r.claimed ? '✓' : r.ready ? '¡Reclamar!' : ''}</span>` +
+        `</button>` +
+        `<div class="ps-rail"><i></i></div>` +
+        `<span class="ps-dot">${r.lvl}</span>` +
+        `</div>`;
+    }).join('');
+    const extra = p.level >= p.max
+      ? `<div class="ps-col ${p.extra ? 'ready' : 'locked'} bonus" style="--fill:${p.progress}"><span class="ps-ribbon small">Extra</span>` +
+        `<button class="ps-card t-poke" data-lvl="extra" ${p.extra ? '' : 'disabled'}><span class="ps-item"><img src="${ballIcon('poke', 3)}" alt=""><b>${p.extra ? '× ' + p.extra : 'Cada nivel'}</b></span>` +
+        `<span class="ps-state">${p.extra ? '¡Reclamar!' : ''}</span></button><div class="ps-rail"><i></i></div><span class="ps-dot">+</span></div>`
+      : '';
+    const track = $('#ps-track');
+    track.innerHTML = cols + extra;
+    track.querySelectorAll('.ps-col.ready .ps-card').forEach((e) => (e.onclick = () => claimPassNode(e.dataset.lvl)));
     show('passscreen');
-    // centra el nivel actual
-    const cur = track.querySelector('.ps-node.ready') || track.children[Math.max(0, p.level - 1)];
+    // centra el siguiente premio (o el primero por reclamar)
+    const cur = track.querySelector('.ps-col.ready') || track.children[Math.min(p.level, track.children.length - 1)];
     if (cur) track.scrollLeft = cur.offsetLeft - track.clientWidth / 2 + cur.clientWidth / 2;
   }
 
