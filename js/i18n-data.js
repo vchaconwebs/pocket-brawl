@@ -445,6 +445,7 @@ PB.I18N = {
   'Apoyar el juego': ['Support the game', 'Apoiar o jogo', 'Soutenir le jeu', 'Sostieni il gioco', 'Das Spiel unterstützen'],
   'Donación voluntaria para pagar servidores y dominio. No da nada dentro del juego.': ['Voluntary donation to pay for servers and the domain. It gives nothing in-game.', 'Doação voluntária para pagar servidores e domínio. Não dá nada dentro do jogo.', 'Don volontaire pour payer les serveurs et le domaine. Ne donne rien dans le jeu.', 'Donazione volontaria per pagare server e dominio. Non dà nulla nel gioco.', 'Freiwillige Spende für Server und Domain. Bringt nichts im Spiel.'],
   'Donar': ['Donate', 'Doar', 'Faire un don', 'Dona', 'Spenden'],
+  'PokéVersus · Combates 3v3 gratis en el navegador': ['PokéVersus · Free 3v3 battles in your browser', 'PokéVersus · Batalhas 3v3 grátis no navegador', 'PokéVersus · Combats 3v3 gratuits dans le navigateur', 'PokéVersus · Battaglie 3v3 gratis nel browser', 'PokéVersus · Kostenlose 3v3-Kämpfe im Browser'],
 
   // ------------------------------------------------------------------ cofres
   'Toca para abrir': ['Tap to open', 'Toque para abrir', 'Touche pour ouvrir', 'Tocca per aprire', 'Tippen zum Öffnen'],
