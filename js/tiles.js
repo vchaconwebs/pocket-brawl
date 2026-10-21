@@ -203,11 +203,11 @@ PB.Tiles = (() => {
     for (const [list, col, dark] of [[world.spawns.blue, '#5a9cf0', '#3a6cc0'], [world.spawns.red, '#f06a5a', '#c0443a']]) {
       for (const s of list) paintMat(P, Math.floor(s.x / PB.TILE) * A, Math.floor(s.y / PB.TILE) * A, col, dark);
     }
-    // porterías (Voltorbol)
-    for (const [team, col, dark] of [['blue', '#5a9cf0', '#3a6cc0'], ['red', '#f06a5a', '#c0443a']]) {
+    // área de las porterías (Voltorbol): hierba cortada a franjas
+    for (const team of ['blue', 'red']) {
       for (const g of world.goals[team]) {
         const ox = g.c * A, oy = g.r * A;
-        for (let y = 0; y < A; y++) for (let x = 0; x < A; x++) P.set(ox + x, oy + y, (x + y) % 4 === 0 || (x - y + 64) % 4 === 0 ? '#f4f4f4' : (x + y) % 2 ? col : dark);
+        for (let y = 0; y < A; y++) for (let x = 0; x < A; x++) P.set(ox + x, oy + y, (Math.floor((ox + x) / 4) % 2 ? '#84d266' : '#76c45a'));
       }
     }
     // círculo central del campo (Voltorbol) y líneas
@@ -335,25 +335,39 @@ PB.Tiles = (() => {
     });
   }
 
-  // Caja de suministros (Niebla Tóxica): madera con un Caramelo Raro pintado
+  // Caramelo Raro gigante (Niebla Tóxica): obstáculo que se rompe y suelta caramelos.
+  // 16 x 18: caramelo azul envuelto, con los extremos del envoltorio en lazo.
   function crate(v) {
     return cached('crate' + v, () => {
-      const P = Pix(A, 20);
-      const W = ['#5a3418', '#7a4a24', '#9a6434', '#b87c44', '#d29a5c'];
-      for (let y = 2; y < 19; y++) for (let x = 1; x < 15; x++) {
-        let col = y < 7 ? W[3] : W[2];
-        if (y === 6 || y === 12 || y === 18) col = W[1];
-        if (x === 1 || x === 14) col = W[1];
-        if (y < 6 && (x + y) % 5 === 0) col = W[4];
-        if (y >= 7 && (x * 3 + y) % 7 === 0) col = W[1];
-        P.set(x, y, col);
+      const P = Pix(A, 18);
+      const cx = 7.5, cy = 9.5;
+      for (let y = 0; y < 18; y++) for (let x = 0; x < A; x++) {
+        const dx = x - cx, dy = y - cy;
+        // cuerpo del caramelo (óvalo)
+        const e = (dx * dx) / (5.2 * 5.2) + (dy * dy) / (5.6 * 5.6);
+        if (e <= 1) {
+          const lit = (-dx * 0.55 - dy * 0.8) / 5.5;
+          let col = lit > 0.55 ? '#a8ccff' : lit > 0.15 ? '#5a8ef0' : lit > -0.35 ? '#3e6ad8' : '#2a48a8';
+          if (Math.abs(dy) < 0.8 && Math.abs(dx) < 4.2) col = lit > 0 ? '#c8e0ff' : '#7aa4f0'; // franja brillante
+          P.set(x, y, col);
+          continue;
+        }
+        // envoltorio: lazos a los lados (más anchos hacia fuera)
+        const side = x < cx ? cx - 5 - x : x - (cx + 5);
+        if (side >= -0.5 && side <= 2.6) {
+          const half = 1.4 + side * 1.25;
+          if (Math.abs(dy) <= half) {
+            const fold = (x + Math.round(dy)) % 2 === 0;
+            let col = fold ? '#9ad4ff' : '#c4e8ff';
+            if (dy < -half + 1) col = '#e8f6ff';
+            if (dy > half - 1) col = '#6aa8e0';
+            P.set(x, y, col);
+          }
+        }
       }
-      // tablas en diagonal en la cara frontal
-      for (let i = 0; i < 6; i++) { P.set(3 + i * 2, 17 - i, W[3]); P.set(4 + i * 2, 17 - i, W[3]); }
-      // caramelo pintado
-      const cy = 3;
-      for (const [x, y, c] of [[6, cy, '#3a5cc8'], [7, cy, '#4c78e0'], [8, cy, '#4c78e0'], [9, cy, '#3a5cc8'], [7, cy - 1, '#a8dcff'], [5, cy - 1, '#a8dcff'], [10, cy + 1, '#a8dcff'], [5, cy + 1, '#a8dcff'], [10, cy - 1, '#a8dcff']]) P.set(x, y, c);
-      outline(P, W[0]);
+      // brillo
+      P.set(5, 6, '#ffffff'); P.set(6, 6, '#ffffff'); P.set(5, 7, '#ffffff');
+      outline(P, '#14205a');
       return P.done();
     });
   }

@@ -101,7 +101,7 @@ PB.MODES = {
   // ------------------------------------------------------------------ Niebla Tóxica
   showdown: {
     id: 'showdown', name: 'Niebla Tóxica', map: 'showdown', ffa: true, players: 10, statName: 'Caramelos',
-    desc: 'Todos contra todos (10). Rompe cajas para conseguir Caramelos Raros. La niebla venenosa cierra el mapa. El último en pie gana.',
+    desc: 'Todos contra todos (10). Rompe los Caramelos Raros gigantes para hacerte más fuerte. La niebla venenosa cierra el mapa. El último en pie gana.',
     rules: { matchTime: 600 },
     setup(g) {
       const W = g.world;
@@ -391,7 +391,7 @@ PB.MODES = {
       const prev = z.owner;
       z.owner = inside.blue && !inside.red ? 'blue' : inside.red && !inside.blue ? 'red' : inside.blue && inside.red ? 'contested' : null;
       if (z.owner === 'blue' || z.owner === 'red') {
-        g.progress[z.owner] = Math.min(100, g.progress[z.owner] + 2.4 * dt);
+        g.progress[z.owner] = Math.min(100, g.progress[z.owner] + 1.9 * dt);
         if (g.progress[z.owner] >= 100) g.end(z.owner);
       }
       if (prev !== z.owner && (z.owner === 'blue' || z.owner === 'red')) g.events.push({ type: 'zoneTaken', team: z.owner });

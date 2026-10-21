@@ -68,7 +68,7 @@ PB.Renderer = class {
     }
     const halfW = this.cw / 2 / this.cam.scale, halfH = this.ch / 2 / this.cam.scale;
     this.cam.x = W.pixelW < halfW * 2 ? W.pixelW / 2 : Math.max(halfW - 60, Math.min(W.pixelW - halfW + 60, this.cam.x));
-    this.cam.y = Math.max(halfH - 80, Math.min(W.pixelH - halfH + 80 + (lift ? lift + 60 : 0), this.cam.y));
+    this.cam.y = Math.max(halfH - 150, Math.min(W.pixelH - halfH + 80 + (lift ? lift + 60 : 0), this.cam.y));
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#2c5a3a';
@@ -116,8 +116,6 @@ PB.Renderer = class {
 
     // zona de Territorio
     if (game.zone) this.drawHotZone(game.zone, t, team);
-    // porterías (parte de detrás)
-    if (game.voltorb) for (const tm of ['red', 'blue']) this.drawGoal(W, tm, false, team);
 
     // grietas del suelo (Magnitud)
     for (const f of game.fx) if (f.kind === 'crack') this.drawCrack(f);
@@ -141,7 +139,13 @@ PB.Renderer = class {
     }
     for (const g of game.balls) if (inView(g.x, g.y, 40)) items.push({ k: 'ball', y: g.y, g });
     for (const st of game.structures) items.push({ k: 'struct', y: st.y, st });
-    if (game.voltorb) items.push({ k: 'voltorb', y: game.voltorb.y + 1, v: game.voltorb });
+    if (game.voltorb) {
+      items.push({ k: 'voltorb', y: game.voltorb.y + 1, v: game.voltorb });
+      for (const tm of ['red', 'blue']) {
+        const R = W.goalRect(tm);
+        if (R) items.push({ k: 'goal', y: R.y0 < W.pixelH / 2 ? R.y1 : R.y0, tm });
+      }
+    }
     for (const f of game.fx) {
       if (f.kind === 'faint' || f.kind === 'release' || f.kind === 'ghost') items.push({ k: f.kind, y: f.y, f });
     }
@@ -155,10 +159,8 @@ PB.Renderer = class {
       else if (it.k === 'ghost') this.drawGhost(it.f);
       else if (it.k === 'struct') this.drawSnorlax(it.st, game, team);
       else if (it.k === 'voltorb') this.drawVoltorb(it.v, game);
+      else if (it.k === 'goal') this.drawGoal(W, it.tm, team);
     }
-
-    // porterías (parte de delante)
-    if (game.voltorb) for (const tm of ['red', 'blue']) this.drawGoal(W, tm, true, team);
 
     // proyectiles
     for (const p of game.projectiles) if (inView(p.x, p.y, 80)) this.drawShot(p, t);
@@ -291,13 +293,14 @@ PB.Renderer = class {
     else if (tt === 'C') {
       const W = this.game.world, hp = W.crateHp.get(r * W.w + c) || 0;
       const hit = this.game.fx.some((f) => f.kind === 'crateHit' && f.c === c && f.r === r);
-      PB.Tiles.draw(ctx, PB.Tiles.crate(0), x + (hit ? (Math.random() - 0.5) * 6 : 0), y + T - 80);
-      if (hp < 3000) {
-        ctx.fillStyle = '#111';
-        ctx.fillRect(x + 6, y - 26, T - 12, 8);
-        ctx.fillStyle = '#ffd23a';
-        ctx.fillRect(x + 8, y - 24, ((T - 16) * hp) / 3000, 4);
-      }
+      PB.Tiles.draw(ctx, PB.Tiles.crate(0), x + (hit ? (Math.random() - 0.5) * 6 : 0), y + T - 72);
+      // barra de vida (siempre visible)
+      ctx.fillStyle = '#111';
+      ctx.fillRect(x + 4, y - 30, T - 8, 10);
+      ctx.fillStyle = '#5a8ef0';
+      ctx.fillRect(x + 6, y - 28, ((T - 12) * hp) / 3000, 6);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillRect(x + 6, y - 28, ((T - 12) * hp) / 3000, 2);
     } else {
       const jx = tt === 'B' ? (PB.Tiles.H(c, r, 4) - 0.5) * 24 : 0;
       PB.Tiles.draw(ctx, PB.Tiles.tree(v), x - 8 + jx, y + T - 128);
@@ -401,62 +404,70 @@ PB.Renderer = class {
     ctx.drawImage(PB.Tiles.flag(fc, frame), z.x - 14, z.y - 102, 66, 108);
   }
 
-  // Porterías de Voltorbol: postes, larguero y red. Las de arriba se ven por detrás
-  // de los jugadores y las de abajo por delante (front = true).
-  drawGoal(W, team, front, myTeam) {
+  // Portería de Voltorbol vista desde arriba: suelo con red, marco blanco en "U",
+  // postes con algo de altura y larguero en la boca. Cabe entera en su fila del mapa.
+  drawGoal(W, team, myTeam) {
     const R = W.goalRect(team);
     if (!R) return;
     const ctx = this.ctx;
     const top = R.y0 < W.pixelH / 2;
     const col = team === myTeam ? '#3d8bff' : '#ff4d4d';
-    const depth = 46; // profundidad de la portería (hacia fuera del campo)
-    const x0 = R.x0 - 6, x1 = R.x1 + 6;
-    const mouth = top ? R.y1 : R.y0; // línea de gol
-    const back = top ? R.y0 - depth : R.y1 + depth;
-    if (!front) {
-      // red: fondo oscuro y malla
-      const y0 = Math.min(mouth, back), y1 = Math.max(mouth, back);
-      ctx.fillStyle = 'rgba(20,30,40,0.35)';
-      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
-      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      for (let x = x0; x <= x1; x += 16) { ctx.moveTo(x, y0); ctx.lineTo(x, y1); }
-      for (let y = y0; y <= y1; y += 16) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
-      ctx.stroke();
-      // línea de gol del color del equipo
-      ctx.fillStyle = col;
-      ctx.fillRect(R.x0, mouth - 4, R.x1 - R.x0, 8);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(R.x0, mouth - 1, R.x1 - R.x0, 2);
+    const x0 = R.x0 + 6, x1 = R.x1 - 6;
+    const mouth = top ? R.y1 - 4 : R.y0 + 4; // línea de gol
+    const back = top ? R.y0 + 12 : R.y1 - 12; // fondo de la portería
+    const yA = Math.min(mouth, back), yB = Math.max(mouth, back);
+    const H = 34; // altura de postes y larguero
+    // sombra y red del suelo
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(x0, yA, x1 - x0, yB - yA);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x0, yA - H, x1 - x0, yB - yA + H);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let k = -200; k < x1 - x0 + 200; k += 14) {
+      ctx.moveTo(x0 + k, yA - H);
+      ctx.lineTo(x0 + k + (yB - yA + H), yB);
+      ctx.moveTo(x0 + k, yB);
+      ctx.lineTo(x0 + k + (yB - yA + H), yA - H);
     }
-    if (front === !top) {
-      // postes y larguero (pixel art: blanco con sombra y contorno)
-      const post = (x) => {
-        const yA = Math.min(mouth, back) - (top ? 0 : 0), yB = Math.max(mouth, back);
-        ctx.fillStyle = '#1b1418';
-        ctx.fillRect(x - 7, yA - 30, 14, yB - yA + 34);
-        ctx.fillStyle = '#f4f2f6';
-        ctx.fillRect(x - 5, yA - 28, 6, yB - yA + 30);
-        ctx.fillStyle = '#b8b4c2';
-        ctx.fillRect(x + 1, yA - 28, 4, yB - yA + 30);
-      };
-      post(x0);
-      post(x1);
-      const by = (top ? back : mouth) - 30;
+    ctx.stroke();
+    ctx.restore();
+    // marco del fondo y laterales en el suelo (contorno oscuro + blanco)
+    const bar = (x, y, w, h) => {
       ctx.fillStyle = '#1b1418';
-      ctx.fillRect(x0 - 7, by - 2, x1 - x0 + 14, 14);
+      ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
       ctx.fillStyle = '#f4f2f6';
-      ctx.fillRect(x0 - 5, by, x1 - x0 + 10, 6);
+      ctx.fillRect(x, y, w, h);
       ctx.fillStyle = '#b8b4c2';
-      ctx.fillRect(x0 - 5, by + 6, x1 - x0 + 10, 4);
-      // banderines del color del equipo en las esquinas
-      for (const x of [x0, x1]) {
-        ctx.fillStyle = col;
-        ctx.fillRect(x - 4, by - 18, 12, 10);
-        ctx.fillStyle = '#1b1418';
-        ctx.fillRect(x - 5, by - 18, 2, 18);
-      }
+      ctx.fillRect(x, y + h - 2, w, 2);
+    };
+    bar(x0, back - 3, x1 - x0, 6);
+    bar(x0 - 3, yA, 6, yB - yA);
+    bar(x1 - 3, yA, 6, yB - yA);
+    // línea de gol del color del equipo
+    ctx.fillStyle = col;
+    ctx.fillRect(x0, mouth - 4, x1 - x0, 8);
+    // postes en la boca (con altura) y larguero
+    for (const x of [x0, x1]) bar(x - 5, mouth - H, 10, H + 4);
+    bar(x0 - 5, mouth - H - 4, x1 - x0 + 10, 8);
+    // tirantes del larguero hacia el fondo
+    ctx.strokeStyle = '#f4f2f6';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x0, mouth - H);
+    ctx.lineTo(x0, back);
+    ctx.moveTo(x1, mouth - H);
+    ctx.lineTo(x1, back);
+    ctx.stroke();
+    // banderines en las esquinas
+    for (const x of [x0, x1]) {
+      ctx.fillStyle = '#1b1418';
+      ctx.fillRect(x - 1, mouth - H - 22, 3, 20);
+      ctx.fillStyle = col;
+      ctx.fillRect(x + 2, mouth - H - 22, 12, 8);
     }
   }
 
@@ -897,7 +908,7 @@ PB.Renderer = class {
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
       ctx.fillRect(0, 0, W, H);
       this.outlined(String(n), W / 2, H / 2 + 30, Math.round(110 * (1.4 - k * 0.4)), '#ffcf2e');
-      this.outlined('Atrapa Pokéballs', W / 2, H / 2 - 60, 26, '#ffffff');
+      this.outlined(game.mode.name, W / 2, H / 2 - 60, 26, '#ffffff');
     }
 
     // anuncios grandes (¡A LUCHAR!, ¡K.O.!, ...)
