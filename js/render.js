@@ -260,7 +260,7 @@ PB.Renderer = class {
     ctx.globalAlpha = 1;
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    this.drawHud(game, view);
+    if (view.hud !== false) this.drawHud(game, view);
   }
 
   // Brillo radial aditivo
@@ -739,6 +739,15 @@ PB.Renderer = class {
     ctx.strokeText(Math.ceil(b.hp), x, y + 9);
     ctx.fillStyle = '#fff';
     ctx.fillText(Math.ceil(b.hp), x, y + 9);
+    // nivel
+    if (b.lvl) {
+      ctx.fillStyle = '#1b1418';
+      ctx.fillRect(x + w / 2 + 3, y - 3, 17, 15);
+      ctx.fillStyle = '#ffd23a';
+      ctx.fillRect(x + w / 2 + 4, y - 2, 15, 13);
+      ctx.fillStyle = '#3a2500';
+      ctx.fillText(b.lvl, x + w / 2 + 11.5, y + 9);
+    }
     if (isMe) {
       const seg = (w - 4) / 3;
       for (let i = 0; i < 3; i++) {
@@ -1019,9 +1028,6 @@ PB.Renderer = class {
       this.outlined('Quedan ' + alive, cx + 6, 36, 20, '#ffffff');
       const me = view.player;
       if (me) {
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(PB.Tiles.candy(), 18, 56, 44, 44);
-        this.outlined('×' + me.power, 74, 84, 20, '#9ad4ff', 'left');
         if (!me.dead && Math.hypot(me.x - game.gas.x, me.y - game.gas.y) > game.gas.r) {
           this.outlined('¡Sal de la niebla!', cx, 84, 20, Math.floor(game.clock * 4) % 2 ? '#d58cff' : '#ffffff');
         }

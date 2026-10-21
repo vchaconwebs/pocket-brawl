@@ -10,40 +10,129 @@
   <meta name="description" content="Pocket Brawl: fangame gratuito de combates 3v3 en el navegador. Sin ánimo de lucro.">
   <title>Pocket Brawl</title>
   <link rel="preload" href="assets/fonts/PixelifySans.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=11">
+  <link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
   <canvas id="game"></canvas>
 
   <div id="loading" class="screen"><h1>Cargando…</h1></div>
 
-  <div id="menu" class="screen hidden">
-    <div class="panel">
-      <h1>Pocket<span>Brawl</span></h1>
-      <div id="modes"></div>
-      <p id="mode-desc" class="mode"></p>
-      <div id="roster"></div>
-      <div id="info"></div>
-      <div id="difficulty"></div>
-      <button id="play" class="big">¡JUGAR!</button>
-      <p class="legal">
-        Fangame gratuito y sin ánimo de lucro, no afiliado a Nintendo, Creatures, GAME FREAK ni The Pokémon Company.
-        Pokémon es marca de sus respectivos dueños. Sprites de
-        <a href="https://github.com/PMDCollab/SpriteCollab" target="_blank" rel="noopener">PMD SpriteCollab</a>
-        (CC BY-NC 4.0) · Efectos adaptados de
-        <a href="https://github.com/JPTER78/pokesurvivor" target="_blank" rel="noopener">PokéSurvivor</a> (© 2026 JPTER78) ·
-        <a href="CREDITS.md" target="_blank">Créditos</a>
-      </p>
+  <!-- LOBBY -->
+  <div id="lobby" class="screen hidden">
+    <div class="lb">
+      <header class="lb-top">
+        <div class="lb-title">Pocket<span>Brawl</span></div>
+        <div class="lb-money">
+          <span class="pill"><img id="ico-coin" alt=""><b id="coins">0</b></span>
+          <span class="pill"><img id="ico-star" alt=""><b id="points">0</b></span>
+        </div>
+      </header>
+
+      <aside class="lb-left">
+        <button class="lb-btn" id="btn-pokemon">Pokémon</button>
+        <button class="lb-btn" id="btn-missions">Misiones <span class="badge hidden" id="mis-badge">0</span></button>
+        <div class="lb-box">
+          <h4>Cofres</h4>
+          <div id="chests"></div>
+        </div>
+      </aside>
+
+      <button class="lb-center" id="lb-hero" title="Cambiar Pokémon">
+        <canvas id="hero-cv" width="260" height="240"></canvas>
+        <span class="hero-plate"><b id="hero-name"></b><span id="hero-lvl"></span></span>
+        <span class="hint">Toca para cambiar</span>
+      </button>
+
+      <aside class="lb-right">
+        <button class="mode-card" id="btn-mode">
+          <img id="mode-ico" alt="">
+          <span><small>Modo</small><b id="mode-name"></b><small id="mode-diff"></small></span>
+        </button>
+        <button id="play" class="big">¡JUGAR!</button>
+      </aside>
+
+      <footer class="lb-bottom">
+        <div class="tokens">
+          <img id="ico-tok" alt="">
+          <div class="tok-info"><small>Fichas para la próxima Poké Ball</small><span class="bar"><i id="tok-fill"></i></span></div>
+          <b id="tok-txt">0/100</b>
+        </div>
+        <p class="legal">
+          Fangame gratuito y sin ánimo de lucro, no afiliado a Nintendo, Creatures, GAME FREAK ni The Pokémon Company.
+          Sprites de <a href="https://github.com/PMDCollab/SpriteCollab" target="_blank" rel="noopener">PMD SpriteCollab</a> (CC BY-NC 4.0) ·
+          Efectos de <a href="https://github.com/JPTER78/pokesurvivor" target="_blank" rel="noopener">PokéSurvivor</a> (© 2026 JPTER78) ·
+          <a href="CREDITS.md" target="_blank">Créditos</a>
+        </p>
+      </footer>
     </div>
   </div>
 
+  <!-- COLECCIÓN DE POKÉMON -->
+  <div id="collection" class="screen hidden">
+    <div class="panel wide">
+      <div class="pn-head"><button class="back" data-back="lobby">←</button><h2>Pokémon <small id="col-count"></small></h2></div>
+      <div id="col-grid"></div>
+    </div>
+  </div>
+
+  <!-- FICHA DE UN POKÉMON -->
+  <div id="detail" class="screen hidden">
+    <div class="panel wide">
+      <div class="pn-head"><button class="back" id="dt-back">←</button><h2 id="dt-name"></h2><span class="rar-tag" id="dt-rar"></span></div>
+      <div class="dt">
+        <div class="dt-left">
+          <div id="dt-hero"><canvas id="dt-cv" width="220" height="200"></canvas></div>
+          <div class="types" id="dt-types"></div>
+          <small id="dt-role"></small>
+          <p id="dt-desc"></p>
+        </div>
+        <div class="dt-right">
+          <div id="dt-level"></div>
+          <table id="dt-stats"></table>
+          <div id="dt-moves"></div>
+          <div id="dt-actions"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODOS -->
+  <div id="modepick" class="screen hidden">
+    <div class="panel wide">
+      <div class="pn-head"><button class="back" data-back="lobby">←</button><h2>Modos de juego</h2></div>
+      <div id="mp-grid"></div>
+      <div id="mp-diff" class="diffs"></div>
+    </div>
+  </div>
+
+  <!-- MISIONES -->
+  <div id="missions" class="screen hidden">
+    <div class="panel">
+      <div class="pn-head"><button class="back" data-back="lobby">←</button><h2>Misiones</h2></div>
+      <p class="sub">Complétalas jugando para ganar cofres.</p>
+      <div id="ms-list"></div>
+    </div>
+  </div>
+
+  <!-- ABRIR COFRE -->
+  <div id="chestopen" class="screen hidden">
+    <div class="chest-stage">
+      <h2 id="chest-name"></h2>
+      <canvas id="chest-cv" width="320" height="260"></canvas>
+      <div id="chest-rewards"></div>
+      <p id="chest-hint"></p>
+    </div>
+  </div>
+
+  <!-- FINAL DE PARTIDA -->
   <div id="end" class="screen hidden">
     <div class="panel">
       <h1 id="result"></h1>
+      <div id="end-rewards"></div>
       <table id="scores"></table>
       <div class="row">
         <button id="again" class="big">Otra vez</button>
-        <button id="back">Cambiar Pokémon</button>
+        <button id="back">Volver al lobby</button>
       </div>
     </div>
   </div>
@@ -59,19 +148,21 @@
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=11"></script>
-  <script src="js/data.js?v=11"></script>
-  <script src="js/sprites.js?v=11"></script>
-  <script src="js/vfx.js?v=11"></script>
-  <script src="js/pokeball.js?v=11"></script>
-  <script src="js/tiles.js?v=11"></script>
-  <script src="js/world.js?v=11"></script>
-  <script src="js/game.js?v=11"></script>
-  <script src="js/modes.js?v=11"></script>
-  <script src="js/ai.js?v=11"></script>
-  <script src="js/audio.js?v=11"></script>
-  <script src="js/render.js?v=11"></script>
-  <script src="js/input.js?v=11"></script>
-  <script src="js/main.js?v=11"></script>
+  <script src="js/sprite-data.js?v=13"></script>
+  <script src="js/data.js?v=13"></script>
+  <script src="js/sprites.js?v=13"></script>
+  <script src="js/vfx.js?v=13"></script>
+  <script src="js/pokeball.js?v=13"></script>
+  <script src="js/tiles.js?v=13"></script>
+  <script src="js/world.js?v=13"></script>
+  <script src="js/game.js?v=13"></script>
+  <script src="js/modes.js?v=13"></script>
+  <script src="js/ai.js?v=13"></script>
+  <script src="js/audio.js?v=13"></script>
+  <script src="js/render.js?v=13"></script>
+  <script src="js/input.js?v=13"></script>
+  <script src="js/save.js?v=13"></script>
+  <script src="js/lobby.js?v=13"></script>
+  <script src="js/main.js?v=13"></script>
 </body>
 </html>

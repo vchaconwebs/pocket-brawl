@@ -12,12 +12,23 @@ PB.Pokeball = (() => {
     c: '#ffffff', // botón
     k: '#d9d4dc', // botón sombra
     y: '#fff6a8', // destello
+    // Super Ball
+    B: '#1e4a9a', b: '#3a7ad8', j: '#8ab8ff', X: '#e8331c',
+    // Ultra Ball
+    K: '#141418', n: '#2e2e36', N: '#55555f', Y: '#f8c830',
+  };
+  // colores de la mitad de arriba según el tipo de bola
+  const TOPS = {
+    poke: { h: 'h', r: 'r', R: 'R' },
+    great: { h: 'j', r: 'b', R: 'B' },
+    ultra: { h: 'N', r: 'n', R: 'K' },
   };
   const SIZE = 15;
   const cache = new Map();
 
   // variant: 'closed' | 'open' (mitades separadas) | 'glow' (botón encendido)
-  function grid(variant) {
+  function grid(variant, kind) {
+    const top = TOPS[kind || 'poke'];
     const g = [];
     const c = 7, R = 7.1;
     for (let y = 0; y < SIZE; y++) {
@@ -36,7 +47,12 @@ PB.Pokeball = (() => {
           else if (band) ch = 'o';
           else {
             const lit = (-dx * 0.55 - dy * 0.85) / R;
-            if (dy < 0) ch = lit > 0.55 ? 'h' : lit < -0.15 ? 'R' : 'r';
+            if (dy < 0) {
+              ch = lit > 0.55 ? top.h : lit < -0.15 ? top.R : top.r;
+              // franjas rojas de la Super Ball y "H" amarilla de la Ultra Ball
+              if (kind === 'great' && Math.abs(dx) >= 3 && Math.abs(dx) <= 5 && dy >= -3) ch = 'X';
+              if (kind === 'ultra' && Math.abs(dx) >= 2 && Math.abs(dx) <= 3.5 && dy <= -1.5) ch = 'Y';
+            }
             else ch = lit < -0.35 ? 'G' : lit < 0.05 ? 'g' : 'w';
           }
         }
@@ -53,10 +69,10 @@ PB.Pokeball = (() => {
     return g;
   }
 
-  function sprite(variant) {
-    const key = variant || 'closed';
+  function sprite(variant, kind) {
+    const key = (variant || 'closed') + (kind && kind !== 'poke' ? ':' + kind : '');
     if (cache.has(key)) return cache.get(key);
-    const g = grid(key);
+    const g = grid(variant || 'closed', kind);
     const cv = document.createElement('canvas');
     cv.width = SIZE;
     cv.height = SIZE;
@@ -74,7 +90,7 @@ PB.Pokeball = (() => {
   // Dibuja centrada en (x, y). px = tamaño de cada píxel de arte.
   function draw(ctx, x, y, px, opts) {
     const o = opts || {};
-    const cv = sprite(o.variant);
+    const cv = sprite(o.variant, o.kind);
     const s = SIZE * px;
     ctx.save();
     ctx.imageSmoothingEnabled = false;

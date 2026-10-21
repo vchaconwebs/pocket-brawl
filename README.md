@@ -16,6 +16,16 @@ Hecho como PokéSurvivor: JavaScript puro + Canvas 2D, sin dependencias ni paso 
 **Fangame gratuito y sin ánimo de lucro.** No afiliado a Nintendo, Creatures, GAME FREAK ni
 The Pokémon Company. Ver [CREDITS.md](CREDITS.md).
 
+## Progreso (lobby)
+
+- Se empieza con los tres iniciales (Charmander, Squirtle, Bulbasaur).
+- **Monedas**: suben de nivel a los Pokémon (Nv. 1 a 10, +5 % de vida y daño por nivel).
+- **Puntos Pokémon**: desbloquean Pokémon nuevos (Raro 300, Épico 600).
+- **Cofres** (Poké Ball, Super Ball, Ultra Ball): dan monedas, Puntos Pokémon y, a veces, un Pokémon.
+- **Fichas**: se ganan en cada partida; con 100 fichas, una Poké Ball.
+- **Misiones**: dan cofres al completarlas.
+- Todo se guarda en el navegador (`localStorage`, clave `pb.save.v1`).
+
 ## Jugar en local
 
 Abre `index.html` con doble clic, o mejor con un servidor local:
@@ -38,6 +48,8 @@ y entra en http://localhost:8123
 | `js/data.js` | Mapa, tabla de tipos, luchadores y reglas. **Aquí se equilibra el juego.** |
 | `js/game.js` | Simulación de la partida (no dibuja). Preparada para usarse en un servidor en el futuro. |
 | `js/modes.js` | Reglas de cada modo y lo que hacen los bots en cada uno. |
+| `js/save.js` | Progreso: monedas, puntos, niveles, cofres, fichas y misiones. **Aquí se ajusta la economía.** |
+| `js/lobby.js` | Lobby, colección de Pokémon, ficha, modos, misiones y apertura de cofres. |
 | `js/ai.js` | Bots. Generan el mismo tipo de input que un jugador. |
 | `js/world.js` | Colisiones, línea de visión y caminos (A*). |
 | `js/render.js` | Dibujado en Canvas. |

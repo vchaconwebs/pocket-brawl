@@ -57,7 +57,7 @@ PB.Game = class {
 
   // Multiplicador de daño por Caramelos Raros
   powerMul(b) {
-    return b ? 1 + 0.1 * (b.power || 0) : 1;
+    return b ? (1 + 0.1 * (b.power || 0)) * (b.lvlMul || 1) : 1;
   }
 
   get player() {

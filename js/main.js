@@ -19,7 +19,6 @@
   const save = (key, v) => {
     try { localStorage.setItem(key, v); } catch (e) {}
   };
-  let selected = load('pb.brawler', (v) => PB.brawlerById(v), 'charmander');
   let difficulty = load('pb.difficulty', (v) => PB.DIFFICULTY[v], 'normal');
   let gameMode = load('pb.mode', (v) => PB.MODES[v], 'gems');
   let endTimer = 0;
@@ -51,6 +50,15 @@
       opts.red = shuffle(ids.slice()).slice(0, 3);
     }
     game = new PB.Game(opts);
+    // niveles: el jugador usa el suyo; los bots, uno parecido para que sea justo
+    const myLvl = playerId ? PB.Save.level(playerId) : 1;
+    for (const b of game.brawlers) {
+      const lvl = b.isPlayer ? myLvl : Math.max(1, Math.min(PB.META.maxLevel, myLvl + Math.floor(Math.random() * 3) - 1));
+      const k = PB.levelMul(lvl);
+      b.lvl = lvl;
+      b.lvlMul = k;
+      b.maxHp = b.hp = Math.round(b.def.hp * k);
+    }
     const diff = PB.DIFFICULTY[difficulty];
     bots = game.brawlers
       .filter((b) => !b.isPlayer)
@@ -59,91 +67,6 @@
     renderer.cam.x = f.x;
     renderer.cam.y = f.y;
     spectate = 0;
-  }
-
-  // ------------------------------------------------------------ menú
-  // Iconos de los modos (pixel art pintado al vuelo)
-  const modeIcon = (id) => {
-    if (id === 'heist') return window.SPRITE_DATA['0143'].portrait;
-    if (id === 'ball') return window.SPRITE_DATA['0100'].portrait;
-    const cv = document.createElement('canvas');
-    cv.width = 40;
-    cv.height = 40;
-    const c = cv.getContext('2d');
-    c.imageSmoothingEnabled = false;
-    c.fillStyle = { gems: '#3a7a3a', showdown: '#5a2a78', zone: '#2a4a8a' }[id] || '#333';
-    c.fillRect(0, 0, 40, 40);
-    if (id === 'gems') PB.Pokeball.draw(c, 20, 20, 2, {});
-    else if (id === 'showdown') c.drawImage(PB.Tiles.candy(), 2, 2, 36, 36);
-    else {
-      c.fillStyle = '#4a3420';
-      c.fillRect(12, 6, 3, 30);
-      c.fillStyle = '#ffd23a';
-      c.fillRect(15, 6, 16, 10);
-      c.fillStyle = '#e8a010';
-      c.fillRect(15, 13, 16, 3);
-    }
-    return cv.toDataURL();
-  };
-
-  function buildMenu() {
-    // modos
-    const mz = $('#modes');
-    mz.innerHTML = '';
-    for (const id of PB.MODE_ORDER) {
-      const M = PB.MODES[id];
-      const el = document.createElement('button');
-      el.className = 'mode-btn' + (id === gameMode ? ' sel' : '');
-      el.innerHTML = `<img src="${modeIcon(id)}" alt=""><span>${M.name}</span>`;
-      el.onclick = () => {
-        gameMode = id;
-        save('pb.mode', id);
-        newGame(null);
-        buildMenu();
-      };
-      mz.appendChild(el);
-    }
-    $('#mode-desc').textContent = PB.MODES[gameMode].desc;
-
-    // luchadores
-    const grid = $('#roster');
-    grid.innerHTML = '';
-    for (const b of PB.BRAWLERS) {
-      const el = document.createElement('button');
-      el.className = 'card' + (b.id === selected ? ' sel' : '');
-      const portrait = window.SPRITE_DATA[b.dex] && window.SPRITE_DATA[b.dex].portrait;
-      el.innerHTML =
-        `<img src="${portrait}" alt="">` +
-        `<span class="nm">${b.name}</span>` +
-        `<span class="types">${b.types.map((t) => `<i style="background:${PB.TYPE_INFO[t].color}">${PB.TYPE_INFO[t].name}</i>`).join('')}</span>`;
-      el.onclick = () => {
-        selected = b.id;
-        save('pb.brawler', selected);
-        buildMenu();
-      };
-      grid.appendChild(el);
-    }
-    const b = PB.brawlerById(selected);
-    $('#info').innerHTML =
-      `<h3>${b.name} <small>${b.role}</small></h3>` +
-      `<p>${b.desc}</p>` +
-      `<div class="stats"><span>❤ ${b.hp}</span><span>⚡ Vel. ${b.speed}</span><span>🔄 Recarga ${b.reload}s</span></div>` +
-      `<p class="moves"><b>Ataque:</b> ${b.attack.name} &nbsp; <b>Súper:</b> ${b.super.name}</p>`;
-
-    // dificultad
-    const dz = $('#difficulty');
-    dz.innerHTML = '<span>Bots:</span>';
-    for (const [id, d] of Object.entries(PB.DIFFICULTY)) {
-      const el = document.createElement('button');
-      el.className = 'diff' + (id === difficulty ? ' sel' : '');
-      el.textContent = d.name;
-      el.onclick = () => {
-        difficulty = id;
-        save('pb.difficulty', id);
-        buildMenu();
-      };
-      dz.appendChild(el);
-    }
   }
 
   function showScreen(id) {
@@ -172,11 +95,11 @@
   function startMatch() {
     goLandscape();
     PB.Audio.init();
-    newGame(selected);
+    newGame(PB.Save.get().selected);
     mode = 'play';
     input.enabled = true;
     endTimer = 0;
-    showScreen(null);
+    for (const sc of document.querySelectorAll('.screen')) sc.classList.add('hidden');
     help().classList.remove('hidden');
     setTimeout(() => help().classList.add('hidden'), 6000);
   }
@@ -185,8 +108,7 @@
     mode = 'menu';
     input.enabled = false;
     newGame(null);
-    buildMenu();
-    showScreen('menu');
+    PB.Lobby.show('lobby');
     help().classList.add('hidden');
   }
 
@@ -210,6 +132,16 @@
       })
       .join('');
     $('#scores').innerHTML = `<tr><th></th><th>K.O.</th><th>Caídas</th><th>${M.statName}</th><th>Daño</th></tr>${rows}`;
+    // recompensas: fichas, cofres nuevos y misiones
+    const win = M.ffa ? (me.rank || 99) <= 4 : game.winner === me.team;
+    const reward = PB.Save.applyMatch({ win, draw: game.winner === 'draw', rank: me.rank, mode: M.id, me });
+    const d = PB.Save.get();
+    const pct = Math.round((100 * d.tokens) / PB.META.tokensPerChest);
+    const ready = d.missions.filter((m) => m.progress >= m.n).length;
+    $('#end-rewards').innerHTML =
+      `<div class="tokens"><img src="${PB.Icons.ball('poke', 2)}" alt=""><div class="tok-info"><small>+${reward.tokens} fichas</small><span class="bar"><i style="width:${pct}%"></i></span></div><b>${d.tokens}/${PB.META.tokensPerChest}</b></div>` +
+      (reward.newChests.length ? `<p class="got">¡Has conseguido ${reward.newChests.length > 1 ? reward.newChests.length + ' Poké Balls' : 'una Poké Ball'}! Ábrela en el lobby.</p>` : '') +
+      (ready ? `<p class="got">Tienes ${ready} misión${ready > 1 ? 'es' : ''} completada${ready > 1 ? 's' : ''} para reclamar.</p>` : '');
     showScreen('end');
     help().classList.add('hidden');
     PB.Audio.play(res.cls === 'win' ? 'win' : 'lose');
@@ -224,7 +156,7 @@
   };
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && mode === 'play') toMenu();
-    if (e.key === 'Enter' && mode !== 'play') startMatch();
+    if (e.key === 'Enter' && mode !== 'play' && PB.Lobby.current === 'lobby') startMatch();
     if (e.key.toLowerCase() === 'm') $('#mute').click();
   });
 
@@ -309,6 +241,7 @@
       if (endTimer <= 0 && mode === 'play') showEnd();
     }
     if (mode === 'menu' && game.winner) newGame(null);
+    if (mode === 'menu') PB.Lobby.tick(dt);
 
     // a quién sigue la cámara
     let focus = me;
@@ -326,6 +259,7 @@
       aim: mode === 'play' ? read.aim : null,
       touch: input.touch,
       inputState: input,
+      hud: mode !== 'menu',
     });
     requestAnimationFrame(frame);
   }
@@ -337,6 +271,13 @@
   const fontReady = document.fonts && document.fonts.load
     ? Promise.race([document.fonts.load('16px "Pixelify Sans"'), new Promise((r) => setTimeout(r, 2000))]).catch(() => {})
     : Promise.resolve();
+
+  PB.Lobby.init({
+    getMode: () => gameMode,
+    setMode: (id) => { gameMode = id; save('pb.mode', id); newGame(null); },
+    getDifficulty: () => difficulty,
+    setDifficulty: (id) => { difficulty = id; save('pb.difficulty', id); },
+  });
 
   PB.Sprites.load(() => fontReady.then(() => {
     $('#loading').classList.add('hidden');
