@@ -61,12 +61,18 @@ function simulate(perDay, days) {
     if (r < 0.75) return { kind: 'points', amount: 45 };
     return { kind: 'great' };
   };
+  // pase de temporada (misma tabla que js/save.js)
+  const passReward = (l) => (l === 30 ? [{ kind: 'ultra' }, { kind: 'rainbow', amount: 30 }] : l % 10 === 0 ? [{ kind: 'ultra' }]
+    : l % 5 === 0 ? [{ kind: 'great' }, { kind: 'rainbow', amount: 8 }] : [[{ kind: 'coins', amount: 120 }, { kind: 'points', amount: 90 }, { kind: 'poke' }, { kind: 'points', amount: 90 }][l % 4]]);
+  let passXp = 0, passLvl = 0;
   for (let day = 1; day <= days; day++) {
+    if (day % 30 === 1) { passXp = 0; passLvl = 0; }
     let winsToday = 0;
     for (let m = 0; m < perDay; m++) {
       const win = rnd() < 0.5;
       const R = win ? M.matchReward.win : M.matchReward.lose;
       coins += R.coins;
+      passXp += win ? M.pass.xpWin : M.pass.xpLose;
       points += R.points;
       rainbow += R.rainbow || 0;
       let tk = win ? 40 : 15;
@@ -75,7 +81,11 @@ function simulate(perDay, days) {
       tokens += tk;
       while (tokens >= M.tokensPerChest) { tokens -= M.tokensPerChest; chests.push('poke'); }
     }
-    if (perDay >= 3) for (let i = 0; i < 3; i++) reward(mission(false));
+    if (perDay >= 3) for (let i = 0; i < 3; i++) { reward(mission(false)); passXp += M.pass.xpMission; }
+    while (passLvl < Math.min(M.pass.levels, Math.floor(passXp / M.pass.xpPerLevel))) {
+      passLvl++;
+      for (const it of passReward(passLvl)) it.kind === 'rainbow' ? (rainbow += it.amount) : reward(it);
+    }
     if (day % 7 === 0 && perDay >= 4) for (let i = 0; i < 3; i++) reward(mission(true));
     while (chests.length) openChest(chests.shift());
     // gasta: primero desbloquear (el más barato), luego subir de nivel, luego shiny

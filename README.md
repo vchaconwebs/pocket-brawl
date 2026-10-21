@@ -29,6 +29,9 @@ The Pokémon Company. Ver [CREDITS.md](CREDITS.md).
   (Eevee, Ralts, Oddish...) eligen su evolución en la ficha.
 - Cada tipo tiene dos súper; los de doble tipo usan el súper de su segundo tipo, y unos 40 famosos y
   legendarios tienen súper propio (Onda Mental, Pulso Primigenio, Sentencia...).
+- **Pase de temporada gratis**: una temporada por mes, 30 niveles (300 EXP cada uno; victoria +60, derrota +30,
+  misión diaria +50) con monedas, Puntos Pokémon, Poké/Super/Ultra Balls y Monedas Arcoíris. Pasado el nivel 30,
+  cada nivel extra da una Poké Ball. Con 10 partidas al día: 100 Pokémon en ~16 días y todos en ~4 meses.
 - **Cada partida** da monedas y Puntos Pokémon (victoria 25 / 16 y 1 Moneda Arcoíris; derrota 10 / 7).
   Las 3 primeras victorias del día dan fichas dobles.
 - **Monedas**: suben de nivel a los Pokémon (Nv. 1 a 10, +2 % de vida y daño por nivel; 2.030 monedas en total).

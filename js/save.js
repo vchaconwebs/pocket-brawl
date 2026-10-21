@@ -23,6 +23,8 @@ PB.META = {
   },
   pityChests: 6, // si abres 6 cofres seguidos sin Pokémon nuevo, el siguiente trae uno seguro
   rainbowChance: { great: 0.25, ultra: 0.8 },
+  // pase de temporada (gratis): una temporada por mes, 30 niveles que se suben jugando
+  pass: { levels: 30, xpPerLevel: 300, xpWin: 60, xpLose: 30, xpMission: 50, firstSeason: [2026, 10] },
   clanCost: 300, // monedas para crear un clan
   // skins shiny: se compran con Monedas Arcoíris
   shinyCost: 80,
@@ -439,6 +441,10 @@ PB.Save = (() => {
     d.coins += MR.coins;
     d.points += MR.points;
     d.rainbow = (d.rainbow || 0) + (MR.rainbow || 0);
+    const passXp = won ? PB.META.pass.xpWin : PB.META.pass.xpLose;
+    const passBefore = pass().level;
+    addPassXp(passXp);
+    const passUp = pass().level > passBefore;
     const newChests = [];
     while (d.tokens >= PB.META.tokensPerChest) {
       d.tokens -= PB.META.tokensPerChest;
@@ -468,7 +474,7 @@ PB.Save = (() => {
       if (!m.claimed) m.progress = Math.min(m.n, m.progress + (add[m.type] || 0));
     }
     persist();
-    return { tokens, newChests, copas: delta, copasNow: d.copas[id], coins: MR.coins, points: MR.points, rainbow: MR.rainbow || 0, bonus, bonusLeft: d.bonusLeft };
+    return { tokens, newChests, copas: delta, copasNow: d.copas[id], coins: MR.coins, points: MR.points, rainbow: MR.rainbow || 0, bonus, bonusLeft: d.bonusLeft, passXp, passUp };
   }
 
   function missions(group) {
@@ -481,8 +487,64 @@ PB.Save = (() => {
     if (!m || m.claimed || m.progress < m.n) return null;
     m.claimed = true;
     giveReward(m.reward);
+    addPassXp(PB.META.pass.xpMission);
     persist();
     return m.reward;
+  }
+
+  // ---------------------------------------------------------------- pase de temporada
+  const seasonKey = (dt = new Date()) => dt.getFullYear() + '-' + (dt.getMonth() + 1);
+  const seasonNumber = (dt = new Date()) => {
+    const [y, m] = PB.META.pass.firstSeason;
+    return Math.max(1, (dt.getFullYear() - y) * 12 + (dt.getMonth() + 1 - m) + 1);
+  };
+  // premio de cada nivel (el 30 es el gordo)
+  function passReward(lvl) {
+    if (lvl === 30) return [{ kind: 'ultra' }, { kind: 'rainbow', amount: 30 }];
+    if (lvl % 10 === 0) return [{ kind: 'ultra' }];
+    if (lvl % 5 === 0) return [{ kind: 'great' }, { kind: 'rainbow', amount: 8 }];
+    const cycle = [{ kind: 'coins', amount: 120 }, { kind: 'points', amount: 90 }, { kind: 'poke' }, { kind: 'points', amount: 90 }];
+    return [cycle[lvl % 4]];
+  }
+  function passState() {
+    const d = get();
+    if (!d.pass || d.pass.season !== seasonKey()) d.pass = { season: seasonKey(), xp: 0, claimed: [] };
+    return d.pass;
+  }
+  function pass() {
+    const P = passState(), M = PB.META.pass;
+    const level = Math.min(M.levels, Math.floor(P.xp / M.xpPerLevel));
+    const now = new Date();
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const rewards = [];
+    for (let l = 1; l <= M.levels; l++) rewards.push({ lvl: l, items: passReward(l), claimed: P.claimed.includes(l), ready: l <= level });
+    return {
+      season: seasonNumber(), xp: P.xp, level, max: M.levels,
+      progress: level >= M.levels ? 1 : (P.xp % M.xpPerLevel) / M.xpPerLevel,
+      // pasado el nivel 30, cada nivel de más da una Poké Ball
+      extra: Math.max(0, Math.floor(P.xp / M.xpPerLevel) - M.levels) - (P.extraClaimed || 0),
+      endsIn: end - now, rewards,
+    };
+  }
+  function addPassXp(n) {
+    passState().xp += n;
+  }
+  function claimPass(lvl) {
+    const p = pass(), P = passState();
+    const r = p.rewards[lvl - 1];
+    if (!r || r.claimed || !r.ready) return null;
+    P.claimed.push(lvl);
+    for (const it of r.items) giveReward(it);
+    persist();
+    return r.items;
+  }
+  function claimPassExtra() {
+    const p = pass(), P = passState();
+    if (p.extra <= 0) return null;
+    P.extraClaimed = (P.extraClaimed || 0) + 1;
+    giveReward({ kind: 'poke' });
+    persist();
+    return [{ kind: 'poke' }];
   }
 
   // cuántas cosas hay listas para reclamar (para los avisos rojos)
@@ -491,7 +553,9 @@ PB.Save = (() => {
     const d = get();
     const mis = [...d.daily.list, ...d.weekly.list].filter((m) => !m.claimed && m.progress >= m.n).length;
     const ach = achievements().filter((a) => !a.claimed && a.progress >= a.n).length;
-    return { missions: mis, achievements: ach };
+    const p = pass();
+    const ps = p.rewards.filter((r) => r.ready && !r.claimed).length + p.extra;
+    return { missions: mis, achievements: ach, pass: ps };
   }
 
   function reset() {
@@ -502,6 +566,7 @@ PB.Save = (() => {
 
   return {
     load, get, persist, setName, owned, level, copas, totalCopas, select, upgradeCost, upgrade, unlockCost, unlock, spendCoins,
+    pass, claimPass, claimPassExtra,
     needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, branch, lineOf, setBranch,
     openChest, nextChest, applyMatch, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
   };

@@ -150,6 +150,12 @@ PB.Lobby = (() => {
     // avisos rojos: misiones, logros y solicitudes de amistad
     const pend = PB.Save.pending();
     setBadge('#mis-badge', pend.missions);
+    setBadge('#pass-badge', pend.pass);
+    const ps = PB.Save.pass();
+    $('#pass-season').textContent = 'Temporada ' + ps.season;
+    $('#pass-lv').textContent = ps.level;
+    $('#pass-fill').style.width = Math.round(ps.progress * 100) + '%';
+    $('#btn-pass').classList.toggle('ready', pend.pass > 0);
     setBadge('#ach-badge', pend.achievements);
     PB.Online.requests().then((r) => setBadge('#fr-badge', r.length));
   }
@@ -397,7 +403,55 @@ PB.Lobby = (() => {
   function rewardInfo(r) {
     if (r.kind === 'coins') return { icon: coinIcon(), label: '+' + r.amount };
     if (r.kind === 'points') return { icon: starIcon(), label: '+' + r.amount };
+    if (r.kind === 'rainbow') return { icon: rainbowIcon(), label: '+' + r.amount };
     return { icon: ballIcon(r.kind, 2), label: PB.META.chests[r.kind].name };
+  }
+
+  // ------------------------------------------------------------------ pase de temporada
+  function showPass() {
+    const p = PB.Save.pass();
+    const M = PB.META.pass;
+    $('#ps-title').textContent = 'Pase · Temporada ' + p.season;
+    $('#ps-level').textContent = p.level;
+    $('#ps-fill').style.width = Math.round(p.progress * 100) + '%';
+    $('#ps-xp').textContent = p.level >= p.max
+      ? '¡Pase completado! Cada ' + M.xpPerLevel + ' EXP de más: una Poké Ball'
+      : Math.floor(p.xp % M.xpPerLevel) + ' / ' + M.xpPerLevel + ' EXP · victoria +' + M.xpWin + ', derrota +' + M.xpLose + ', misión +' + M.xpMission;
+    $('#ps-ends').textContent = 'La temporada termina en ' + timeLeft(p.endsIn) + '. Al empezar la siguiente, el pase vuelve al nivel 0.';
+    const ready = p.rewards.filter((r) => r.ready && !r.claimed).length + p.extra;
+    $('#ps-all').disabled = !ready;
+    $('#ps-all').textContent = ready ? 'Reclamar todo (' + ready + ')' : 'Nada que reclamar';
+    const track = $('#ps-track');
+    track.innerHTML = p.rewards.map((r) => {
+      const st = r.claimed ? 'claimed' : r.ready ? 'ready' : 'locked';
+      const big = r.lvl % 5 === 0 ? ' big5' : '';
+      return `<button class="ps-node ${st}${big}" data-lvl="${r.lvl}" ${st === 'ready' ? '' : 'disabled'}>` +
+        `<span class="ps-n">${r.lvl}</span>` +
+        r.items.map((it) => { const ri = rewardInfo(it); return `<span class="ps-it"><img src="${ri.icon}" alt=""><small>${ri.label}</small></span>`; }).join('') +
+        `<span class="ps-st">${r.claimed ? '✓' : r.ready ? '¡Reclamar!' : '🔒'}</span></button>`;
+    }).join('') + (p.extra > 0 ? `<button class="ps-node ready extra" data-lvl="extra"><span class="ps-n">+</span><span class="ps-it"><img src="${ballIcon('poke', 2)}" alt=""><small>× ${p.extra}</small></span><span class="ps-st">¡Reclamar!</span></button>` : '');
+    track.querySelectorAll('.ps-node.ready').forEach((e) => (e.onclick = () => claimPassNode(e.dataset.lvl)));
+    show('passscreen');
+    // centra el nivel actual
+    const cur = track.querySelector('.ps-node.ready') || track.children[Math.max(0, p.level - 1)];
+    if (cur) track.scrollLeft = cur.offsetLeft - track.clientWidth / 2 + cur.clientWidth / 2;
+  }
+
+  function claimPassNode(lvl) {
+    const items = lvl === 'extra' ? PB.Save.claimPassExtra() : PB.Save.claimPass(+lvl);
+    if (!items) return;
+    PB.Audio.play('ready');
+    if (!openClaimedChest(items, 'pass')) showPass();
+  }
+
+  function claimAllPass() {
+    const p = PB.Save.pass();
+    let got = [];
+    for (const r of p.rewards) if (r.ready && !r.claimed) got = got.concat(PB.Save.claimPass(r.lvl) || []);
+    for (let i = 0; i < p.extra; i++) got = got.concat(PB.Save.claimPassExtra() || []);
+    if (!got.length) return;
+    PB.Audio.play('win');
+    if (!openClaimedChest(got, 'pass')) showPass();
   }
 
   // ------------------------------------------------------------------ misiones
@@ -825,6 +879,7 @@ PB.Lobby = (() => {
     const back = chestReturn;
     chestReturn = 'lobby';
     if (back === 'missions') showMissions();
+    else if (back === 'pass') showPass();
     else if (back === 'achievements') showAchievements();
     else show('lobby');
   }
@@ -1081,6 +1136,8 @@ PB.Lobby = (() => {
     $('#btn-pokemon').onclick = showCollection;
     $('#btn-missions').onclick = () => showMissions();
     $('#btn-mode').onclick = showModes;
+    $('#btn-pass').onclick = showPass;
+    $('#ps-all').onclick = claimAllPass;
     fillIcons();
     // la Pokéball como imagen para el CSS (cabeceras, botón de jugar, tarjetas)
     document.documentElement.style.setProperty('--ico-ball', 'url("' + ballIcon('poke', 2) + '")');

@@ -1277,3 +1277,51 @@ h1.lose { color: #ff8a7a; }
   padding: 4px 18px 6px !important;
 }
 .move.evo b { color: #ffe066; }
+
+/* =====================================================================
+   PASE DE TEMPORADA (gratis)
+   ===================================================================== */
+.pass-btn {
+  position: relative; display: grid; grid-template-columns: 1fr auto; gap: 0 8px; align-items: center; text-align: left;
+  font: inherit; color: #fff; cursor: pointer; padding: 0 6px !important;
+  border-style: solid; border-width: 12px; border-image-slice: 12 fill; border-image-width: 12px; border-image-source: var(--sk-pink);
+  background: transparent; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+}
+.pass-btn.ready { border-image-source: var(--sk-yellow); color: #3a2500; text-shadow: 1px 1px 0 #fff4b0; }
+.pass-btn .pb-top { display: flex; flex-direction: column; line-height: 1; }
+.pass-btn .pb-top b { font-weight: normal; font-size: 18px; }
+.pass-btn .pb-top small { font-size: 12px; opacity: 0.9; }
+.pass-btn .pb-lv { font-size: 15px; }
+.pass-btn .pb-lv b { font-weight: normal; font-size: 22px; }
+.pass-btn .bar { grid-column: 1 / -1; height: 8px; margin-top: 2px; }
+.pass-btn .badge { right: -16px; top: -16px; }
+.pass-btn:active { transform: translateY(3px); }
+.ps-info { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.ps-lv { display: flex; flex-direction: column; align-items: center; line-height: 1; min-width: 54px; }
+.ps-lv b { font-weight: normal; font-size: 34px; color: #ffe066; }
+.ps-lv small { font-size: 12px; color: #c8d4ff; }
+.ps-bar { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.ps-bar .bar { height: 14px; }
+.ps-bar small { font-size: 13px; color: #c8d4ff; }
+#ps-track { display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 10px; scroll-behavior: smooth; }
+.ps-node {
+  flex: none; width: 92px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 2px;
+  font: inherit; color: #fff; background: rgba(0, 0, 0, 0.3); border: 3px solid #141824; cursor: default;
+}
+.ps-node.big5 { background: rgba(120, 70, 200, 0.35); }
+.ps-node.ready { background: linear-gradient(#ffe066, #f5a815); color: #3a2500; cursor: pointer; animation: ps-pulse 1.2s infinite; }
+.ps-node.claimed { opacity: 0.5; }
+.ps-node.locked img { filter: grayscale(0.6) brightness(0.8); }
+.ps-n { font-size: 18px; line-height: 1; }
+.ps-it { display: flex; align-items: center; gap: 3px; }
+.ps-it img { width: 26px; height: 26px; image-rendering: pixelated; }
+.ps-it small { font-size: 12px; }
+.ps-st { font-size: 12px; }
+@keyframes ps-pulse { 50% { transform: translateY(-3px); } }
+@media (max-height: 500px) {
+  .pass-btn .pb-top b { font-size: 15px; }
+  .pass-btn .pb-lv b { font-size: 18px; }
+  .ps-lv b { font-size: 26px; }
+  .ps-node { width: 80px; }
+  .ps-it img { width: 22px; height: 22px; }
+}

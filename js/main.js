@@ -235,7 +235,7 @@
       `<div class="copas-change ${dc > 0 ? 'up' : dc < 0 ? 'down' : ''}"><img src="${PB.Icons.cup()}" alt=""><b>${dc > 0 ? '+' : ''}${dc}</b><small>${me.def.name}: ${reward.copasNow} copas</small></div>` +
       `<div class="pill pay"><img src="${PB.Icons.coin()}" alt=""><b>+${reward.coins}</b><img src="${PB.Icons.star()}" alt=""><b>+${reward.points}</b>` +
       (reward.rainbow ? `<img src="${PB.Icons.rainbow()}" alt=""><b>+${reward.rainbow}</b>` : '') + `</div>` +
-      `<div class="tokens"><img src="${PB.Icons.ball('poke', 2)}" alt=""><div class="tok-info"><small>+${reward.tokens} fichas${reward.bonus ? ' (¡dobles!)' : ''}</small><span class="bar"><i style="width:${pct}%"></i></span></div><b>${d.tokens}/${PB.META.tokensPerChest}</b></div>` +
+      `<div class="tokens"><img src="${PB.Icons.ball('poke', 2)}" alt=""><div class="tok-info"><small>+${reward.tokens} fichas${reward.bonus ? ' (¡dobles!)' : ''} · +${reward.passXp} EXP de pase${reward.passUp ? ' ¡sube de nivel!' : ''}</small><span class="bar"><i style="width:${pct}%"></i></span></div><b>${d.tokens}/${PB.META.tokensPerChest}</b></div>` +
       `<p class="got">${[
         reward.newChests.length ? '¡' + (reward.newChests.length > 1 ? reward.newChests.length + ' Poké Balls' : 'Poké Ball') + ' nueva!' : '',
         pend.missions ? pend.missions + ' misión' + (pend.missions > 1 ? 'es' : '') + ' para reclamar' : '',
