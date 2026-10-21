@@ -304,7 +304,7 @@
 
   // Esperar a la fuente pixel (si tarda más de 2 s, se sigue igualmente)
   const fontReady = document.fonts && document.fonts.load
-    ? Promise.race([document.fonts.load('16px "Pixelify Sans"'), new Promise((r) => setTimeout(r, 2000))]).catch(() => {})
+    ? Promise.race([document.fonts.load('16px "Jersey 10"'), new Promise((r) => setTimeout(r, 2000))]).catch(() => {})
     : Promise.resolve();
 
   PB.Settings.apply();

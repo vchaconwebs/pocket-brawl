@@ -252,7 +252,7 @@ PB.Renderer = class {
       const k = f.t / f.life;
       const pop = k < 0.15 ? 0.6 + (k / 0.15) * 0.7 : 1.3 - Math.min(0.3, (k - 0.15) * 1.5);
       ctx.globalAlpha = 1 - k * k;
-      ctx.font = `${Math.round(f.size * pop)}px "Pixelify Sans", system-ui, sans-serif`;
+      ctx.font = `${Math.round(f.size * pop)}px "Jersey 10", system-ui, sans-serif`;
       ctx.lineWidth = 5;
       ctx.lineJoin = 'round';
       ctx.strokeStyle = '#000';
@@ -734,7 +734,7 @@ PB.Renderer = class {
     if (b.lvl) {
       UI.panel(ctx, x + w / 2 + 2, y - 4, 18, 18, { p: 2, fill: '#ffd23a', light: 'rgba(255,255,255,0.45)', dark: 'rgba(120,70,0,0.35)' });
       ctx.textAlign = 'center';
-      ctx.font = '12px "Pixelify Sans", system-ui, sans-serif';
+      ctx.font = '12px "Jersey 10", system-ui, sans-serif';
       ctx.fillStyle = '#3a2500';
       ctx.fillText(b.lvl, x + w / 2 + 11, y + 9);
     }
@@ -863,7 +863,7 @@ PB.Renderer = class {
   outlined(text, x, y, size, color, align) {
     const ctx = this.ctx;
     ctx.textAlign = align || 'center';
-    ctx.font = `${size}px "Pixelify Sans", system-ui, sans-serif`;
+    ctx.font = `${size}px "Jersey 10", system-ui, sans-serif`;
     ctx.lineJoin = 'round';
     ctx.lineWidth = Math.max(3, size / 6);
     ctx.strokeStyle = '#0c1020';
@@ -898,7 +898,7 @@ PB.Renderer = class {
       if (age > 5) continue;
       ctx.globalAlpha = Math.min(1, 5 - age);
       const ours = f.team === team;
-      ctx.font = '13px "Pixelify Sans", system-ui, sans-serif';
+      ctx.font = '13px "Jersey 10", system-ui, sans-serif';
       const t1 = f.killer || '?', t2 = f.victim || '';
       const w1 = ctx.measureText(t1).width, w2 = ctx.measureText(t2).width;
       const pw = w1 + w2 + 92;
@@ -931,7 +931,7 @@ PB.Renderer = class {
       const k = 1 - (game.startT % 1 || 1);
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.fillRect(0, 0, W, H);
-      ctx.font = '22px "Pixelify Sans", system-ui, sans-serif';
+      ctx.font = '22px "Jersey 10", system-ui, sans-serif';
       const tw = ctx.measureText(game.mode.name).width + 40;
       UI.panel(ctx, W / 2 - tw / 2, H / 2 - 92, tw, 42, { p: 3, fill: 'rgba(30,50,110,0.95)' });
       this.outlined(game.mode.name, W / 2, H / 2 - 63, 22, '#ffffff');

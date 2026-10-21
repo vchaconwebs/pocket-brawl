@@ -21,7 +21,7 @@ Generador de efectos pixel art adaptado de [PokéSurvivor](https://github.com/JP
 Required Notice: Copyright 2026 JPTER78 (https://github.com/JPTER78/pokesurvivor)
 
 ## Fuente
-[Pixelify Sans](https://github.com/eifetx/Pixelify-Sans), SIL Open Font License 1.1 (`assets/fonts/OFL.txt`).
+[Jersey 10](https://github.com/scfried/soft-type-jersey) (Sarah Cadigan-Fried), SIL Open Font License 1.1 (`assets/fonts/OFL.txt`).
 
 ## Mapa
 Tiles pixel art generados en `js/tiles.js` con la técnica de PokéSurvivor (misma licencia y aviso que los efectos).
