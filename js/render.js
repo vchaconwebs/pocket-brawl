@@ -1098,7 +1098,7 @@ PB.Renderer = class {
     this.drawModeHud(game, view);
 
     // registro de K.O. con retratos: [quien] ➜ [a quién]
-    let fy = W < 760 ? 112 : 10; // en pantallas estrechas, debajo del marcador
+    let fy = W < 760 ? 112 : game.mode.id === 'gems' ? 56 : 10; // en pantallas estrechas, debajo del marcador
     for (const f of game.feed) {
       const age = game.time - f.t;
       if (age > 5) continue;
@@ -1166,7 +1166,7 @@ PB.Renderer = class {
         const size = W < 700 ? 16 : 19;
         ctx.font = size + 'px "Jersey 10", system-ui, sans-serif';
         const bw = Math.min(W - 20, ctx.measureText(b.text).width + 36);
-        const by = 104 + (game.countdown ? 44 : 0) - (k < 0.1 ? (1 - k / 0.1) * 8 : 0);
+        const by = 104 - (k < 0.1 ? (1 - k / 0.1) * 8 : 0);
         UI.panel(ctx, W / 2 - bw / 2, by, bw, size + 14, { p: 2, fill: 'rgba(14,20,48,0.85)' });
         this.outlined(b.text, W / 2, by + size + 3, size, b.color);
         ctx.globalAlpha = 1;
@@ -1220,27 +1220,25 @@ PB.Renderer = class {
     };
 
     if (id === 'gems') {
+      // un marcador por equipo en cada esquina: Pokéball + número (tu equipo a la izquierda)
       const mine = game.teamBalls(team), theirs = game.teamBalls(foe);
       const R = game.rules.ballsToWin;
-      const px = W < 600 ? 1 : 1.2;
-      const slot = 15 * px + 2;
-      const panelW = slot * R + 70;
-      panel(panelW, 60);
-      [[0, mine, '#5aa8ff'], [1, theirs, '#ff5f5f']].forEach(([i, n, col]) => {
-        const y = 22 + i * 24;
-        this.outlined(String(n), cx - panelW / 2 + 24, y + 8, 22, col);
-        for (let s2 = 0; s2 < R; s2++) {
-          const x = cx - panelW / 2 + 46 + s2 * slot + slot / 2;
-          if (s2 < n) PB.Pokeball.draw(ctx, x, y + 1, px, {});
-          else PB.Pokeball.drawSlot(ctx, x, y + 1, px);
-        }
-      });
-      clock(88);
+      const S = PB.safe ? PB.safe() : { l: 0, r: 0 };
+      const counter = (x, n, fill, right) => {
+        const w = 98, h = 40, bx = right ? x - w : x;
+        UI.panel(ctx, bx, 8, w, h, { p: 2, fill });
+        PB.Pokeball.draw(ctx, bx + 22, 28, 1.3, {});
+        this.outlined(String(n), bx + 42, 39, 30, '#ffffff', 'left');
+        this.outlined('/' + R, bx + 44 + (n >= 10 ? 30 : 16), 39, 16, 'rgba(255,255,255,0.75)', 'left');
+      };
+      counter(10 + S.l + 58, mine, 'rgba(30,70,150,0.9)', false);
+      counter(W - 10 - S.r, theirs, 'rgba(150,30,40,0.9)', true);
+      clock(28);
       if (game.countdown) {
         const ours = game.countdown.team === team;
-        UI.panel(ctx, cx - 120, 104, 240, 40, { p: 2, fill: ours ? 'rgba(30,70,150,0.85)' : 'rgba(140,30,40,0.85)' });
-        this.outlined(String(Math.ceil(game.countdown.t)), cx - 88, 134, 28, '#ffffff');
-        this.outlined(PB.T(ours ? '¡Aguantad!' : '¡Quitádselas!'), cx + 18, 131, 17, '#ffffff');
+        UI.panel(ctx, cx - 110, 46, 220, 36, { p: 2, fill: ours ? 'rgba(30,70,150,0.85)' : 'rgba(140,30,40,0.85)' });
+        this.outlined(String(Math.ceil(game.countdown.t)), cx - 80, 74, 26, '#ffffff');
+        this.outlined(PB.T(ours ? '¡Aguantad!' : '¡Quitádselas!'), cx + 16, 71, 16, '#ffffff');
       }
     } else if (id === 'showdown') {
       const alive = game.brawlers.filter((b) => !b.dead).length;
