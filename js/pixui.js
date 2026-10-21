@@ -256,7 +256,7 @@ PB.PixUI = (() => {
     ctx.fillRect(x + p, y + h - p * 2, w - p * 2, p);
     // doble marco celeste, como las ventanas de Mundo Misterioso
     if (o.ring !== false && w > p * 8 && h > p * 8) {
-      ctx.fillStyle = o.ringColor || 'rgba(140,202,255,0.6)';
+      ctx.fillStyle = o.ringColor || (FRAMES[PB.Settings.get('frame')] || '#e8b838');
       const i = p * 2, t = Math.max(1, Math.round(p / 2));
       ctx.fillRect(x + i + p, y + i, w - (i + p) * 2, t);
       ctx.fillRect(x + i + p, y + h - i - t, w - (i + p) * 2, t);
@@ -322,5 +322,70 @@ PB.PixUI = (() => {
     return cv;
   }
 
-  return { iconCanvas, iconURL, panel, bar, icon, ring };
+  // ------------------------------------------------------------------ marcos de botones y ventanas (9-slice)
+  // Cada "piel" es una imagen pequeña con esquinas redondeadas por escalones, contorno, borde
+  // interior, brillo arriba y franja oscura abajo (como los botones de Pokémon Platino).
+  // Se usa en CSS con border-image, a 3 px de pantalla por píxel de arte.
+  const SKIN_ART = [
+    '..ooooo..',
+    '.owwwwwo.',
+    'owlllllwo',
+    'owfffffwo',
+    'owfffffwo',
+    'owfffffwo',
+    'owdddddwo',
+    '.owwwwwo.',
+    '..ooooo..',
+  ];
+  // Variante de ventana (Mundo Misterioso): contorno negro, línea de color y relleno oscuro
+  const WIN_ART = [
+    '..ooooo..',
+    '.okkkkko.',
+    'okfffffko',
+    'okfffffko',
+    'okfffffko',
+    'okfffffko',
+    'okfffffko',
+    '.okkkkko.',
+    '..ooooo..',
+  ];
+  function skinURL(c, art) {
+    const P = 3, N = 9;
+    const cv = document.createElement('canvas');
+    cv.width = N * P;
+    cv.height = N * P;
+    const g = cv.getContext('2d');
+    (art || SKIN_ART).forEach((row, y) => [...row].forEach((ch, x) => {
+      if (ch === '.') return;
+      g.fillStyle = c[ch];
+      g.fillRect(x * P, y * P, P, P);
+    }));
+    return cv.toDataURL();
+  }
+  // colores: o contorno, w borde claro, l brillo, f relleno, d sombra
+  const SKINS = {
+    red: { o: '#2a0c08', w: '#ffd0c8', l: '#ff7a64', f: '#e8402c', d: '#b02818' },
+    green: { o: '#0c2a10', w: '#d0ffc8', l: '#78e070', f: '#48b048', d: '#2e8a30' },
+    yellow: { o: '#3a2400', w: '#fff8d0', l: '#ffe680', f: '#f8c030', d: '#d09010' },
+    orange: { o: '#3a1600', w: '#ffe0c0', l: '#ffa860', f: '#f07c28', d: '#c05a14' },
+    pink: { o: '#3a0c2a', w: '#ffd8f0', l: '#f890d0', f: '#d860b0', d: '#a83e88' },
+    blue: { o: '#0a1838', w: '#d0e4ff', l: '#70a8ff', f: '#3a78e0', d: '#2456b0' },
+    teal: { o: '#062a2e', w: '#c8fff8', l: '#60dcd0', f: '#28b0b0', d: '#18868a' },
+    gray: { o: '#141824', w: '#c8d0e0', l: '#8a96b0', f: '#5e6a88', d: '#46506c' },
+    white: { o: '#3a4a64', w: '#a8c8e8', l: '#ffffff', f: '#fafaf6', d: '#e4e4dc' },
+  };
+  // marco de ventana elegido en Ajustes
+  const FRAMES = { dorado: '#e8b838', verde: '#78d070', celeste: '#8ccaff', rosa: '#f890c8' };
+
+  function installSkins() {
+    const root = document.documentElement.style;
+    for (const [k, c] of Object.entries(SKINS)) root.setProperty('--sk-' + k, 'url("' + skinURL(c) + '")');
+    const fr = FRAMES[PB.Settings.get('frame')] || FRAMES.dorado;
+    root.setProperty('--frame', fr);
+    root.setProperty('--sk-win', 'url("' + skinURL({ o: '#020308', k: fr, f: '#10183a' }, WIN_ART) + '")');
+    root.setProperty('--sk-win2', 'url("' + skinURL({ o: '#020308', k: fr, f: '#18234e' }, WIN_ART) + '")');
+    root.setProperty('--sk-row', 'url("' + skinURL({ o: '#020308', k: 'rgba(255,255,255,0.18)', f: '#18234e' }, WIN_ART) + '")');
+  }
+
+  return { iconCanvas, iconURL, panel, bar, icon, ring, installSkins, FRAMES };
 })();

@@ -362,6 +362,7 @@ PB.Lobby = (() => {
     return new Promise((resolve) => {
       $('#modal-text').textContent = text;
       $('#modal-cancel').classList.toggle('hidden', !withCancel);
+      $('#modal-ok').textContent = withCancel ? 'SÍ' : 'VALE';
       $('#modal').classList.remove('hidden');
       $('#modal-ok').onclick = () => { $('#modal').classList.add('hidden'); resolve(true); };
       $('#modal-cancel').onclick = () => { $('#modal').classList.add('hidden'); resolve(false); };
@@ -847,6 +848,7 @@ PB.Lobby = (() => {
     } else if (stTab === 'graphics') {
       html =
         choice('quality', 'Calidad de efectos', [['alta', 'Alta'], ['baja', 'Baja']], 'Baja: menos partículas y brillos, va mejor en móviles lentos') +
+        choice('frame', 'Marco de las ventanas', [['dorado', 'Dorado'], ['verde', 'Verde'], ['celeste', 'Celeste'], ['rosa', 'Rosa']], 'Como en Pokémon Mundo Misterioso') +
         toggle('shake', 'Temblor de pantalla', 'En explosiones, golpes y súper') +
         toggle('dmgNumbers', 'Números de daño') +
         toggle('hpNumbers', 'Vida en números', 'Encima de la barra de vida') +

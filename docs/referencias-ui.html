@@ -1,0 +1,227 @@
+<title>Referencias de menús Pokémon</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap">
+<style>
+/* Tablero de referencias: cada juego en una franja, con su muestra de botones recreada en pixel art.
+   Look oscuro deliberado (como el juego), un solo tema. */
+:root {
+  --bg: #0e1430;
+  --band: #16204a;
+  --band2: #1b2756;
+  --ink: #eef2ff;
+  --muted: #a9b6dc;
+  --accent: #ffcb05;
+  --line: #070b1c;
+  --font: "Pixelify Sans", "Trebuchet MS", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.45; }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-size: clamp(30px, 6vw, 46px); margin: 0 0 6px; color: var(--accent); text-wrap: balance;
+  text-shadow: -3px 0 #2a5bb0, 3px 0 #2a5bb0, 0 -3px #2a5bb0, 0 3px #2a5bb0, 0 7px #102a64; }
+.lead { margin: 0 0 24px; color: var(--muted); max-width: 64ch; }
+.games { display: flex; flex-direction: column; gap: 18px; }
+.game { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 18px; padding: 18px; background: var(--band);
+  box-shadow: 0 -4px 0 var(--line), 0 4px 0 var(--line), -4px 0 0 var(--line), 4px 0 0 var(--line); margin: 4px; }
+.game:nth-child(even) { background: var(--band2); }
+.game h2 { margin: 0; font-size: 22px; text-wrap: balance; }
+.game .gen { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--accent); }
+.game ul { margin: 8px 0 10px; padding-left: 18px; color: var(--muted); }
+.game li { margin-bottom: 4px; }
+.game li b { color: var(--ink); font-weight: 600; }
+.sw { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.sw i { width: 26px; height: 26px; display: block; box-shadow: 0 0 0 3px var(--line); }
+.links { display: flex; gap: 12px; flex-wrap: wrap; font-size: 14px; }
+.links a { color: #8ccaff; }
+.take { margin-top: 10px; padding: 8px 10px; background: rgba(255, 203, 5, 0.12); color: #ffe9a8; font-size: 14px; }
+.demo { min-width: 0; display: flex; align-items: center; justify-content: center; padding: 18px; min-height: 190px; }
+button { font-family: var(--font); cursor: pointer; }
+button:focus-visible { outline: 3px dashed var(--accent); outline-offset: 4px; }
+
+/* ---------- Mundo Misterioso Exploradores */
+.pmd { background: #000; width: 100%; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.pmd-win { background: linear-gradient(#18203c, #0a0e20); box-shadow: inset 0 0 0 2px #000, inset 0 0 0 4px #e8b838, inset 0 0 0 6px #000; padding: 12px 14px; color: #fff; }
+.pmd-win.green { box-shadow: inset 0 0 0 2px #000, inset 0 0 0 4px #78d070, inset 0 0 0 6px #000; }
+.pmd-win button { display: block; width: 100%; text-align: left; background: none; border: 0; color: #fff; font-size: 17px; padding: 3px 0 3px 18px; position: relative; }
+.pmd-win button:hover::before, .pmd-win button.on::before { content: '▶'; position: absolute; left: 0; color: #ffe060; font-size: 12px; top: 6px; }
+
+/* ---------- HeartGold / SoulSilver */
+.hg { background: repeating-linear-gradient(135deg, #58b858 0 6px, #50ac50 6px 12px); width: 100%; padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; position: relative; }
+.hg button { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 15px; color: #fff; text-shadow: 1px 1px 0 #1c5a1c;
+  background: linear-gradient(#78d878, #48a848); border: 0; border-radius: 10px; box-shadow: 0 0 0 2px #1c5a1c, inset 0 0 0 2px #b8f0b0; }
+.hg button:hover { background: linear-gradient(#98e898, #58c058); }
+.hg b.ic { width: 22px; height: 22px; border-radius: 6px; background: #fff; box-shadow: inset 0 0 0 2px #1c5a1c; flex: none; }
+.hg .x { position: absolute; top: -12px; right: -6px; width: 28px; height: 28px; border-radius: 50%; background: #e84838; color: #fff; border: 0; box-shadow: 0 0 0 2px #6a1010; font-weight: 700; }
+
+/* ---------- Diamante / Perla / Platino: combate */
+.dp { background: linear-gradient(#e8e8f0, #c8c8d8); width: 100%; padding: 14px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.dp button { border: 0; border-radius: 22px; color: #fff; font-weight: 700; font-size: 16px; padding: 10px; text-shadow: 1px 2px 0 rgba(0,0,0,0.45);
+  box-shadow: 0 0 0 3px #303040, inset 0 0 0 3px rgba(255,255,255,0.75), inset 0 -8px 0 rgba(0,0,0,0.18); }
+.dp .fight { grid-column: 1 / -1; padding: 22px; font-size: 24px; background: #e04838; }
+.dp .bag { background: #e8b030; } .dp .pkm { background: #48a848; } .dp .run { background: #3878d8; }
+.dp button:hover { filter: brightness(1.1); }
+
+/* ---------- Rojo Fuego / Esmeralda (GBA) */
+.gba { background: #f8f8f8; width: 100%; padding: 12px; display: flex; gap: 12px; align-items: flex-start; }
+.gba-box { background: #fff; border-radius: 8px; box-shadow: 0 0 0 3px #48607a, 0 0 0 6px #a8c8e0, 0 0 0 9px #48607a; padding: 8px 12px; color: #383838; text-shadow: 2px 2px 0 #d0d0c8; flex: 1; }
+.gba-box button { display: block; width: 100%; text-align: left; background: none; border: 0; color: #383838; font-size: 17px; padding: 2px 0 2px 16px; position: relative; text-shadow: 2px 2px 0 #d0d0c8; }
+.gba-box button:hover::before, .gba-box button.on::before { content: '▶'; position: absolute; left: 0; font-size: 12px; top: 5px; color: #383838; }
+.gba-text { flex: 1.4; font-size: 16px; line-height: 1.5; }
+
+/* ---------- Espada / Escudo */
+.swsh { background: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.12) 0 30px, transparent 31px), #e02830; width: 100%; padding: 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.swsh button { aspect-ratio: 1; border-radius: 50%; border: 0; background: #fff; color: #e02830; font-size: 11px; font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.25); max-width: 100%; }
+.swsh button b { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #e02830; }
+.swsh button.sel { background: #1c1c1c; color: #ffe030; box-shadow: 0 0 0 3px #ffe030, 0 4px 0 rgba(0,0,0,0.25); }
+.swsh button.sel b { border-color: #ffe030; }
+.swsh button:hover { transform: translateY(-2px); }
+
+/* ---------- Pokémon UNITE */
+.unite { background: radial-gradient(circle at 30% 0%, #3a7ae8, #102a6a 70%); width: 100%; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.unite .glass { background: rgba(120, 200, 255, 0.14); border: 2px solid rgba(140, 220, 255, 0.85); border-radius: 12px; box-shadow: 0 0 14px rgba(120, 210, 255, 0.45), inset 0 0 12px rgba(120, 210, 255, 0.25); color: #fff; padding: 10px 12px; display: flex; gap: 8px; }
+.unite .glass button { flex: 1; background: #fff; border: 0; border-radius: 8px; color: #1e3c88; font-weight: 700; padding: 8px; font-size: 14px; }
+.unite .battle { border: 0; border-radius: 14px; padding: 16px; font-size: 22px; font-weight: 700; color: #fff; text-shadow: 0 2px 0 #a04a00;
+  background: linear-gradient(#ffd23a, #ff9020); box-shadow: 0 0 0 3px #fff, 0 0 20px rgba(255, 170, 40, 0.7); }
+.unite .battle:hover { filter: brightness(1.08); }
+
+.now { margin-top: 26px; padding: 16px 18px; background: #26407a; box-shadow: 0 -4px 0 var(--line), 0 4px 0 var(--line), -4px 0 0 var(--line), 4px 0 0 var(--line); margin-inline: 4px; }
+.now h2 { margin: 0 0 6px; font-size: 20px; color: var(--accent); }
+.now p { margin: 0; color: var(--muted); max-width: 70ch; }
+.note { margin-top: 18px; font-size: 13px; color: var(--muted); }
+
+@media (max-width: 720px) {
+  .game { grid-template-columns: minmax(0, 1fr); }
+  .swsh { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <h1>Referencias de menús Pokémon</h1>
+  <p class="lead">Seis estilos de botones y menús de juegos de Pokémon, recreados aquí para compararlos con Pocket Brawl. Cada franja lleva sus rasgos, sus colores, una muestra que se puede tocar y enlaces a capturas reales.</p>
+
+  <div class="games">
+
+    <section class="game">
+      <div>
+        <span class="gen">Nintendo DS · 2008</span>
+        <h2>Mundo Misterioso: Exploradores</h2>
+        <ul>
+          <li><b>Ventanas</b> casi negras con un marco fino de color: dorado, verde o celeste, a elegir por el jugador.</li>
+          <li><b>Cursor ▶</b> amarillo delante de la opción elegida; el resto del texto, blanco y sin fondo.</li>
+          <li>Listas verticales sencillas, sin iconos.</li>
+        </ul>
+        <div class="sw"><i style="background:#0a0e20"></i><i style="background:#e8b838"></i><i style="background:#78d070"></i><i style="background:#ffe060"></i></div>
+        <div class="links"><a href="https://duckduckgo.com/?q=pokemon+mystery+dungeon+explorers+of+sky+menu&ia=images&iax=images" target="_blank" rel="noopener">Ver capturas</a></div>
+        <p class="take">Es la base del estilo actual del juego (son los mismos sprites).</p>
+      </div>
+      <div class="demo"><div class="pmd">
+        <div class="pmd-win"><button class="on">Pokémon</button><button>Misiones</button><button>Logros</button><button>Ajustes</button></div>
+        <div class="pmd-win green"><button>¿Abrir la Ultra Ball?</button></div>
+      </div></div>
+    </section>
+
+    <section class="game">
+      <div>
+        <span class="gen">Nintendo DS · 2009</span>
+        <h2>Oro HeartGold y Plata SoulSilver</h2>
+        <ul>
+          <li><b>Botones verdes redondeados</b> con icono blanco y nombre, en dos columnas.</li>
+          <li>Fondo verde a rayas diagonales; botón <b>X rojo</b> redondo para cerrar.</li>
+          <li>Pensado para tocar: botones grandes, siempre visibles.</li>
+        </ul>
+        <div class="sw"><i style="background:#58b858"></i><i style="background:#78d878"></i><i style="background:#1c5a1c"></i><i style="background:#e84838"></i></div>
+        <div class="links"><a href="https://duckduckgo.com/?q=pokemon+heartgold+soulsilver+touch+screen+menu&ia=images&iax=images" target="_blank" rel="noopener">Ver capturas</a></div>
+        <p class="take">Ideal para el menú del lobby en móvil: cuadrícula de botones grandes con icono.</p>
+      </div>
+      <div class="demo"><div class="hg">
+        <button class="x" aria-label="Cerrar">×</button>
+        <button><b class="ic"></b>Pokédex</button><button><b class="ic"></b>Pokémon</button>
+        <button><b class="ic"></b>Mochila</button><button><b class="ic"></b>Guardar</button>
+      </div></div>
+    </section>
+
+    <section class="game">
+      <div>
+        <span class="gen">Nintendo DS · 2006-2008</span>
+        <h2>Diamante, Perla y Platino (combate)</h2>
+        <ul>
+          <li><b>Un botón enorme</b> para la acción principal (LUCHA, rojo) y tres más pequeños debajo.</li>
+          <li>Cada acción tiene su <b>color fijo</b>: rojo luchar, amarillo mochila, verde Pokémon, azul huir.</li>
+          <li>Pastillas redondeadas con doble borde blanco y oscuro.</li>
+        </ul>
+        <div class="sw"><i style="background:#e04838"></i><i style="background:#e8b030"></i><i style="background:#48a848"></i><i style="background:#3878d8"></i></div>
+        <div class="links"><a href="https://duckduckgo.com/?q=pokemon+platinum+battle+touch+screen+fight+bag+run&ia=images&iax=images" target="_blank" rel="noopener">Ver capturas</a></div>
+        <p class="take">Muy aprovechable: ¡JUGAR! como el gran botón rojo y colores fijos por sección.</p>
+      </div>
+      <div class="demo"><div class="dp">
+        <button class="fight">¡LUCHA!</button><button class="bag">MOCHILA</button><button class="pkm">POKÉMON</button><button class="run">HUIR</button>
+      </div></div>
+    </section>
+
+    <section class="game">
+      <div>
+        <span class="gen">Game Boy Advance · 2004</span>
+        <h2>Rojo Fuego y Esmeralda</h2>
+        <ul>
+          <li><b>Cajas blancas</b> con marco azul doble y esquinas redondeadas.</li>
+          <li>Texto gris oscuro con <b>sombra clara</b> debajo, la letra típica de los Pokémon de GBA.</li>
+          <li>Cursor ▶ negro y menú de inicio en lista a la derecha.</li>
+        </ul>
+        <div class="sw"><i style="background:#ffffff"></i><i style="background:#48607a"></i><i style="background:#a8c8e0"></i><i style="background:#383838"></i></div>
+        <div class="links"><a href="https://duckduckgo.com/?q=pokemon+firered+start+menu+screenshot&ia=images&iax=images" target="_blank" rel="noopener">Ver capturas</a></div>
+        <p class="take">Perfecto para cuadros de diálogo y avisos con sabor clásico.</p>
+      </div>
+      <div class="demo"><div class="gba">
+        <div class="gba-box gba-text">¡Has conseguido una Super Ball! ¿Quieres abrirla ahora?</div>
+        <div class="gba-box"><button class="on">SÍ</button><button>NO</button></div>
+      </div></div>
+    </section>
+
+    <section class="game">
+      <div>
+        <span class="gen">Nintendo Switch · 2019</span>
+        <h2>Espada y Escudo</h2>
+        <ul>
+          <li><b>Iconos en círculos blancos</b> sobre fondo rojo, en cuadrícula.</li>
+          <li>La opción elegida se pone <b>negra con amarillo</b>.</li>
+          <li>En la Mochila, fondo amarillo con Pokéballs de marca de agua y filas blancas.</li>
+        </ul>
+        <div class="sw"><i style="background:#e02830"></i><i style="background:#ffffff"></i><i style="background:#1c1c1c"></i><i style="background:#ffe030"></i></div>
+        <div class="links"><a href="https://duckduckgo.com/?q=pokemon+sword+shield+x+menu&ia=images&iax=images" target="_blank" rel="noopener">Ver capturas</a></div>
+        <p class="take">Buena idea para iconos del lobby: círculos grandes y la elegida en negro y amarillo.</p>
+      </div>
+      <div class="demo"><div class="swsh">
+        <button><b></b>Pokédex</button><button class="sel"><b></b>Pokémon</button><button><b></b>Mochila</button><button><b></b>Guardar</button>
+      </div></div>
+    </section>
+
+    <section class="game">
+      <div>
+        <span class="gen">Móvil y Switch · 2021</span>
+        <h2>Pokémon UNITE</h2>
+        <ul>
+          <li><b>Paneles de cristal azul</b> con bordes de luz celeste y brillo.</li>
+          <li>Tarjetas y botones secundarios blancos con texto azul.</li>
+          <li>Botón de batalla grande en <b>degradado amarillo-naranja</b> con borde blanco.</li>
+        </ul>
+        <div class="sw"><i style="background:#3a7ae8"></i><i style="background:#8cdcff"></i><i style="background:#ffd23a"></i><i style="background:#ff9020"></i></div>
+        <div class="links"><a href="https://duckduckgo.com/?q=pokemon+unite+main+menu+lobby&ia=images&iax=images" target="_blank" rel="noopener">Ver capturas</a></div>
+        <p class="take">Es el más parecido a un Brawl Stars: buena referencia para el lobby y el botón de jugar.</p>
+      </div>
+      <div class="demo"><div class="unite">
+        <div class="glass"><button>Misiones</button><button>Pokémon</button><button>Tienda</button></div>
+        <button class="battle">¡A combatir!</button>
+      </div></div>
+    </section>
+
+  </div>
+
+  <div class="now">
+    <h2>Qué tiene ahora Pocket Brawl</h2>
+    <p>Ventanas de Mundo Misterioso con doble marco celeste, cabeceras rojas tipo Pokédex, cursor ▶, botón de jugar rojo con Pokéball, tarjetas como las casillas del equipo y títulos con los colores del logo. Se puede mezclar con cualquiera de estos: por ejemplo, la cuadrícula de HeartGold para el menú del lobby, los colores fijos de Platino por sección y los cuadros de diálogo de Rojo Fuego para los avisos.</p>
+  </div>
+  <p class="note">Las muestras están recreadas a mano con CSS para comparar estilos; no son imágenes de los juegos. Las capturas reales se ven en los enlaces.</p>
+</div>

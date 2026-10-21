@@ -12,6 +12,7 @@ PB.Settings = (() => {
     dmgNumbers: true,
     hpNumbers: true,
     fps: false,
+    frame: 'dorado', // color del marco de las ventanas (como en Mundo Misterioso)
     // controles
     joySize: 'mediano', // pequeño | mediano | grande
     leftHanded: false, // joystick de ataque a la izquierda
@@ -38,6 +39,7 @@ PB.Settings = (() => {
   // aplica lo que afecta a otros módulos
   function apply() {
     if (PB.Audio) PB.Audio.setVolume(get('muted') ? 0 : get('volume') / 100);
+    if (PB.PixUI && document.documentElement) PB.PixUI.installSkins();
   }
   return { load, get, set, reset, apply, DEFAULTS };
 })();

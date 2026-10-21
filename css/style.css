@@ -945,3 +945,133 @@ h1.lose { color: #ff8a7a; }
 .tabs { gap: 10px; }
 .tabs button { padding-left: 18px; }
 .pn-head .back { background: linear-gradient(#ffffff, #e4e0ea) !important; color: #c8302a !important; text-shadow: none !important; font-weight: 700; box-shadow: var(--outline), 0 calc(var(--px) * 2) 0 0 rgba(0, 0, 0, 0.3), inset 0 -4px 0 #c8c0cc !important; }
+
+/* =====================================================================
+   TEMA POKÉMON 2 (Mundo Misterioso + Platino + HeartGold + Rojo Fuego)
+   Los marcos (--sk-*) son imágenes pixel generadas en js/pixui.js y se ponen con border-image.
+   ===================================================================== */
+
+/* ---------------- piel común */
+.big, .act, .tabs button, .px-seg button, .back, .icon-btn, .mini, .mode-card, .mode-card2, .lb-btn, .tile,
+.chest-widget, .panel, .pill, .profile-chip, .hero-plate, .cw-ball, .tokens, .copas-change, .reward,
+.mission, .prow, .st-row, .keys, .login-box, .move, #pf-stats div, #col-grid .card, .pn-head, .modal-box, .modal-choices, .mock-note {
+  border-style: solid !important;
+  border-width: 12px !important;
+  border-image-slice: 12 fill !important;
+  border-image-width: 12px !important;
+  border-image-repeat: stretch !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  margin: 0;
+}
+
+/* ---------------- botones (Platino): cada uno con su color */
+.big { border-image-source: var(--sk-red) !important; position: relative; color: #fff !important; text-shadow: 2px 2px 0 #6a120c !important; padding: 4px 18px 6px 58px !important; }
+.big::after { content: ''; position: absolute; left: 8px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; background: var(--ico-ball) center / contain no-repeat; image-rendering: pixelated; }
+.pause-btns .big, #again { padding-left: 52px !important; }
+.act { padding: 2px 10px !important; font-size: 15px !important; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45); }
+.act.blue { border-image-source: var(--sk-blue) !important; color: #fff !important; }
+.act.gold { border-image-source: var(--sk-yellow) !important; color: #3a2500 !important; text-shadow: 1px 1px 0 #fff4b0 !important; }
+.act.red { border-image-source: var(--sk-red) !important; color: #fff !important; }
+.act.gray, .act:disabled { border-image-source: var(--sk-gray) !important; color: #d8deec !important; text-shadow: none !important; }
+.tabs button, .px-seg button { border-image-source: var(--sk-gray) !important; color: #fff !important; padding: 2px 8px 2px 14px !important; text-shadow: 1px 1px 0 #141824 !important; }
+.tabs button.sel, .px-seg button.sel { border-image-source: var(--sk-yellow) !important; color: #3a2500 !important; text-shadow: 1px 1px 0 #fff4b0 !important; }
+.back { border-image-source: var(--sk-red) !important; color: #fff !important; width: auto !important; height: auto !important; padding: 0 6px !important; font-size: 18px !important; text-shadow: 1px 1px 0 #6a120c !important; }
+.pn-head .back { border-image-source: var(--sk-white) !important; color: #c8302a !important; }
+.icon-btn { border-image-source: var(--sk-blue) !important; width: auto !important; height: auto !important; padding: 0 !important; }
+.icon-btn .pxi { width: 26px; height: 26px; display: block; }
+.mini { border-image-source: var(--sk-gray) !important; width: auto !important; height: auto !important; padding: 0 4px !important; color: #fff !important; }
+.mini.ok { border-image-source: var(--sk-green) !important; }
+.mode-card { border-image-source: var(--sk-blue) !important; padding: 0 6px !important; }
+.mode-card2 { border-image-source: var(--sk-blue) !important; padding: 4px !important; }
+.mode-card2.sel { border-image-source: var(--sk-yellow) !important; }
+.lb-btn { border-image-source: var(--sk-blue) !important; padding: 2px 10px !important; color: #fff; }
+.chest-widget { border-image-source: var(--sk-blue) !important; padding: 0 6px 0 0 !important; }
+.chest-widget.ready { border-image-source: var(--sk-yellow) !important; color: #3a2500 !important; text-shadow: 1px 1px 0 #fff4b0; }
+.big:active, .act:active, .tabs button:active, .px-seg button:active, .back:active, .icon-btn:active, .mini:active, .mode-card:active,
+.mode-card2:active, .lb-btn:active, .tile:active, .chest-widget:active, #col-grid .card:active { transform: translateY(3px); box-shadow: none !important; filter: brightness(0.92); }
+.big:hover, .act:not(:disabled):hover, .tile:hover, .lb-btn:hover, .mode-card:hover, .icon-btn:hover { filter: brightness(1.1); }
+
+/* ---------------- menú del lobby (HeartGold): cuadrícula de botones grandes con icono */
+.lb-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.tile { position: relative; display: flex; align-items: center; gap: 8px; padding: 0 4px !important; color: #fff; font: inherit; font-size: 16px; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45); cursor: pointer; min-height: 52px; }
+.tile .ib { width: 34px; height: 34px; flex: none; display: flex; align-items: center; justify-content: center; background: #fafaf6;
+  box-shadow: 0 -2px 0 #141824, 0 2px 0 #141824, -2px 0 0 #141824, 2px 0 0 #141824, inset 0 -3px 0 #d8d8d0; }
+.tile .ib .pxi { width: 26px; height: 26px; }
+.tile .tl { flex: 1; text-align: left; }
+.tile .badge { right: -6px; top: -6px; }
+.sec-green { border-image-source: var(--sk-green) !important; }
+.sec-yellow { border-image-source: var(--sk-yellow) !important; color: #3a2500 !important; text-shadow: 1px 1px 0 #fff4b0 !important; }
+.sec-orange { border-image-source: var(--sk-orange) !important; }
+.sec-pink { border-image-source: var(--sk-pink) !important; }
+.sec-blue { border-image-source: var(--sk-blue) !important; }
+.sec-teal { border-image-source: var(--sk-teal) !important; }
+.tile:hover::before { content: none !important; }
+
+/* ---------------- ventanas (Mundo Misterioso): oscuras con marco del color elegido */
+.panel { border-image-source: var(--sk-win) !important; padding: 4px 6px !important; margin: 8px !important; text-shadow: 2px 2px 0 #02040c; }
+.pill, .profile-chip, .hero-plate, .cw-ball, .tokens, .copas-change, .reward { border-image-source: var(--sk-win2) !important; }
+.pill { padding: 0 6px 0 2px !important; }
+.profile-chip { padding: 0 6px 0 0 !important; }
+.hero-plate { padding: 0 8px !important; }
+.cw-ball { width: 66px !important; height: 66px !important; }
+.tokens, .copas-change { padding: 0 6px !important; }
+.reward { padding: 4px 10px !important; }
+.mission, .prow, .st-row, .keys, .login-box, .move, #pf-stats div { border-image-source: var(--sk-row) !important; padding: 0 4px !important; }
+.mission.done { border-image-source: var(--sk-win) !important; }
+.mission.done .ms-body b { color: #ffe066; }
+.prow.me { border-image-source: var(--sk-green) !important; }
+.st-row.danger { border-image-source: var(--sk-red) !important; }
+.st-row.danger small { color: #ffe0d8; }
+#col-grid .card { border-image-source: var(--sk-win2) !important; padding: 2px !important; }
+#col-grid .card.sel { border-image-source: var(--sk-yellow) !important; color: #3a2500 !important; text-shadow: 1px 1px 0 #fff4b0 !important; }
+#col-grid .card.locked { filter: saturate(0.6); }
+
+/* ---------------- cabeceras con el color de cada sección */
+.pn-head { border-image-source: var(--sk-red) !important; margin: 0 0 10px !important; padding: 0 4px !important; }
+.pn-head h2 { color: #fff !important; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45) !important; font-size: 22px; }
+#collection .pn-head, #detail .pn-head { border-image-source: var(--sk-green) !important; }
+#missions .pn-head { border-image-source: var(--sk-yellow) !important; }
+#missions .pn-head h2 { color: #3a2500 !important; text-shadow: 1px 1px 0 #fff4b0 !important; }
+#achievements .pn-head { border-image-source: var(--sk-orange) !important; }
+#friends .pn-head { border-image-source: var(--sk-pink) !important; }
+#clan .pn-head, #profile .pn-head { border-image-source: var(--sk-blue) !important; }
+#ranking .pn-head { border-image-source: var(--sk-teal) !important; }
+#settings .pn-head { border-image-source: var(--sk-gray) !important; }
+
+/* ---------------- avisos (Rojo Fuego): caja blanca con marco azul y SÍ / NO */
+#modal { align-items: flex-end; padding-bottom: max(18px, env(safe-area-inset-bottom, 0px)); }
+.modal-wrap { width: min(560px, 100%); display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.modal-box { border-image-source: var(--sk-white) !important; width: 100%; padding: 4px 10px 8px !important; color: #383838; text-shadow: 2px 2px 0 #d8d8d0 !important; text-align: left; }
+.modal-box p { margin: 0 !important; font-size: 18px !important; line-height: 1.5; }
+.modal-box::after { color: #c8302a !important; right: 4px !important; bottom: 0 !important; }
+.modal-choices { border-image-source: var(--sk-white) !important; display: flex; flex-direction: column; padding: 0 8px !important; min-width: 110px; }
+.modal-choices button { background: none; border: 0; text-align: left; font: inherit; font-size: 18px; color: #383838; text-shadow: 2px 2px 0 #d8d8d0; padding: 2px 4px 2px 20px; position: relative; cursor: pointer; }
+.modal-choices button:first-child::before, .modal-choices button:hover::before { content: '▶'; position: absolute; left: 2px; top: 7px; font-size: 12px; color: #383838; text-shadow: none; }
+.modal-choices button:hover ~ button::before, .modal-choices:hover button:first-child:not(:hover)::before { content: none; }
+.modal-choices button.hidden { display: none; }
+
+/* nota de "vista previa" como cartel de texto */
+.mock-note { border-image-source: var(--sk-white) !important; color: #383838 !important; text-shadow: 1px 1px 0 #d8d8d0 !important; padding: 0 6px !important; font-size: 12px; }
+
+/* ---------------- ajustes finos de tamaños con los marcos */
+.lb-right .big { font-size: 28px !important; padding-top: 6px !important; padding-bottom: 8px !important; }
+.lb-left { gap: 8px; }
+.pause-btns { gap: 10px; }
+.pause-btns .lb-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 4px 10px !important; }
+.st-row > div:first-child b { font-size: 16px; }
+.diffs, #mp-diff { display: none; }
+
+@media (max-height: 500px) {
+  .tile { min-height: 40px; font-size: 13px; gap: 6px; }
+  .tile .ib { width: 26px; height: 26px; }
+  .tile .ib .pxi { width: 20px; height: 20px; }
+  .lb-menu { gap: 4px; }
+  .lb-right .big { font-size: 22px !important; padding-top: 2px !important; padding-bottom: 4px !important; }
+  .cw-ball { width: 50px !important; height: 50px !important; }
+  .panel { margin: 4px !important; }
+  .modal-box p, .modal-choices button { font-size: 15px !important; }
+}
+.tile .badge { right: -14px !important; top: -16px !important; z-index: 2; }
+.tile .tl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
