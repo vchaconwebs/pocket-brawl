@@ -254,6 +254,15 @@ PB.PixUI = (() => {
     ctx.fillRect(x + p, y + p, w - p * 2, p);
     ctx.fillStyle = o.dark || 'rgba(0,0,0,0.25)';
     ctx.fillRect(x + p, y + h - p * 2, w - p * 2, p);
+    // doble marco celeste, como las ventanas de Mundo Misterioso
+    if (o.ring !== false && w > p * 8 && h > p * 8) {
+      ctx.fillStyle = o.ringColor || 'rgba(140,202,255,0.6)';
+      const i = p * 2, t = Math.max(1, Math.round(p / 2));
+      ctx.fillRect(x + i + p, y + i, w - (i + p) * 2, t);
+      ctx.fillRect(x + i + p, y + h - i - t, w - (i + p) * 2, t);
+      ctx.fillRect(x + i, y + i + p, t, h - (i + p) * 2);
+      ctx.fillRect(x + w - i - t, y + i + p, t, h - (i + p) * 2);
+    }
   }
 
   // Barra pixel: contorno, fondo, relleno con brillo y marcas cada "seg"

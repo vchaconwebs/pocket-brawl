@@ -921,6 +921,9 @@ PB.Lobby = (() => {
     $('#btn-missions').onclick = () => showMissions();
     $('#btn-mode').onclick = showModes;
     fillIcons();
+    // la Pokéball como imagen para el CSS (cabeceras, botón de jugar, tarjetas)
+    document.documentElement.style.setProperty('--ico-ball', 'url("' + ballIcon('poke', 2) + '")');
+    document.documentElement.style.setProperty('--ico-ball-great', 'url("' + ballIcon('great', 2) + '")');
     $('#btn-settings').onclick = () => openSettings('lobby');
     $('#st-back').onclick = () => (stReturn === 'pause' ? api.backToPause() : show('lobby'));
     document.querySelectorAll('#st-tabs button').forEach((b) => (b.onclick = () => showSettings(b.dataset.tab)));
