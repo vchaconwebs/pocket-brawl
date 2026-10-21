@@ -256,6 +256,27 @@ PB.Online = (() => {
   }
   const account = () => (user ? { anonymous: user.isAnonymous, email: user.email || '', name: user.displayName || '' } : null);
 
+  // ------------------------------------------------------------ nombres únicos
+  // names/<nombre en minúsculas> = { uid, name }. Solo las cuentas registradas reservan su nombre;
+  // a los invitados solo se les comprueba que no esté cogido.
+  const NAME_RE = /^[\p{L}\p{N} _.-]{3,16}$/u;
+  async function claimName(name) {
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (!NAME_RE.test(name)) return err('El nombre debe tener entre 3 y 16 letras o números.');
+    if (!(await start())) return { ok: true, name, offline: true };
+    const key = name.toLowerCase();
+    const ref = fs.collection('names').doc(key);
+    const s = await ref.get().catch(() => null);
+    if (s && s.exists && s.data().uid !== uid) return err('Ese nombre ya lo tiene otro jugador. Prueba con otro.');
+    if (isGuest() || (s && s.exists)) return { ok: true, name };
+    try { await ref.set({ uid, name }); } catch (e) { return err('Ese nombre ya lo tiene otro jugador. Prueba con otro.'); }
+    // se libera el nombre anterior
+    if (myDoc.nameKey && myDoc.nameKey !== key) fs.collection('names').doc(myDoc.nameKey).delete().catch(() => {});
+    myDoc.nameKey = key;
+    fs.collection('users').doc(uid).set({ nameKey: key }, { merge: true }).catch(() => {});
+    return { ok: true, name };
+  }
+
   // ------------------------------------------------------------ amigos
   let friendsCache = null, friendsT = 0;
   async function friends(force) {
@@ -944,7 +965,7 @@ PB.Online = (() => {
 
   // ------------------------------------------------------------ API
   return {
-    start, init, guest, isGuest: () => isGuest(),
+    start, init, guest, isGuest: () => isGuest(), claimName,
     status: () => ({ online: !!uid, uid }),
     on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); },
     account, loginGoogle, emailAccount, resetPassword, logout, saveCloud,

@@ -19,6 +19,16 @@ service cloud.firestore {
       }
     }
 
+    // Nombres únicos: el documento es el nombre en minúsculas; nadie puede quitarle el suyo a otro
+    match /names/{key} {
+      allow read: if signed();
+      allow create: if member() && request.resource.data.uid == me()
+        && request.resource.data.name is string
+        && request.resource.data.name.lower() == key
+        && key.size() >= 3 && key.size() <= 16;
+      allow delete: if signed() && resource.data.uid == me();
+    }
+
     // Solicitudes de amistad: id = destinatario_remitente
     match /friendReqs/{id} {
       allow read: if signed() && (resource == null || resource.data.from == me() || resource.data.to == me());

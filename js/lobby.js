@@ -119,6 +119,9 @@ PB.Lobby = (() => {
   function setWelcomed() { chosen = true; }
   function show(id) {
     if (id === 'lobby' && !welcomed()) id = 'welcome';
+    // jugador nuevo: primero el nombre y luego los iniciales
+    if (id === 'lobby' && PB.Save.needsStarters() && !PB.Save.get().named) id = 'naming';
+    if (id === 'naming') { $('#nm-input').value = ''; $('#nm-err').textContent = ''; setTimeout(() => $('#nm-input').focus(), 50); }
     if (id === 'lobby' && PB.Save.needsStarters()) id = 'starters';
     if (id === 'starters') renderStarters();
     current = id;
@@ -770,6 +773,10 @@ PB.Lobby = (() => {
     if (!email || !pass) return modal(PB.T('Escribe tu correo y tu contraseña.'));
     afterLogin(await PB.Online.emailAccount(email, pass, create), pre);
   }
+  function showNaming(msg) {
+    show('naming');
+    $('#nm-err').textContent = msg || '';
+  }
   async function afterLogin(r, pre) {
     if (r.cancelled) return;
     if (r.error) return modal(r.error);
@@ -781,6 +788,14 @@ PB.Lobby = (() => {
     }
     PB.Audio.play('win');
     toast(PB.T('Progreso guardado en tu cuenta'));
+    const c = await PB.Online.claimName(PB.Save.get().name);
+    if (c.error) {
+      PB.Save.get().named = false;
+      PB.Save.persist();
+      setWelcomed();
+      showNaming(PB.T('Ese nombre ya lo tiene otro jugador. Elige otro.'));
+      return;
+    }
     if (pre === 'wl') { setWelcomed(); show('lobby'); } else renderAccount();
   }
   function mailForm(pre) {
@@ -1500,9 +1515,31 @@ PB.Lobby = (() => {
     $('#fr-go').onclick = searchFriends;
     $('#fr-q').onkeydown = (e) => { if (e.key === 'Enter') searchFriends(); };
     $('#pf-save').onclick = async () => {
-      if (PB.Save.setName($('#pf-input').value)) { PB.Audio.play('ready'); showProfile(); }
-      else modal('El nombre debe tener entre 3 y 16 caracteres.');
+      const name = $('#pf-input').value.trim();
+      if (name === PB.Save.get().name) return;
+      const r = await PB.Online.claimName(name);
+      if (r.error) return modal(r.error);
+      PB.Save.setName(r.name);
+      PB.Online.updateMe();
+      PB.Audio.play('ready');
+      showProfile();
     };
+    // elegir nombre (jugador nuevo)
+    const pickName = async () => {
+      const btn = $('#nm-go');
+      btn.disabled = true;
+      const r = await PB.Online.claimName($('#nm-input').value);
+      btn.disabled = false;
+      if (r.error) { $('#nm-err').textContent = r.error; PB.Audio.play('tick'); return; }
+      PB.Save.setName(r.name);
+      PB.Save.get().named = true;
+      PB.Save.persist();
+      PB.Online.updateMe();
+      PB.Audio.play('ready');
+      show('lobby');
+    };
+    $('#nm-go').onclick = pickName;
+    $('#nm-input').onkeydown = (e) => { if (e.key === 'Enter') pickName(); };
     PB.Online.on('chat', () => { if (current === 'clan') renderChat(); });
     PB.Online.on('change', () => { if (current === 'clan') showClan(); if (current === 'friends') showFriends(); });
     for (const e of document.querySelectorAll('[data-back]')) e.onclick = () => show(e.dataset.back);
