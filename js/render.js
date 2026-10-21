@@ -174,6 +174,7 @@ PB.Renderer = class {
       if (f.kind === 'chain') this.drawChain(f);
       else if (f.kind === 'beam') this.drawBeam(f);
       else if (f.kind === 'beamCharge') this.drawBeamCharge(f);
+      else if (f.kind === 'slash') this.drawSlash(f);
     }
 
     // arbustos (por encima)
@@ -694,6 +695,20 @@ PB.Renderer = class {
     this.glow(f.x1, f.y1, f.w * a + 10, this.hexA(P[4], a));
   }
 
+  // tajo: arco que barre delante
+  drawSlash(f) {
+    const ctx = this.ctx, P = PB.VFX.PAL[f.type] || PB.VFX.PAL.normal;
+    const k = f.t / f.life, a = 1 - k;
+    const half = f.arc / 2, sweep = f.ang - half + f.arc * Math.min(1, k * 1.6);
+    for (const [w, col, rr] of [[14, this.hexA(P[2], a * 0.5), 0.95], [7, this.hexA(P[3], a * 0.9), 0.8], [3, this.hexA(P[4], a), 0.65]]) {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = w;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r * rr, f.ang - half, sweep);
+      ctx.stroke();
+    }
+  }
+
   // aviso del rayo mientras se carga
   drawBeamCharge(f) {
     const ctx = this.ctx, P = PB.VFX.PAL[f.type] || PB.VFX.PAL.normal;
@@ -990,9 +1005,31 @@ PB.Renderer = class {
       ctx.fillRect(0, -a.r, a.range, a.r * 2);
       ctx.strokeRect(0, -a.r, a.range, a.r * 2);
       ctx.restore();
-    } else if (a.kind === 'slam') {
+    } else if (a.kind === 'slam' || a.kind === 'barrier' || a.kind === 'wish' || a.kind === 'nova') {
       ctx.beginPath();
-      ctx.arc(b.x, b.y, a.radius, 0, Math.PI * 2);
+      ctx.arc(b.x, b.y, a.radius || a.range, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    } else if (a.kind === 'melee') {
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      ctx.arc(b.x, b.y, a.range, ang - a.arc / 2, ang + a.arc / 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } else if (a.kind === 'twin' || a.kind === 'beam' || a.kind === 'boomerang' || a.kind === 'chain') {
+      const w = a.kind === 'twin' ? a.gap * 2 + 20 : a.kind === 'beam' ? a.width : 40;
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(ang);
+      ctx.fillRect(0, -w / 2, a.range, w);
+      ctx.strokeRect(0, -w / 2, a.range, w);
+      ctx.restore();
+    } else if (a.kind === 'meteor' || a.kind === 'mines' || a.kind === 'turret') {
+      const d = Math.min(aim.dist, a.kind === 'turret' ? a.place : a.range);
+      const tx = b.x + Math.cos(ang) * d, ty = b.y + Math.sin(ang) * d;
+      ctx.beginPath();
+      ctx.arc(tx, ty, a.kind === 'turret' ? 30 : (a.spreadR || 0) + (a.radius || 40), 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
     }

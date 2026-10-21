@@ -381,7 +381,13 @@ PB.Game = class {
     this.startAction(b, ang, 'Shoot', 0.35);
     this.events.push({ type: 'shoot', b, atkType: b.def.atkType });
     this.muzzle(b, ang);
-    if (atk.kind === 'burst') {
+    if (atk.kind === 'melee') {
+      this.slash(b, atk, ang, mul);
+    } else if (atk.kind === 'twin') {
+      const id = this.nextShotId++;
+      this.spawnShot(b, atk, ang, false, mul, id, -atk.gap);
+      this.spawnShot(b, atk, ang, false, mul, id, atk.gap);
+    } else if (atk.kind === 'burst') {
       this.spawnShot(b, atk, ang, false, mul);
       b.burst = { left: atk.count - 1, t: atk.delay, ang, atk, mul };
     } else if (atk.kind === 'lob') {
@@ -512,14 +518,15 @@ PB.Game = class {
     }
   }
 
-  spawnShot(b, atk, ang, isSuper, mul, shotId) {
-    const ox = b.x + Math.cos(ang) * 18, oy = b.y + Math.sin(ang) * 18 - 4;
+  spawnShot(b, atk, ang, isSuper, mul, shotId, side) {
+    // side: desplazamiento lateral (para los disparos dobles en paralelo)
+    const ox = b.x + Math.cos(ang) * 18 - Math.sin(ang) * (side || 0), oy = b.y + Math.sin(ang) * 18 - 4 + Math.cos(ang) * (side || 0);
     this.projectiles.push({
       x: ox, y: oy, vx: Math.cos(ang) * atk.speed, vy: Math.sin(ang) * atk.speed, ang,
       r: atk.r || 12, dmg: atk.dmg * (mul || 1), team: b.team, owner: b, range: atk.range, traveled: 0,
       pierce: !!atk.pierce, hit: new Set(), look: atk.look || {}, atkType: (isSuper && atk.type) || b.def.atkType, charge: !isSuper,
       destroysWalls: !!atk.destroysWalls, knockback: atk.knockback || 0, stun: atk.stun || 0, isSuper, shotId: shotId || this.nextShotId++,
-      powered: (mul || 1) > 1, t: 0, trailT: 0,
+      powered: (mul || 1) > 1, t: 0, trailT: 0, homing: atk.homing || 0, boomerang: !!atk.boomerang,
     });
   }
 
@@ -560,6 +567,23 @@ PB.Game = class {
         }
         keep.push(p);
         continue;
+      }
+      if (p.homing) {
+        let best = null, bd = 320;
+        for (const e of this.brawlers) {
+          if (e.dead || e.team === p.team || !this.visibleTo(e, p.team)) continue;
+          const d = Math.hypot(e.x - p.x, e.y - 8 - p.y);
+          if (d < bd && (e.x - p.x) * p.vx + (e.y - p.y) * p.vy > 0) { bd = d; best = e; }
+        }
+        if (best) {
+          const want = Math.atan2(best.y - 8 - p.y, best.x - p.x), cur = Math.atan2(p.vy, p.vx);
+          const diff = ((want - cur + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+          const turn = Math.max(-p.homing * dt, Math.min(p.homing * dt, diff));
+          const sp = Math.hypot(p.vx, p.vy);
+          p.ang = cur + turn;
+          p.vx = Math.cos(p.ang) * sp;
+          p.vy = Math.sin(p.ang) * sp;
+        }
       }
       if (p.boomerang && p.back) {
         const o = p.owner, dx = o.x - p.x, dy = o.y - 10 - p.y, d = Math.hypot(dx, dy) || 1;
@@ -681,6 +705,34 @@ PB.Game = class {
       }
     }
     this.zones = this.zones.filter((z) => z.t > 0);
+  }
+
+  // golpe cuerpo a cuerpo en arco delante del Pokémon (rompe cajas)
+  slash(b, atk, ang, mul) {
+    const half = atk.arc / 2;
+    let hitAny = false;
+    for (const e of this.brawlers) {
+      if (e.dead || e.team === b.team) continue;
+      const d = Math.hypot(e.x - b.x, e.y - b.y);
+      if (d > atk.range + e.r) continue;
+      const off = Math.abs(((Math.atan2(e.y - b.y, e.x - b.x) - ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+      if (off > half && d > e.r + 10) continue;
+      this.damage(e, atk.dmg * (mul || 1), b, b.def.atkType, { charge: true, knockback: 160, kx: Math.cos(ang), ky: Math.sin(ang), big: true });
+      hitAny = true;
+    }
+    for (const st of this.structures) {
+      if (st.hp <= 0 || st.team === b.team || Math.hypot(st.x - b.x, st.y - b.y) > atk.range + st.r) continue;
+      this.damageStructure(st, atk.dmg * (mul || 1), b, true, st.x, st.y - 30);
+    }
+    // cajas (Niebla Tóxica) delante
+    const T = PB.TILE;
+    for (const k of [0.5, 0.9]) {
+      const x = b.x + Math.cos(ang) * atk.range * k, y = b.y + Math.sin(ang) * atk.range * k;
+      const c = Math.floor(x / T), r = Math.floor(y / T);
+      if (this.world.tile(c, r) === 'C') { this.damageCrate(c, r, atk.dmg * (mul || 1), b, true); break; }
+    }
+    this.fx.push({ kind: 'slash', x: b.x, y: b.y - 14, ang, r: atk.range, arc: atk.arc, t: 0, life: 0.2, type: b.def.atkType });
+    if (hitAny) this.shake = Math.max(this.shake, 3);
   }
 
   // rayo en cadena: golpea al más cercano y salta a los siguientes

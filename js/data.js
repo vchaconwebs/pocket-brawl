@@ -196,15 +196,15 @@ PB.TYPE_INFO = {
 PB.HANDMADE = [
   {
     id: 'charmander', name: 'Charmander', types: ['fire'], atkType: 'fire',
-    role: 'Cuerpo a cuerpo', hp: 4400, speed: 165, reload: 1.15, superHits: 8,
-    attack: { name: 'Ascuas', kind: 'spread', count: 5, spread: 0.55, range: 220, speed: 520, dmg: 380, r: 14, look: { shape: 'fire', trail: 'ember', scale: 1 } },
+    role: 'Cuerpo a cuerpo', hp: 4100, speed: 160, reload: 1.15, superHits: 8,
+    attack: { name: 'Ascuas', kind: 'spread', count: 5, spread: 0.55, range: 220, speed: 520, dmg: 330, r: 14, look: { shape: 'fire', trail: 'ember', scale: 1 } },
     super: { name: 'Lanzallamas', kind: 'spread', count: 9, spread: 0.75, range: 290, speed: 600, dmg: 380, r: 18, pierce: true, look: { shape: 'fire', trail: 'ember', scale: 1.5 } },
     desc: 'Abanico de llamas a corta distancia. Su súper atraviesa a todos.',
   },
   {
     id: 'squirtle', name: 'Squirtle', types: ['water'], atkType: 'water',
     role: 'Francotirador', hp: 2900, speed: 145, reload: 1.7, superHits: 5,
-    attack: { name: 'Pistola Agua', kind: 'spread', count: 1, spread: 0, range: 340, speed: 720, dmg: 840, r: 18, look: { shape: 'drop', trail: 'drip', scale: 1.2 } },
+    attack: { name: 'Pistola Agua', kind: 'spread', count: 1, spread: 0, range: 355, speed: 760, dmg: 1000, r: 18, look: { shape: 'drop', trail: 'drip', scale: 1.2 } },
     super: { name: 'Hidrobomba', kind: 'spread', count: 1, spread: 0, range: 370, speed: 560, dmg: 1600, r: 34, pierce: true, destroysWalls: true, knockback: 520, look: { shape: 'bubble', trail: 'bubbles', scale: 3.2 } },
     desc: 'Un chorro largo y potente. Su súper empuja y rompe muros.',
   },

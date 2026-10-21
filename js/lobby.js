@@ -353,8 +353,10 @@ PB.Lobby = (() => {
 
   function moveText(m, isSuper) {
     switch (m.kind) {
-      case 'spread': return (m.count > 1 ? `${m.count} proyectiles en abanico` : 'Un proyectil') + (m.pierce ? ' que atraviesan' : '') + (m.destroysWalls ? ', rompe muros' : '') + (m.knockback ? ' y empuja' : '') + (m.stun ? ' y congela un momento' : '') + '.';
+      case 'spread': return (m.count > 1 ? `${m.count} proyectiles en abanico` : m.boomerang ? 'Un proyectil que va y vuelve' : m.homing ? 'Un proyectil teledirigido que persigue al rival' : 'Un proyectil') + (m.pierce && !m.boomerang ? ' que atraviesan' : '') + (m.destroysWalls ? ', rompe muros' : '') + (m.knockback ? ' y empuja' : '') + (m.stun ? ' y congela un momento' : '') + '.';
       case 'burst': return `Ráfaga de ${m.count} disparos rápidos.`;
+      case 'melee': return 'Golpe cuerpo a cuerpo que barre a todos los que tiene delante.';
+      case 'twin': return 'Dos disparos a la vez, en paralelo.';
       case 'lob': return 'Lanza por encima de los muros y explota al caer.';
       case 'zone': return m.heal ? 'Crea una zona que daña a los rivales y cura a tu equipo.' : 'Deja un charco venenoso que hace mucho daño a los rivales.';
       case 'dash': return 'Embestida rápida que daña y aturde.';

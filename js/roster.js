@@ -36,8 +36,8 @@
   // papeles: cómo dispara (los números están igualados con los 6 Pokémon originales)
   const ROLE = {
     tank: {
-      name: 'Tanque', hp: 4550, speed: 142, reload: 1.2, superHits: 8,
-      atk: { kind: 'spread', count: 5, spread: 0.6, range: 215, speed: 520, dmg: 330, r: 14, scale: 1 },
+      name: 'Tanque', hp: 5000, speed: 140, reload: 1.25, superHits: 8,
+      atk: { kind: 'spread', count: 5, spread: 0.6, range: 215, speed: 520, dmg: 250, r: 14, scale: 1 },
       desc: 'Aguanta muchísimo y dispara una ráfaga en abanico a corta distancia.',
     },
     assassin: {
@@ -47,16 +47,16 @@
     },
     sniper: {
       name: 'Francotirador', hp: 2800, speed: 148, reload: 1.85, superHits: 5,
-      atk: { kind: 'spread', count: 1, spread: 0, range: 365, speed: 780, dmg: 1080, r: 17, scale: 1.4 },
+      atk: { kind: 'spread', count: 1, spread: 0, range: 365, speed: 780, dmg: 1150, r: 17, scale: 1.4 },
       desc: 'Un disparo potente de largo alcance. Frágil de cerca.',
     },
     fighter: {
       name: 'Luchador', hp: 3700, speed: 155, reload: 1.35, superHits: 8,
-      atk: { kind: 'spread', count: 3, spread: 0.3, range: 290, speed: 600, dmg: 420, r: 13, scale: 1.1 },
+      atk: { kind: 'spread', count: 3, spread: 0.3, range: 290, speed: 600, dmg: 400, r: 13, scale: 1.1 },
       desc: 'Equilibrado: tres disparos a media distancia.',
     },
     thrower: {
-      name: 'Lanzador', hp: 4550, speed: 142, reload: 1.8, superHits: 5,
+      name: 'Lanzador', hp: 4750, speed: 142, reload: 1.8, superHits: 5,
       atk: { kind: 'lob', range: 300, flight: 0.75, radius: 54, dmg: 720, scale: 1.5 },
       desc: 'Lanza sus ataques por encima de los muros.',
     },
@@ -109,6 +109,38 @@
     abra: ['stealth', 'Teletransporte', 'psychic'], scyther: ['dash', 'Tijera X', 'bug'],
   };
 
+  // Formas del ataque básico. Cada una reparte el mismo daño total que el papel, pero de otra manera.
+  // t = daño total de un ataque del papel (balas × daño), r = la plantilla del papel
+  const STYLE = {
+    cone: (t, r) => ({ kind: 'spread', count: 7, spread: 0.95, range: Math.round(r.range * 0.78), speed: 480, dmg: t / 7 * 0.92, r: 12, scale: 0.9, d: 'Una llamarada corta en abanico.' }),
+    burst3: (t, r) => ({ kind: 'burst', count: 3, delay: 0.1, range: r.range, speed: 860, dmg: t / 3, r: 11, scale: 1 }),
+    orb: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: r.range, speed: 540, dmg: t * 1.05, r: 25, pierce: true, scale: 1.8 }),
+    homing: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 1.05), speed: 560, dmg: t * 0.8, r: 16, homing: 2.8, scale: 1.4 }),
+    melee: (t, r) => ({ kind: 'melee', range: r.count > 3 ? 160 : 150, arc: 2.0, dmg: t * 1.32, scale: 1 }),
+    twin: (t, r) => ({ kind: 'twin', gap: 13, range: r.range, speed: 720, dmg: t / 2, r: 12, scale: 1.1 }),
+    boomer: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 0.85), speed: 620, dmg: t * 0.78, r: 18, boomerang: true, pierce: true, scale: 1.6 }),
+  };
+  // qué forma usa cada tipo según su papel (si no sale aquí, la del papel)
+  const STYLE_OF = {
+    fire: { tank: ['cone', 'Lanzallamas'] },
+    water: { tank: ['cone', 'Burbuja'] },
+    electric: { assassin: ['burst3', 'Chispa'], fighter: ['burst3', 'Chispa'] },
+    normal: { assassin: ['burst3', 'Ataque Rápido'] },
+    ghost: { sniper: ['orb', 'Bola Sombra'], fighter: ['orb', 'Bola Sombra'] },
+    poison: { fighter: ['orb', 'Bomba Lodo'] },
+    psychic: { sniper: ['homing', 'Psicorrayo'], fighter: ['orb', 'Confusión'] },
+    fairy: { sniper: ['homing', 'Beso Drenaje'], fighter: ['homing', 'Viento Feérico'] },
+    fighting: { tank: ['melee', 'Golpe Kárate'], assassin: ['melee', 'Puño Certero'] },
+    dark: { assassin: ['melee', 'Mordisco'], fighter: ['boomer', 'Finta'] },
+    dragon: { tank: ['melee', 'Garra Dragón'], assassin: ['melee', 'Garra Dragón'] },
+    bug: { fighter: ['twin', 'Doble Ataque'], assassin: ['twin', 'Pin Misil'] },
+    steel: { fighter: ['twin', 'Bala Bala'], sniper: ['twin', 'Disparo Espejo'] },
+    grass: { fighter: ['boomer', 'Hoja Mágica'] },
+    ground: { fighter: ['boomer', 'Hueso Palo'] },
+    ice: { fighter: ['twin', 'Canto Helado'] },
+    flying: { assassin: ['twin', 'Picotazo'] },
+  };
+
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   // tipo con el que ataca: el primero, salvo que sea Normal y tenga otro (Pidgey ataca con Volador)
   const attackType = (types) => (types[0] === 'normal' && types[1] ? types[1] : types[0]);
@@ -157,9 +189,14 @@
     const zBulk = clamp(((fin.hp - 105) / 8 + (fin.df + fin.sd - 158) / 35) / 2, -1.5, 1.5);
     const zSpd = clamp((fin.spd - 110) / 10, -1.5, 1.5);
     const zAtk = clamp((Math.max(fin.pa, fin.sa) - 1.2) / 0.12, -1.5, 1.5);
-    const hpMul = 1 + 0.07 * zBulk;
-    const dmgMul = (1 + 0.06 * zAtk) / Math.sqrt(hpMul);
-    const { scale: as, ...atk } = R.atk;
+    // el que tiene más vida pega menos y el que tiene menos vida pega más (±15 %), con un toque de su ataque
+    const hpMul = 1 + 0.1 * zBulk;
+    const dmgMul = (1 + 0.03 * zAtk) / hpMul;
+    // forma del ataque básico según tipo y papel
+    const st = (STYLE_OF[atkType] || {})[roleId];
+    const total = R.atk.dmg * (R.atk.count || 1);
+    const { scale: as, d: _d, ...atk } = st ? STYLE[st[0]](total, R.atk) : R.atk;
+    const basicName = st ? st[1] : kit.basic;
     const { d: sd, scale: ss, ...sup } = SUPER[supKind];
     const rarity = fam.leg ? 'legendary' : STARTERS.has(line[0]) ? 'starter' : fin.bst > 530 ? 'epic' : fin.bst > 470 ? 'rare' : 'common';
     return {
@@ -168,7 +205,7 @@
       hp: Math.round((R.hp * hpMul) / 50) * 50,
       speed: Math.round(R.speed + zSpd * 5),
       reload: R.reload, superHits: R.superHits,
-      attack: Object.assign({ name: kit.basic }, atk, { dmg: Math.round((atk.dmg * dmgMul) / 10) * 10, look: Object.assign({ scale: as }, look) }),
+      attack: Object.assign({ name: basicName }, atk, { dmg: Math.round((atk.dmg * dmgMul) / 10) * 10, look: Object.assign({ scale: as }, look) }),
       super: Object.assign({ name: supName, type: supType }, sup, sup.dmg ? { dmg: Math.round((sup.dmg * dmgMul) / 10) * 10 } : {}, sup.dps ? { dps: Math.round(sup.dps * dmgMul) } : {}, { look: Object.assign({ scale: ss || 1.4 }, supLook) }),
       desc: R.desc + ' Su súper, ' + supName + ' (' + PB.TYPE_INFO[supType].name + '), es ' + sd + '.',
       alts: fam.alts || null,
