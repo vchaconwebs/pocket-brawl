@@ -68,6 +68,9 @@
     PB.Sprites.ensure(spritesFor(opts, playerId));
     game = new PB.Game(opts);
     if (game.player) game.player.shiny = PB.Save.skin(playerId) === 'shiny';
+    // nombre del entrenador de cada uno (para la pantalla final)
+    const names = shuffle(PB.TRAINER_NAMES.slice());
+    game.brawlers.forEach((b, i) => { b.trainer = b.isPlayer ? PB.Save.get().name : names[i % names.length]; });
     // niveles: el jugador usa el suyo; los bots, uno parecido para que sea justo
     const myLvl = playerId ? PB.Save.level(playerId) : 1;
     for (const b of game.brawlers) {
@@ -184,18 +187,36 @@
     const res = M.result(game, me);
     $('#result').textContent = res.title;
     $('#result').className = res.cls;
-    const statTxt = (b) => (M.id === 'zone' ? Math.round(b.stat) + ' s' : Math.round(b.stat));
-    let list = game.brawlers.slice();
-    if (M.ffa) list.sort((a, b) => (a.rank || 99) - (b.rank || 99) || b.kills - a.kills);
-    else list.sort((a, b) => (a.team === b.team ? b.kills - a.kills : a.team === me.team ? -1 : 1));
-    const rows = list
-      .map((b) => {
-        const cls = M.ffa ? (b.isPlayer ? 'blue me' : 'red') : b.team + (b.isPlayer ? ' me' : '');
-        const name = (M.ffa && b.rank ? '#' + b.rank + ' ' : '') + b.name + (b.isPlayer ? ' (' + PB.stageName(b.def, b.stage) + ')' : '');
-        return `<tr class="${cls}"><td>${name}</td><td>${b.kills}</td><td>${b.deaths}</td><td>${statTxt(b)}</td><td>${Math.round(b.dmgDone)}</td></tr>`;
-      })
-      .join('');
-    $('#scores').innerHTML = `<tr><th></th><th>K.O.</th><th>Caídas</th><th>${M.statName}</th><th>Daño</th></tr>${rows}`;
+    const statTxt = (b) => (M.id === 'zone' ? Math.round(b.stat) + ' s' : M.id === 'heist' ? short(b.stat) : Math.round(b.stat));
+    const short = (n) => (n >= 1000 ? (Math.round(n / 100) / 10).toString().replace('.', ',') + 'k' : String(Math.round(n)));
+    // el mejor de la partida (MVP): más K.O. y daño
+    const score = (b) => b.kills * 2500 + b.dmgDone + (b.stat || 0) * (M.id === 'heist' ? 0.5 : M.id === 'zone' ? 40 : 800);
+    const top = game.brawlers.reduce((x, y) => (score(y) > score(x) ? y : x));
+    const mvp = score(top) > 0 ? top : null;
+    const row = (b) => {
+      const dex = b.def.line[b.stage] || b.dex;
+      const lvl = b.lvl ? ' · Nv. ' + b.lvl : '';
+      return `<div class="end-row${b.isPlayer ? ' me' : ''}">` +
+        (M.ffa ? `<span class="er-rank">#${b.rank || '-'}</span>` : '') +
+        `<span class="er-pt"><img src="${PB.Sprites.portraitURL(dex)}" alt="">${b === mvp ? '<i class="er-mvp">MVP</i>' : ''}</span>` +
+        `<span class="er-name"><b>${b.trainer || b.name}</b><small>${PB.stageName(b.def, b.stage)}${lvl}</small></span>` +
+        `<span class="er-st"><b>${b.kills}</b><small>K.O.</small></span>` +
+        `<span class="er-st"><b>${b.deaths}</b><small>Caídas</small></span>` +
+        `<span class="er-st"><b>${statTxt(b)}</b><small>${M.statName}</small></span>` +
+        `<span class="er-st"><b>${short(b.dmgDone)}</b><small>Daño</small></span></div>`;
+    };
+    if (M.ffa) {
+      const list = game.brawlers.slice().sort((a2, b2) => (a2.rank || 99) - (b2.rank || 99) || b2.kills - a2.kills);
+      $('#end-teams').innerHTML = `<div class="end-team ffa"><div class="et-rows">${list.map(row).join('')}</div></div>`;
+    } else {
+      const team = (t, title) => {
+        const list = game.brawlers.filter((b) => b.team === t).sort((a2, b2) => (b2.isPlayer ? 1 : 0) - (a2.isPlayer ? 1 : 0) || b2.kills - a2.kills);
+        const won = game.winner === t;
+        return `<div class="end-team ${t === me.team ? 'blue' : 'red'}"><h3>${title}${won ? ' · <em>Victoria</em>' : ''}</h3><div class="et-rows">${list.map(row).join('')}</div></div>`;
+      };
+      $('#end-teams').innerHTML = team(me.team, 'Tu equipo') + team(me.team === 'blue' ? 'red' : 'blue', 'Rivales');
+    }
+    $('#end-mode').textContent = M.name;
     // recompensas: fichas, cofres nuevos y misiones
     const win = M.ffa ? (me.rank || 99) <= 4 : game.winner === me.team;
     const reward = PB.Save.applyMatch({ win, draw: game.winner === 'draw', rank: me.rank, mode: M.id, me });
@@ -204,11 +225,13 @@
     const pend = PB.Save.pending();
     const dc = reward.copas;
     $('#end-rewards').innerHTML =
-      `<div class="copas-change ${dc > 0 ? 'up' : dc < 0 ? 'down' : ''}"><img src="${PB.Icons.cup()}" alt=""><b>${dc > 0 ? '+' : ''}${dc}</b><small>${me.def.name}: ${reward.copasNow} copas · Total: ${PB.Save.totalCopas()}</small></div>` +
+      `<div class="copas-change ${dc > 0 ? 'up' : dc < 0 ? 'down' : ''}"><img src="${PB.Icons.cup()}" alt=""><b>${dc > 0 ? '+' : ''}${dc}</b><small>${me.def.name}: ${reward.copasNow} copas</small></div>` +
       `<div class="tokens"><img src="${PB.Icons.ball('poke', 2)}" alt=""><div class="tok-info"><small>+${reward.tokens} fichas</small><span class="bar"><i style="width:${pct}%"></i></span></div><b>${d.tokens}/${PB.META.tokensPerChest}</b></div>` +
-      (reward.newChests.length ? `<p class="got">¡Has conseguido ${reward.newChests.length > 1 ? reward.newChests.length + ' Poké Balls' : 'una Poké Ball'}! Ábrela en el lobby.</p>` : '') +
-      (pend.missions ? `<p class="got">Tienes ${pend.missions} misión${pend.missions > 1 ? 'es' : ''} para reclamar.</p>` : '') +
-      (pend.achievements ? `<p class="got">¡Tienes ${pend.achievements} logro${pend.achievements > 1 ? 's' : ''} nuevo${pend.achievements > 1 ? 's' : ''}!</p>` : '');
+      `<p class="got">${[
+        reward.newChests.length ? '¡' + (reward.newChests.length > 1 ? reward.newChests.length + ' Poké Balls' : 'Poké Ball') + ' nueva!' : '',
+        pend.missions ? pend.missions + ' misión' + (pend.missions > 1 ? 'es' : '') + ' para reclamar' : '',
+        pend.achievements ? pend.achievements + ' logro' + (pend.achievements > 1 ? 's' : '') + ' nuevo' + (pend.achievements > 1 ? 's' : '') : '',
+      ].filter(Boolean).join(' · ')}</p>`;
     showScreen('end');
     help().classList.add('hidden');
     PB.Audio.play(res.cls === 'win' ? 'win' : 'lose');
@@ -227,7 +250,6 @@
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 
   // ------------------------------------------------------------ bucle
-  const STREAK = ['', '¡K.O.!', '¡DOBLE K.O.!', '¡TRIPLE K.O.!', '¡IMPARABLE!'];
 
   function handleEvents() {
     const me = game.player;
@@ -237,24 +259,21 @@
       if (mode !== 'play') continue;
       switch (ev.type) {
         case 'count': if (ev.n > 0) PB.Audio.play('count'); break;
-        case 'go': PB.Audio.play('go'); renderer.announce('¡A LUCHAR!', '#ffcf2e', '', 1.1); break;
+        case 'go': PB.Audio.play('go'); renderer.announce('¡A luchar!', '#ffcf2e', '', 1); break;
         case 'shoot': if (ev.b === me || near(ev.b)) PB.Audio.play('shoot', { type: ev.atkType, me: ev.b === me }); break;
         case 'hit': if (ev.target === me || ev.source === me) PB.Audio.play('hit', { me: ev.target === me }); break;
         case 'ball': if (ev.b === me) PB.Audio.play('ball'); break;
         case 'candy': if (ev.b === me) PB.Audio.play('candy'); break;
         case 'ballspawn': PB.Audio.play('ballspawn'); break;
         case 'ko':
+          // los K.O. ya salen en el registro de arriba a la derecha: aquí solo suena
           PB.Audio.play('ko');
-          if (ev.b === me) {
-            const sub = ev.killer && ev.killer.def ? 'Te ha vencido ' + PB.stageName(ev.killer.def, ev.killer.stage) : '';
-            renderer.announce(game.mode.ffa ? '¡Eliminado!' : '¡Debilitado!', '#ff6b6b', sub, 1.4);
-          } else if (ev.killer === me) renderer.announce(STREAK[Math.min(ev.streak, 4)] || '¡K.O.!', '#ffcf2e', PB.stageName(ev.b.def, ev.b.stage) + ' debilitado', 1.3);
           break;
         case 'evolve':
           if (ev.b === me) {
             PB.Audio.play('evolve');
             PB.vibrate(60);
-            renderer.announce('¡' + ev.to + '!', '#ffe066', ev.from + ' ha evolucionado', 1.8);
+            renderer.announce('¡' + ev.from + ' ha evolucionado a ' + ev.to + '!', '#ffe066', '', 1.6);
           } else if (near(ev.b)) PB.Audio.play('ready');
           break;
         case 'super': if (ev.b === me || near(ev.b)) PB.Audio.play('super'); break;
@@ -262,19 +281,17 @@
         case 'boom': PB.Audio.play('boom', { big: ev.big }); break;
         case 'wall': PB.Audio.play('wall'); break;
         case 'respawn': if (ev.b === me) PB.Audio.play('release'); break;
-        case 'countdown':
-          renderer.announce(ev.team === myTeam ? '¡Tenéis 10 Pokéballs!' : '¡Tienen 10 Pokéballs!', tc(ev.team), ev.team === myTeam ? 'Aguantad 15 segundos' : 'Quitádselas antes de que acabe la cuenta', 1.8);
-          break;
+        case 'countdown': break; // la cuenta atrás ya se ve en el marcador de arriba
         case 'tick': PB.Audio.play('tick'); break;
-        case 'gas': PB.Audio.play('gas'); renderer.announce('¡La niebla avanza!', '#d58cff', 'Quédate dentro del círculo', 1.8); break;
+        case 'gas': PB.Audio.play('gas'); renderer.announce('¡La niebla avanza!', '#d58cff', '', 1.6); break;
         case 'structHit': if (ev.st.team === myTeam) PB.Audio.play('thump'); break;
-        case 'snorlaxDown': renderer.announce(ev.team === myTeam ? '¡Han despertado a vuestro Snorlax!' : '¡Snorlax despierta!', tc(otherOf(ev.team)), '', 1.8); break;
+        case 'snorlaxDown': break;
         case 'kick': if (ev.b === me || near(ev.b)) PB.Audio.play('kick'); break;
         case 'pickBall': if (ev.b === me) PB.Audio.play('ball'); break;
-        case 'voltorbBoom': renderer.announce('¡BOOM!', '#ff6b4a', 'El Voltorb ha explotado', 1.2); break;
+        case 'voltorbBoom': break;
         case 'goal':
           PB.Audio.play('goal');
-          renderer.announce('¡GOOOL!', tc(ev.team), (ev.by ? ev.by.name : '') + ' · ' + game.score[myTeam] + ' - ' + game.score[otherOf(myTeam)], 2);
+          renderer.announce('¡Gol! ' + game.score[myTeam] + ' - ' + game.score[otherOf(myTeam)], tc(ev.team), '', 1.6);
           break;
         case 'zoneTaken': if (ev.team === myTeam) PB.Audio.play('ready'); break;
         case 'end': endTimer = game.mode.ffa && game.winner === 'out' ? 1.2 : 1.8; break;

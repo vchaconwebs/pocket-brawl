@@ -248,24 +248,25 @@ PB.Lobby = (() => {
     $('#dt-desc').textContent = b.desc;
     // línea evolutiva: se puede tocar cada fase para verla
     const steps = PB.evoSteps(b);
-    $('#dt-evo').innerHTML = b.line.map((dex, i) =>
+    $('#dt-evo').innerHTML = '<div class="evo-row">' + b.line.map((dex, i) =>
       (i ? '<span class="evo-arrow">▶</span>' : '') +
       `<button class="evo-st${i === dtStage ? ' sel' : ''}" data-st="${i}"><img src="${PB.Sprites.portraitURL(dex)}" alt=""><b>${PB.DEX[dex].name}</b>` +
-      `<small>${i ? '+' + Math.round((PB.stageMul(b, i) - 1) * 100) + ' % · ' + steps[i - 1] + ' EXP' : 'Empieza así'}</small></button>`).join('') +
+      `<small>${i ? '+' + Math.round((PB.stageMul(b, i) - 1) * 100) + ' %' : 'Empieza así'}</small></button>`).join('') + '</div>' +
       '<p class="evo-note">Evoluciona en mitad de la partida al ganar EXP: haciendo daño, debilitando y con los objetivos del modo.</p>';
     document.querySelectorAll('#dt-evo .evo-st').forEach((e) => (e.onclick = () => { dtStage = +e.dataset.st; PB.Audio.play('tick'); renderDetail(); }));
     let bar = '';
     for (let i = 1; i <= PB.META.maxLevel; i++) bar += `<i class="${i <= lvl && own ? 'on' : ''}"></i>`;
     $('#dt-level').innerHTML = `<b>Nivel ${own ? lvl : '-'}</b><span class="lvbar">${bar}</span>`;
     const shots = now.shots > 1 ? ` × ${now.shots}` : '';
+    const si = (n) => `<img class="sti" src="${PB.PixUI.iconURL(n, 2)}" alt="">`;
     $('#dt-stats').innerHTML =
-      (own ? `<tr><td><img class="cup" src="${cupIcon()}" alt=""> Copas</td><td>${PB.Save.copas(id)}</td></tr>` : '') +
-      `<tr><td>❤ Vida</td><td>${now.hp}${plus('hp')}</td></tr>` +
-      `<tr><td>⚔ Daño</td><td>${now.dmg}${shots}${plus('dmg')}</td></tr>` +
-      (now.superDmg ? `<tr><td>★ Súper</td><td>${now.superDmg}${b.super.dps ? '/s' : ''}${plus('superDmg')}</td></tr>` : '') +
-      `<tr><td>⚡ Velocidad</td><td>${now.speed}</td></tr>` +
-      `<tr><td>🔄 Recarga</td><td>${now.reload} s</td></tr>` +
-      `<tr><td>🎯 Alcance</td><td>${Math.round((now.range || b.super.radius || 0) / PB.TILE * 10) / 10} casillas</td></tr>`;
+      (own ? `<tr><td><img class="sti" src="${cupIcon()}" alt="">Copas</td><td>${PB.Save.copas(id)}</td></tr>` : '') +
+      `<tr><td>${si('heart')}Vida</td><td>${now.hp}${plus('hp')}</td></tr>` +
+      `<tr><td>${si('sword')}Daño</td><td>${now.dmg}${shots}${plus('dmg')}</td></tr>` +
+      (now.superDmg ? `<tr><td>${si('star')}Súper</td><td>${now.superDmg}${b.super.dps ? '/s' : ''}${plus('superDmg')}</td></tr>` : '') +
+      `<tr><td>${si('bolt')}Velocidad</td><td>${now.speed}</td></tr>` +
+      `<tr><td>${si('hourglass')}Recarga</td><td>${now.reload} s</td></tr>` +
+      `<tr><td>${si('target')}Alcance</td><td>${Math.round((now.range || b.super.radius || 0) / PB.TILE * 10) / 10} casillas</td></tr>`;
     $('#dt-moves').innerHTML =
       `<div class="move"><b>Ataque · ${b.attack.name}</b><span>${moveText(b.attack, false)}</span></div>` +
       `<div class="move super"><b>Súper · ${b.super.name}</b><span>${moveText(b.super, true)}</span></div>`;
@@ -402,7 +403,11 @@ PB.Lobby = (() => {
       btn.className = 'act ' + (m.claimed ? 'gray' : done ? 'gold' : 'gray');
       btn.textContent = m.claimed ? 'Hecha ✓' : done ? 'Reclamar' : 'En curso';
       btn.disabled = m.claimed || !done;
-      btn.onclick = () => { PB.Save.claimMission(msTab, i); PB.Audio.play('ready'); showMissions(); };
+      btn.onclick = () => {
+        const r = PB.Save.claimMission(msTab, i);
+        PB.Audio.play('ready');
+        if (!openClaimedChest([r], 'missions')) showMissions();
+      };
       el.appendChild(btn);
       list.appendChild(el);
     });
@@ -448,7 +453,11 @@ PB.Lobby = (() => {
         btn.className = 'act ' + (done ? 'gold' : 'gray');
         btn.textContent = done ? 'Reclamar' : 'En curso';
         btn.disabled = !done;
-        btn.onclick = () => { PB.Save.claimAchievement(a.id); PB.Audio.play('win'); showAchievements(); };
+        btn.onclick = () => {
+          const r = PB.Save.claimAchievement(a.id);
+          PB.Audio.play('win');
+          if (!openClaimedChest(r || [], 'achievements')) showAchievements();
+        };
         el.appendChild(btn);
       }
       box.appendChild(el);
@@ -674,14 +683,27 @@ PB.Lobby = (() => {
   const CHEST_COL = { poke: [255, 90, 60], great: [80, 150, 255], ultra: [255, 210, 60] };
   let fx = []; // partículas de la apertura
 
+  // Si el premio que se acaba de reclamar es un cofre, se abre en ese momento
+  function openClaimedChest(rewards, from) {
+    const kinds = ['ultra', 'great', 'poke'];
+    const got = rewards.filter((r) => r && kinds.includes(r.kind)).sort((x, y) => kinds.indexOf(x.kind) - kinds.indexOf(y.kind));
+    if (!got.length) return false;
+    const i = PB.Save.get().chests.lastIndexOf(got[0].kind);
+    if (i < 0) return false;
+    openChestScreen(i, from);
+    return true;
+  }
+
   function openNextChest() {
     const i = PB.Save.nextChest();
     if (i >= 0) openChestScreen(i);
   }
 
-  function openChestScreen(index) {
+  let chestReturn = 'lobby';
+  function openChestScreen(index, from) {
     const kind = PB.Save.get().chests[index];
     if (!kind) return;
+    if (from !== undefined) chestReturn = from || 'lobby';
     chest = { kind, index, state: 'idle', res: null, t: 0, items: [], cur: -1 };
     fx = [];
     $('#chest-name').textContent = PB.META.chests[kind].name;
@@ -776,7 +798,12 @@ PB.Lobby = (() => {
   function closeChest() {
     chest = null;
     fx = [];
-    show('lobby');
+    // vuelve a donde estabas (misiones o logros si el cofre venía de ahí)
+    const back = chestReturn;
+    chestReturn = 'lobby';
+    if (back === 'missions') showMissions();
+    else if (back === 'achievements') showAchievements();
+    else show('lobby');
   }
 
   // Dibuja la apertura: rayos de luz, la Pokéball y las partículas
@@ -1059,6 +1086,7 @@ PB.Lobby = (() => {
     $('#dt-back').onclick = showCollection;
     $('#chestopen').onclick = chestTap;
     $('#chest-widget').onclick = () => {
+      chestReturn = 'lobby';
       if (PB.Save.get().chests.length) openNextChest();
       else { flashIn('#chest-widget'); PB.Audio.play('tick'); }
     };

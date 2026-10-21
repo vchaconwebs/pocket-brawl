@@ -943,29 +943,29 @@ PB.Renderer = class {
     if (game.startT > 0) {
       const n = Math.ceil(game.startT);
       const k = 1 - (game.startT % 1 || 1);
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
       ctx.fillRect(0, 0, W, H);
       ctx.font = '22px "Jersey 10", system-ui, sans-serif';
       const tw = ctx.measureText(game.mode.name).width + 40;
       UI.panel(ctx, W / 2 - tw / 2, H / 2 - 92, tw, 42, { p: 3, fill: 'rgba(30,50,110,0.95)' });
       this.outlined(game.mode.name, W / 2, H / 2 - 63, 22, '#ffffff');
-      this.outlined(String(n), W / 2, H / 2 + 40, Math.round(110 * (1.4 - k * 0.4)), '#ffcf2e');
+      this.outlined(String(n), W / 2, H / 2 + 46, Math.round(68 * (1.3 - k * 0.3)), '#ffcf2e');
     }
 
-    // anuncios grandes (¡A LUCHAR!, ¡K.O.!, ...) sobre una banda pixel
+    // avisos importantes: una tira pequeña arriba, debajo del marcador (no tapa la partida)
     if (this.banner) {
       const b = this.banner;
       b.t += 1 / 60;
       const k = b.t / b.life;
       if (k >= 1) this.banner = null;
       else {
-        const pop = k < 0.12 ? 0.5 + (k / 0.12) * 0.7 : k < 0.2 ? 1.2 - ((k - 0.12) / 0.08) * 0.2 : 1;
-        ctx.globalAlpha = k > 0.8 ? (1 - k) / 0.2 : 1;
-        const by = H * 0.33;
-        const bw = Math.min(W - 20, 520 * Math.min(1, pop + 0.2));
-        UI.panel(ctx, W / 2 - bw / 2, by - 44, bw, b.sub ? 86 : 64, { p: 3, fill: 'rgba(14,20,48,0.82)' });
-        this.outlined(b.text, W / 2, by + 6, Math.round(44 * pop), b.color);
-        if (b.sub) this.outlined(b.sub, W / 2, by + 32, 16, '#ffffff');
+        ctx.globalAlpha = k < 0.1 ? k / 0.1 : k > 0.8 ? (1 - k) / 0.2 : 1;
+        const size = W < 700 ? 16 : 19;
+        ctx.font = size + 'px "Jersey 10", system-ui, sans-serif';
+        const bw = Math.min(W - 20, ctx.measureText(b.text).width + 36);
+        const by = 104 + (game.countdown ? 44 : 0) - (k < 0.1 ? (1 - k / 0.1) * 8 : 0);
+        UI.panel(ctx, W / 2 - bw / 2, by, bw, size + 14, { p: 2, fill: 'rgba(14,20,48,0.85)' });
+        this.outlined(b.text, W / 2, by + size + 3, size, b.color);
         ctx.globalAlpha = 1;
       }
     }
@@ -1035,9 +1035,9 @@ PB.Renderer = class {
       clock(88);
       if (game.countdown) {
         const ours = game.countdown.team === team;
-        const pulse = 1 + Math.max(0, (game.countdown.t % 1) - 0.7) * 0.8;
-        this.outlined(String(Math.ceil(game.countdown.t)), cx, 140, Math.round(44 * pulse), ours ? '#5aa8ff' : '#ff5f5f');
-        this.outlined(ours ? '¡Aguantad las Pokéballs!' : '¡Quitadles las Pokéballs!', cx, 164, 16, '#ffffff');
+        UI.panel(ctx, cx - 120, 104, 240, 40, { p: 2, fill: ours ? 'rgba(30,70,150,0.85)' : 'rgba(140,30,40,0.85)' });
+        this.outlined(String(Math.ceil(game.countdown.t)), cx - 88, 134, 28, '#ffffff');
+        this.outlined(ours ? '¡Aguantad!' : '¡Quitádselas!', cx + 18, 131, 17, '#ffffff');
       }
     } else if (id === 'showdown') {
       const alive = game.brawlers.filter((b) => !b.dead).length;

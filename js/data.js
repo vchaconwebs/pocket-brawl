@@ -245,6 +245,14 @@ PB.DIFFICULTY = {
   dificil: { name: 'Difícil', foe: 0.7, ally: 0.55 },
 };
 
+// Nombres de entrenador para los bots (inventados)
+PB.TRAINER_NAMES = [
+  'Lucía_7', 'MarcosGG', 'NerePlay', 'ElRayo23', 'Sandrix', 'Pablito99', 'Alba.exe', 'ToniPro', 'Irene_09', 'Dani3l',
+  'KaiZen', 'Mireia', 'XavierRB', 'Hugo_SP', 'Valen', 'Juls', 'Rocío22', 'Mateo_x', 'Iker10', 'Noa',
+  'Carla.b', 'Guille', 'SaraMoon', 'Unai', 'Leo_fire', 'Martina', 'Adri_G', 'PokeNico', 'Ainhoa', 'Bruno7',
+  'Elena', 'Gonzo', 'Paula_ss', 'Rubén', 'Zoe', 'Jaime_88', 'Clara', 'Óscar', 'Lola', 'Íñigo',
+];
+
 PB.RULES = {
   ballsToWin: 10,
   countdown: 15,

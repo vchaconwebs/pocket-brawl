@@ -147,8 +147,8 @@
   // ---------------------------------------------------------------- evolución
   // Fases: las líneas de 3 evolucionan dos veces (+12 % cada vez); las de 2, una vez con un salto mayor (+22 %).
   PB.EVO = {
-    xp3: [100, 240], // EXP total para la 2ª y 3ª fase
-    xp2: [150],
+    xp3: [70, 165], // EXP total para la 2ª y 3ª fase
+    xp2: [70], // los de una sola evolución tardan lo mismo que la 1ª evolución de los de tres
     mul3: [1, 1.12, 1.25],
     mul2: [1, 1.22],
     passive: 0.8, // EXP por segundo solo por estar vivo
