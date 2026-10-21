@@ -125,8 +125,9 @@ PB.Online = (() => {
   let lastProfile = '';
   let myDoc = { friends: [], clan: null };
 
+  const isGuest = () => !user || user.isAnonymous;
   async function syncProfile(first) {
-    if (!uid) return;
+    if (!uid || isGuest()) return;
     const d = PB.Save.get();
     if (first) {
       const s = await fs.collection('users').doc(uid).get();
@@ -183,6 +184,9 @@ PB.Online = (() => {
       const r = await auth.currentUser.linkWithPopup(prov);
       user = r.user;
       saveCloud(true);
+      lastProfile = '';
+      await user.getIdToken(true).catch(() => {}); // el permiso de "registrado" va en el token
+      syncProfile(true).catch(() => {});
       return { ok: true, email: user.email };
     } catch (e) {
       if (e.code === 'auth/credential-already-in-use' && e.credential) {
@@ -217,6 +221,9 @@ PB.Online = (() => {
         const r = await auth.currentUser.linkWithCredential(cred);
         user = r.user;
         saveCloud(true);
+        lastProfile = '';
+        await user.getIdToken(true).catch(() => {});
+        syncProfile(true).catch(() => {});
         return { ok: true, email };
       }
       const r = await auth.signInWithEmailAndPassword(email, pass);
@@ -252,7 +259,7 @@ PB.Online = (() => {
   // ------------------------------------------------------------ amigos
   let friendsCache = null, friendsT = 0;
   async function friends(force) {
-    if (!(await start())) return [];
+    if (!(await start()) || isGuest()) return [];
     if (!force && friendsCache && Date.now() - friendsT < 20000) return friendsCache;
     await processAccepted().catch(() => {});
     const ids = (myDoc.friends || []).slice(0, 100);
@@ -264,7 +271,7 @@ PB.Online = (() => {
   }
 
   async function requests() {
-    if (!(await start())) return [];
+    if (!(await start()) || isGuest()) return [];
     const q = await fs.collection('friendReqs').where('to', '==', uid).where('status', '==', 'pending').limit(30).get();
     const out = [];
     q.forEach((s) => { const d = s.data(); out.push({ id: d.from, name: clean(d.fromName, 16), copas: d.fromCopas | 0, fav: PB.brawlerById(d.fromFav) ? d.fromFav : PB.BRAWLERS[0].id }); });
@@ -937,7 +944,7 @@ PB.Online = (() => {
 
   // ------------------------------------------------------------ API
   return {
-    start, init, guest,
+    start, init, guest, isGuest: () => isGuest(),
     status: () => ({ online: !!uid, uid }),
     on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); },
     account, loginGoogle, emailAccount, resetPassword, logout, saveCloud,

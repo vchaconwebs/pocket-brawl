@@ -1790,3 +1790,5 @@ h1.lose { color: #ff8a7a; }
   .wl-panel { gap: 5px; }
   .wl-panel small { display: none; }
 }
+
+.wl-note { margin: 0 0 6px; padding: 8px 12px; background: rgba(255, 207, 46, 0.15); border: 2px solid #ffcf2e; color: #fff3c0; font-size: 15px; text-align: center; }

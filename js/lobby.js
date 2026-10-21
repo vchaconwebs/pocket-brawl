@@ -171,7 +171,7 @@ PB.Lobby = (() => {
     $('#pass-fill').style.width = Math.round(ps.progress * 100) + '%';
     $('#btn-pass').classList.toggle('ready', pend.pass > 0);
     setBadge('#ach-badge', pend.achievements);
-    PB.Online.requests().then((r) => setBadge('#fr-badge', r.length));
+    if (!PB.Online.isGuest()) PB.Online.requests().then((r) => setBadge('#fr-badge', r.length));
   }
 
   function setBadge(sel, n) {
@@ -1483,9 +1483,17 @@ PB.Lobby = (() => {
     $('#ico-cup').src = cupIcon();
     $('#btn-profile').onclick = showProfile;
     $('#btn-achievements').onclick = () => showAchievements();
-    $('#btn-friends').onclick = () => showFriends();
-    $('#btn-clan').onclick = showClan;
-    $('#btn-ranking').onclick = () => showRanking();
+    // amigos, clanes y ranking son para cuentas registradas (los invitados pueden jugar online igual)
+    const needAccount = (fn) => () => {
+      if (!PB.Online.isGuest()) return fn();
+      PB.Audio.play('tick');
+      $('#wl-note').classList.remove('hidden');
+      $('#wl-guest').textContent = PB.T('Seguir como invitado');
+      show('welcome');
+    };
+    $('#btn-friends').onclick = needAccount(() => showFriends());
+    $('#btn-clan').onclick = needAccount(showClan);
+    $('#btn-ranking').onclick = needAccount(() => showRanking());
     for (const [sel, fn] of [['#ms-tabs', showMissions], ['#ach-tabs', showAchievements], ['#fr-tabs', showFriends], ['#rk-tabs', showRanking]]) {
       document.querySelectorAll(sel + ' button').forEach((b) => (b.onclick = () => fn(b.dataset.tab)));
     }
