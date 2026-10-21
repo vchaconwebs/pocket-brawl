@@ -112,15 +112,11 @@ PB.Lobby = (() => {
   const typeTags = (b, types) => (types || b.types).map((ty) => `<i style="background:${PB.TYPE_INFO[ty].color}">${PB.TYPE_INFO[ty].name}</i>`).join('');
 
   // ------------------------------------------------------------------ pantallas
-  // el inicio sale la primera vez (o al cerrar sesión); quien ya tenía partida no lo ve
-  const welcomed = () => {
-    try {
-      if (localStorage.getItem('pb.welcomed')) return true;
-      if (!PB.Save.needsStarters()) { setWelcomed(); return true; }
-      return false;
-    } catch (e) { return true; }
-  };
-  function setWelcomed() { try { localStorage.setItem('pb.welcomed', '1'); } catch (e) {} }
+  // El inicio sale nada más entrar si no tienes cuenta (Google o correo): ahí eliges invitado,
+  // Google o correo. Con cuenta se pasa directo a la lobby.
+  let chosen = false;
+  const welcomed = () => chosen;
+  function setWelcomed() { chosen = true; }
   function show(id) {
     if (id === 'lobby' && !welcomed()) id = 'welcome';
     if (id === 'lobby' && PB.Save.needsStarters()) id = 'starters';
@@ -777,14 +773,11 @@ PB.Lobby = (() => {
   async function afterLogin(r, pre) {
     if (r.cancelled) return;
     if (r.error) return modal(r.error);
-    if (r.switched && r.save) {
-      // desde el inicio se carga directamente; desde el perfil se pregunta (hay progreso de invitado)
-      if (pre === 'wl' || (await modal(PB.T('Esa cuenta ya tiene una partida guardada. ¿Cargarla? (sustituye a la de este navegador)'), true))) {
-        PB.Save.importJSON(r.save);
-        setWelcomed();
-        location.reload();
-        return;
-      }
+    if (r.switched) {
+      // otra cuenta: desde el inicio se carga directamente; desde el perfil se pregunta
+      if (r.save && (pre === 'wl' || (await modal(PB.T('Esa cuenta ya tiene una partida guardada. ¿Cargarla? (sustituye a la de este navegador)'), true)))) PB.Save.importJSON(r.save);
+      location.reload();
+      return;
     }
     PB.Audio.play('win');
     toast(PB.T('Progreso guardado en tu cuenta'));
@@ -1459,7 +1452,18 @@ PB.Lobby = (() => {
     mailForm('pf');
     $('#wl-google').onclick = () => googleLogin('wl');
     mailForm('wl');
-    $('#wl-guest').onclick = () => { PB.Audio.play('ready'); setWelcomed(); show('lobby'); };
+    $('#wl-guest').onclick = async () => {
+      PB.Audio.play('ready');
+      $('#wl-guest').disabled = true;
+      await PB.Online.guest(); // sin internet se juega igual (solo con bots)
+      $('#wl-guest').disabled = false;
+      setWelcomed();
+      show('lobby');
+    };
+    // con sesión de Google o correo ya abierta, directo a la lobby
+    PB.Online.on('auth', (a) => {
+      if (a && !a.anonymous) { setWelcomed(); if (current === 'welcome') show('lobby'); }
+    });
     $('#pf-logout').onclick = async () => { if (await modal(PB.T('¿Cerrar sesión? En este navegador volverás a jugar como invitado.'), true)) PB.Online.logout(); };
     // enlace de invitación: ?sala=CODIGO
     const sala = new URLSearchParams(location.search).get('sala');

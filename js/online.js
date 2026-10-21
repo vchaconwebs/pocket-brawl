@@ -45,9 +45,12 @@ PB.Online = (() => {
     });
   }
 
-  function start() {
-    if (ready) return ready;
-    ready = (async () => {
+  // Carga Firebase y mira si ya había sesión. NO crea ninguna cuenta: eso se elige en el inicio
+  // (invitado, Google o correo). Devuelve true si hay sesión.
+  let inited = null;
+  function init() {
+    if (inited) return inited;
+    inited = (async () => {
       try {
         await loadScript(SDK + 'firebase-app-compat.js');
         await Promise.all(['auth', 'database', 'firestore'].map((m) => loadScript(SDK + 'firebase-' + m + '-compat.js')));
@@ -56,25 +59,55 @@ PB.Online = (() => {
         auth = fb.auth();
         rtdb = fb.database();
         fs = fb.firestore();
-        user = await new Promise((res) => {
-          const off = auth.onAuthStateChanged((u) => { if (u) { off(); res(u); } });
-          setTimeout(() => { if (!auth.currentUser) auth.signInAnonymously().catch(() => res(null)); }, 50);
-        });
-        if (!user) return false;
-        uid = user.uid;
         rtdb.ref('.info/serverTimeOffset').on('value', (s) => { offset = s.val() || 0; });
-        presence();
-        listenInvites();
-        await syncProfile(true);
-        processAccepted();
-        emit('ready');
+        const u = await new Promise((res) => { const off = auth.onAuthStateChanged((x) => { off(); res(x); }); });
+        if (u) await setup(u);
+        emit('auth', account());
         return true;
       } catch (e) {
         console.warn('Online no disponible', e);
         return false;
       }
     })();
+    return inited;
+  }
+  async function start() {
+    await init();
+    if (ready) await ready;
+    return !!uid;
+  }
+  // con sesión: presencia, invitaciones y perfil
+  function setup(u) {
+    user = u;
+    uid = u.uid;
+    ready = (async () => {
+      presence();
+      listenInvites();
+      await syncProfile(true).catch(() => {});
+      processAccepted().catch(() => {});
+      emit('ready');
+    })();
     return ready;
+  }
+  // "Jugar como invitado": cuenta anónima (solo si no había ninguna)
+  async function guest() {
+    if (!(await init())) return false;
+    if (uid) return true;
+    try {
+      const r = await auth.signInAnonymously();
+      await setup(r.user);
+      return true;
+    } catch (e) { return false; }
+  }
+  // Tras entrar en una cuenta que ya existía: si tenía partida guardada se devuelve para cargarla;
+  // si no, el progreso de este navegador pasa a esa cuenta. Luego se recarga la página.
+  async function enteredExisting(u, extra) {
+    user = u;
+    uid = u.uid;
+    const s = await fs.collection('users').doc(uid).collection('private').doc('save').get();
+    if (s.exists) return Object.assign({ ok: true, switched: true, save: s.data().json }, extra);
+    await fs.collection('users').doc(uid).collection('private').doc('save').set({ json: JSON.stringify(PB.Save.get()), t: Date.now() });
+    return Object.assign({ ok: true, switched: true, save: null }, extra);
   }
 
   // ------------------------------------------------------------ conectado / desconectado
@@ -139,9 +172,14 @@ PB.Online = (() => {
   // Vincular con Google: el progreso de este navegador pasa a esa cuenta.
   // Si la cuenta de Google ya tenía partida guardada, se puede recuperar.
   async function loginGoogle() {
-    if (!(await start())) return err('Sin conexión.');
+    if (!(await init())) return err('Sin conexión.');
     const prov = new fb.auth.GoogleAuthProvider();
     try {
+      if (!auth.currentUser) {
+        // sin sesión: entrar (o registrarse) directamente con Google
+        const r = await auth.signInWithPopup(prov);
+        return enteredExisting(r.user, { email: r.user.email });
+      }
       const r = await auth.currentUser.linkWithPopup(prov);
       user = r.user;
       saveCloud(true);
@@ -149,10 +187,7 @@ PB.Online = (() => {
     } catch (e) {
       if (e.code === 'auth/credential-already-in-use' && e.credential) {
         const r = await auth.signInWithCredential(e.credential);
-        user = r.user;
-        uid = user.uid;
-        const s = await fs.collection('users').doc(uid).collection('private').doc('save').get();
-        return { ok: true, email: user.email, switched: true, save: s.exists ? s.data().json : null };
+        return enteredExisting(r.user, { email: r.user.email });
       }
       if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return { cancelled: true };
       return err('No se ha podido iniciar sesión.');
@@ -170,10 +205,14 @@ PB.Online = (() => {
     return err('No se ha podido iniciar sesión.');
   };
   async function emailAccount(email, pass, create) {
-    if (!(await start())) return err('Sin conexión.');
+    if (!(await init())) return err('Sin conexión.');
     email = String(email || '').trim();
     try {
       if (create) {
+        if (!auth.currentUser) {
+          const r = await auth.createUserWithEmailAndPassword(email, pass);
+          return enteredExisting(r.user, { email });
+        }
         const cred = fb.auth.EmailAuthProvider.credential(email, pass);
         const r = await auth.currentUser.linkWithCredential(cred);
         user = r.user;
@@ -181,14 +220,11 @@ PB.Online = (() => {
         return { ok: true, email };
       }
       const r = await auth.signInWithEmailAndPassword(email, pass);
-      user = r.user;
-      uid = user.uid;
-      const s = await fs.collection('users').doc(uid).collection('private').doc('save').get();
-      return { ok: true, email, switched: true, save: s.exists ? s.data().json : null };
+      return enteredExisting(r.user, { email });
     } catch (e) { return mailErr(e); }
   }
   async function resetPassword(email) {
-    if (!(await start())) return err('Sin conexión.');
+    if (!(await init())) return err('Sin conexión.');
     try {
       auth.languageCode = PB.lang || 'es';
       await auth.sendPasswordResetEmail(String(email || '').trim());
@@ -208,7 +244,6 @@ PB.Online = (() => {
     await auth.signOut();
     try {
       localStorage.removeItem('pb.save.v1');
-      localStorage.removeItem('pb.welcomed');
     } catch (e) {}
     location.reload();
   }
@@ -902,7 +937,7 @@ PB.Online = (() => {
 
   // ------------------------------------------------------------ API
   return {
-    start,
+    start, init, guest,
     status: () => ({ online: !!uid, uid }),
     on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); },
     account, loginGoogle, emailAccount, resetPassword, logout, saveCloud,
