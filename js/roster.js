@@ -6,26 +6,26 @@
 //  - sus ESTADÍSTICAS deciden su papel (tanque, asesino, tirador...), que cambia cómo dispara.
 // Los 6 primeros (PB.HANDMADE, en data.js) conservan sus ataques hechos a mano.
 (function () {
-  // ataque básico y dos súper por tipo: [súper normal, súper alternativo (asesinos y lanzadores)]
+  // ataque básico y dos súper por tipo: [súper normal, súper alternativo (asesinos, tanques y lanzadores)]
   const KIT = {
-    normal: { basic: 'Meteoros', sup: [['shot', 'Hiperrayo'], ['dash', 'Doble Filo']] },
-    fire: { basic: 'Ascuas', sup: [['spread', 'Lanzallamas'], ['dash', 'Nitrocarga']] },
+    normal: { basic: 'Meteoros', sup: [['beam', 'Hiperrayo'], ['nova', 'Vozarrón']] },
+    fire: { basic: 'Ascuas', sup: [['spread', 'Lanzallamas'], ['turret', 'Fuego Fatuo']] },
     water: { basic: 'Pistola Agua', sup: [['shot', 'Hidrobomba'], ['vortex', 'Torbellino']] },
-    grass: { basic: 'Hoja Afilada', sup: [['heal', 'Drenadoras'], ['meteor', 'Bomba Germen']] },
-    electric: { basic: 'Impactrueno', sup: [['dash', 'Placaje Eléctrico'], ['freeze', 'Onda Trueno']] },
+    grass: { basic: 'Hoja Afilada', sup: [['heal', 'Drenadoras'], ['boomerang', 'Hoja Aguda']] },
+    electric: { basic: 'Impactrueno', sup: [['chain', 'Rayo'], ['dash', 'Placaje Eléctrico']] },
     ice: { basic: 'Rayo Hielo', sup: [['freeze', 'Ventisca'], ['meteor', 'Granizo']] },
-    fighting: { basic: 'Esfera Aural', sup: [['dash', 'A Bocajarro'], ['slam', 'Puño Dinámico']] },
-    poison: { basic: 'Residuos', sup: [['toxic', 'Tóxico'], ['shot', 'Bomba Lodo']] },
-    ground: { basic: 'Disparo Lodo', sup: [['slam', 'Terremoto'], ['vortex', 'Bucle Arena']] },
-    flying: { basic: 'Tornado', sup: [['dash', 'Pájaro Osado'], ['gust', 'Vendaval']] },
-    psychic: { basic: 'Confusión', sup: [['psy', 'Psíquico'], ['dash', 'Psicocorte']] },
-    bug: { basic: 'Picadura', sup: [['spread', 'Zumbido'], ['dash', 'Ida y Vuelta']] },
-    rock: { basic: 'Lanzarrocas', sup: [['meteor', 'Avalancha'], ['slam', 'Roca Afilada']] },
+    fighting: { basic: 'Esfera Aural', sup: [['dash', 'A Bocajarro'], ['barrier', 'Corpulencia']] },
+    poison: { basic: 'Residuos', sup: [['toxic', 'Tóxico'], ['mines', 'Púas Tóxicas']] },
+    ground: { basic: 'Disparo Lodo', sup: [['slam', 'Terremoto'], ['boomerang', 'Huesomerang']] },
+    flying: { basic: 'Tornado', sup: [['gust', 'Vendaval'], ['dash', 'Pájaro Osado']] },
+    psychic: { basic: 'Confusión', sup: [['psy', 'Psíquico'], ['barrier', 'Barrera']] },
+    bug: { basic: 'Picadura', sup: [['spread', 'Zumbido'], ['mines', 'Telaraña']] },
+    rock: { basic: 'Lanzarrocas', sup: [['meteor', 'Avalancha'], ['mines', 'Trampa Rocas']] },
     ghost: { basic: 'Bola Sombra', sup: [['stealth', 'Desvanecer'], ['vortex', 'Pesadilla']] },
-    dragon: { basic: 'Dragoaliento', sup: [['draco', 'Cometa Draco'], ['dash', 'Enfado']] },
-    dark: { basic: 'Pulso Umbrío', sup: [['dash', 'Golpe Bajo'], ['stealth', 'Finta']] },
-    steel: { basic: 'Disparo Espejo', sup: [['shot', 'Foco Resplandor'], ['slam', 'Cabeza de Hierro']] },
-    fairy: { basic: 'Viento Feérico', sup: [['heal', 'Campo de Niebla'], ['shot', 'Fuerza Lunar']] },
+    dragon: { basic: 'Dragoaliento', sup: [['draco', 'Cometa Draco'], ['beam', 'Pulso Dragón']] },
+    dark: { basic: 'Pulso Umbrío', sup: [['boomerang', 'Tajo Umbrío'], ['dash', 'Golpe Bajo']] },
+    steel: { basic: 'Disparo Espejo', sup: [['shot', 'Foco Resplandor'], ['barrier', 'Defensa Férrea']] },
+    fairy: { basic: 'Viento Feérico', sup: [['wish', 'Deseo'], ['nova', 'Brillo Mágico']] },
   };
   const TRAIL = {
     fire: 'ember', dragon: 'ember', water: 'drip', ice: 'drip', grass: 'leaves', bug: 'leaves', electric: 'spark', steel: 'spark',
@@ -46,8 +46,8 @@
       desc: 'Muy rápido: dispara dos ataques seguidos y se escapa.',
     },
     sniper: {
-      name: 'Francotirador', hp: 2900, speed: 148, reload: 1.7, superHits: 5,
-      atk: { kind: 'spread', count: 1, spread: 0, range: 340, speed: 740, dmg: 860, r: 18, scale: 1.3 },
+      name: 'Francotirador', hp: 2800, speed: 148, reload: 1.85, superHits: 5,
+      atk: { kind: 'spread', count: 1, spread: 0, range: 365, speed: 780, dmg: 1080, r: 17, scale: 1.4 },
       desc: 'Un disparo potente de largo alcance. Frágil de cerca.',
     },
     fighter: {
@@ -68,14 +68,22 @@
     shot: { kind: 'spread', count: 1, spread: 0, range: 370, speed: 560, dmg: 1500, r: 34, pierce: true, destroysWalls: true, knockback: 480, scale: 3, d: 'un disparo enorme que empuja y rompe muros' },
     heal: { kind: 'zone', range: 320, flight: 0.55, radius: 140, duration: 4, dps: 550, heal: 500, scale: 1.4, d: 'una zona que daña a los rivales y cura a tu equipo' },
     toxic: { kind: 'zone', range: 320, flight: 0.55, radius: 150, duration: 4, dps: 800, heal: 0, scale: 1.4, d: 'un charco venenoso que hace mucho daño' },
-    dash: { kind: 'dash', range: 270, time: 0.22, dmg: 1150, stun: 0.8, r: 40, d: 'una embestida que aturde' },
-    slam: { kind: 'slam', radius: 195, dmg: 1650, knockback: 600, stun: 0.5, destroysWalls: true, d: 'un golpe al suelo que aparta y rompe muros' },
+    dash: { kind: 'dash', range: 270, time: 0.22, dmg: 1050, stun: 0.8, r: 40, d: 'una embestida que aturde' },
+    slam: { kind: 'slam', radius: 200, dmg: 1800, knockback: 600, stun: 0.5, destroysWalls: true, d: 'un golpe al suelo que aparta y rompe muros' },
     psy: { kind: 'slam', radius: 210, dmg: 1200, knockback: 820, stun: 0.3, d: 'una onda mental que lanza lejos a los rivales' },
-    stealth: { kind: 'stealth', time: 3.5, speedMul: 1.3, bonus: 1.5, d: 'le vuelve invisible y potencia su siguiente ataque' },
+    stealth: { kind: 'stealth', time: 4, speedMul: 1.35, bonus: 1.85, d: 'le vuelve invisible y potencia su siguiente ataque' },
     freeze: { kind: 'spread', count: 7, spread: 0.6, range: 300, speed: 560, dmg: 340, r: 16, pierce: true, stun: 0.6, scale: 1.4, d: 'una tormenta helada que congela un momento' },
     draco: { kind: 'spread', count: 5, spread: 0.4, range: 330, speed: 620, dmg: 540, r: 20, pierce: true, scale: 1.8, d: 'cinco meteoros dracónicos que lo atraviesan todo' },
     vortex: { kind: 'zone', range: 330, flight: 0.5, radius: 130, duration: 3, dps: 650, heal: 0, pull: 170, scale: 1.4, d: 'un remolino que arrastra a los rivales a su centro y los va dañando' },
     meteor: { kind: 'meteor', range: 330, flight: 0.85, count: 5, spreadR: 85, radius: 54, dmg: 600, scale: 1.6, d: 'una lluvia de golpes que caen sobre la zona elegida' },
+    nova: { kind: 'nova', count: 12, range: 280, speed: 540, dmg: 490, r: 16, pierce: true, scale: 1.4, d: 'una explosión de ataques en todas direcciones' },
+    boomerang: { kind: 'boomerang', range: 340, speed: 660, dmg: 920, r: 24, scale: 2.4, d: 'un proyectil enorme que va y vuelve, golpeando a la ida y a la vuelta' },
+    chain: { kind: 'chain', range: 380, hop: 250, count: 4, dmg: 900, falloff: 0.85, stun: 0.4, d: 'un rayo que salta de un rival a otro y los aturde' },
+    beam: { kind: 'beam', range: 440, width: 62, dmg: 1700, delay: 0.32, d: 'un rayo larguísimo que se carga un instante y lo atraviesa todo' },
+    mines: { kind: 'mines', range: 330, count: 3, spreadR: 70, trigger: 44, radius: 90, dmg: 1000, stun: 0.6, life: 14, scale: 1.4, d: 'tres trampas en el suelo que explotan y aturden al pisarlas' },
+    turret: { kind: 'turret', place: 160, range: 330, dur: 6, rate: 0.55, dmg: 240, speed: 620, r: 12, scale: 1.2, d: 'deja un orbe que dispara solo a los rivales durante 6 s' },
+    barrier: { kind: 'barrier', time: 4.5, reduce: 0.6, radius: 260, d: 'un escudo que reduce mucho el daño a él y a su equipo cercano' },
+    wish: { kind: 'wish', radius: 300, heal: 0.33, d: 'cura de golpe a todo su equipo cercano y le quita el aturdimiento' },
     gust: { kind: 'spread', count: 7, spread: 0.7, range: 280, speed: 640, dmg: 300, r: 20, pierce: true, knockback: 520, scale: 1.6, d: 'un vendaval que atraviesa y empuja a todos' },
   };
 
@@ -142,7 +150,8 @@
     const second = types.find((t) => t !== atkType && t !== 'normal' && KIT[t]);
     const sig = typesOverride ? null : SIGNATURE[fam.id];
     const supType = sig ? sig[2] : second || atkType;
-    const [supKind, supName] = sig || (second ? KIT[second].sup[0] : (KIT[atkType] || KIT.normal).sup[roleId === 'assassin' || roleId === 'thrower' ? 1 : 0]);
+    const alt = roleId === 'assassin' || roleId === 'thrower' || roleId === 'tank' ? 1 : 0;
+    const [supKind, supName] = sig || (second ? KIT[second].sup[alt] : (KIT[atkType] || KIT.normal).sup[alt]);
     const supLook = { shape: PB.VFX.forType(supType).proj, trail: TRAIL[supType] || 'spark' };
     // pequeñas diferencias según sus stats (±10 %), compensadas para que nadie sea mejor en todo
     const zBulk = clamp(((fin.hp - 105) / 8 + (fin.df + fin.sd - 158) / 35) / 2, -1.5, 1.5);

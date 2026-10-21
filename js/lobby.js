@@ -360,6 +360,15 @@ PB.Lobby = (() => {
       case 'dash': return 'Embestida rápida que daña y aturde.';
       case 'slam': return m.destroysWalls ? 'Golpe al suelo alrededor: daña, empuja y rompe muros.' : 'Onda alrededor que daña y lanza lejos a los rivales.';
       case 'stealth': return 'Te vuelves invisible y tu siguiente ataque hace más daño.';
+      case 'nova': return `${m.count} ataques en todas direcciones que atraviesan.`;
+      case 'boomerang': return 'Un proyectil enorme que va y vuelve: golpea a la ida y a la vuelta.';
+      case 'chain': return `Un rayo que salta hasta ${m.count} rivales y los aturde.`;
+      case 'beam': return 'Se carga un instante y sale un rayo larguísimo que atraviesa a todos.';
+      case 'mines': return `${m.count} trampas en el suelo que explotan y aturden al pisarlas.`;
+      case 'turret': return `Deja un orbe que dispara solo a los rivales durante ${m.dur} s.`;
+      case 'barrier': return 'Escudo para ti y tu equipo cercano: recibís mucho menos daño.';
+      case 'wish': return 'Cura de golpe a todo tu equipo cercano y le quita el aturdimiento.';
+      case 'meteor': return 'Una lluvia de golpes cae sobre la zona que elijas.';
     }
     return isSuper ? 'Ataque especial.' : '';
   }

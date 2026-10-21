@@ -18,6 +18,9 @@ PB.Game = class {
     this.brawlers = [];
     this.projectiles = [];
     this.zones = []; // zonas de Drenadoras
+    this.mines = []; // trampas en el suelo (súper)
+    this.turrets = []; // orbes que disparan solos (súper)
+    this.timers = []; // cosas que pasan un poco después (rayo que se carga)
     this.balls = []; // objetos del suelo: Pokéballs y Caramelos Raros ({ kind })
     this.structures = []; // Snorlax
     this.fx = []; // efectos visuales (no afectan al juego)
@@ -171,6 +174,10 @@ PB.Game = class {
     for (const b of this.brawlers) this.updateBrawler(b, dt, inputs[b.idx] || {});
     this.updateProjectiles(dt);
     this.updateZones(dt);
+    this.updateMines(dt);
+    this.updateTurrets(dt);
+    for (const tm of this.timers) { tm.t -= dt; if (tm.t <= 0) tm.fn(); }
+    this.timers = this.timers.filter((tm) => tm.t > 0);
     this.updateBalls(dt);
     for (const s of this.structures) s.flashT -= dt;
     if (this.mode.update) this.mode.update(this, dt);
@@ -195,6 +202,7 @@ PB.Game = class {
     b.stunT -= dt;
     b.spawnT -= dt;
     if (b.evoT > 0) b.evoT -= dt;
+    if (b.barrierT > 0) b.barrierT -= dt;
     this.gainXp(b, PB.EVO.passive * dt);
     if (b.stealthT > 0) b.stealthT -= dt;
     if (b.action) {
@@ -411,6 +419,68 @@ PB.Game = class {
       if (s.destroysWalls) this.breakWalls(b.x, b.y, s.radius);
       this.fx.push({ kind: 'crack', x: b.x, y: b.y, r: s.radius, t: 0, life: 1.2, seed: Math.random() * 100 });
       this.shake = Math.max(this.shake, 16);
+    } else if (s.kind === 'nova') {
+      // estallido: ataques en todas direcciones
+      this.startAction(b, ang, 'Attack', 0.4);
+      for (let i = 0; i < s.count; i++) this.spawnShot(b, s, ang + (i / s.count) * Math.PI * 2, true, 1);
+      this.ring(b.x, b.y - 10, 20, 120, pal[3], 0.35, 6);
+      this.shake = Math.max(this.shake, 6);
+    } else if (s.kind === 'boomerang') {
+      // va y vuelve: puede golpear a la ida y a la vuelta
+      this.startAction(b, ang, 'Shoot', 0.4);
+      this.spawnShot(b, s, ang, true, 1);
+      const p = this.projectiles[this.projectiles.length - 1];
+      p.boomerang = true;
+      p.pierce = true;
+    } else if (s.kind === 'chain') {
+      this.startAction(b, ang, 'Shoot', 0.4);
+      this.chainHit(b, s, sT, ang);
+    } else if (s.kind === 'beam') {
+      // se carga un instante y sale un rayo larguísimo
+      this.startAction(b, ang, 'Attack', s.delay + 0.25);
+      this.fx.push({ kind: 'beamCharge', x: b.x, y: b.y - 18, ang, len: s.range, t: 0, life: s.delay, type: sT, by: b });
+      this.timers.push({ t: s.delay, fn: () => { if (!b.dead) this.beamHit(b, s, sT, ang); } });
+    } else if (s.kind === 'mines') {
+      this.startAction(b, ang, 'Shoot', 0.4);
+      const d = Math.min(dist, s.range);
+      const cx = b.x + Math.cos(ang) * d, cy = b.y + Math.sin(ang) * d;
+      for (let i = 0; i < s.count; i++) {
+        const a = ang + (i / s.count) * Math.PI * 2, r = s.count > 1 ? s.spreadR : 0;
+        const p = this.world.walkable(b.x, b.y, cx + Math.cos(a) * r, cy + Math.sin(a) * r, 8) ? { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r } : { x: cx, y: cy };
+        this.mines.push({ x: p.x, y: p.y, team: b.team, owner: b, atk: s, type: sT, armT: 0.6, t: s.life, phase: Math.random() * 6 });
+        for (let k = 0; k < 5; k++) this.px(p.x, p.y, pal[3], { speed: 90, life: 0.35, size: 4 });
+      }
+    } else if (s.kind === 'turret') {
+      this.startAction(b, ang, 'Shoot', 0.4);
+      const d = Math.min(dist, s.place || 160);
+      let x = b.x + Math.cos(ang) * d, y = b.y + Math.sin(ang) * d;
+      if (!this.world.walkable(b.x, b.y, x, y, 10)) { x = b.x; y = b.y; }
+      this.turrets.push({ x, y, team: b.team, owner: b, atk: s, type: sT, t: s.dur, life: s.dur, fireT: 0.3 });
+      this.ring(x, y - 20, 10, 70, pal[3], 0.35, 5);
+    } else if (s.kind === 'barrier') {
+      // escudo para él y su equipo cercano
+      this.startAction(b, b.facing, 'Attack', 0.4);
+      for (const a of this.brawlers) {
+        if (a.dead || a.team !== b.team || Math.hypot(a.x - b.x, a.y - b.y) > s.radius) continue;
+        a.barrierT = s.time;
+        a.barrierReduce = s.reduce;
+        a.barrierType = sT;
+        this.ring(a.x, a.y - 20, 10, 50, pal[3], 0.35, 4);
+      }
+      this.ring(b.x, b.y - 10, 20, s.radius, pal[3], 0.45, 4);
+    } else if (s.kind === 'wish') {
+      // cura de golpe a su equipo cercano (y quita el aturdimiento)
+      this.startAction(b, b.facing, 'Attack', 0.4);
+      for (const a of this.brawlers) {
+        if (a.dead || a.team !== b.team || Math.hypot(a.x - b.x, a.y - b.y) > s.radius) continue;
+        const heal = a.maxHp * s.heal;
+        a.hp = Math.min(a.maxHp, a.hp + heal);
+        a.stunT = 0;
+        this.text(a.x, a.y - 96, '+' + Math.round(heal), '#7dff8f', 18);
+        for (let k = 0; k < 4; k++) this.vfx('heart', 'fairy', a.x + (Math.random() - 0.5) * 40, a.y - 30, { vy: -60, life: 0.8, scale: 1.2, fade: true });
+      }
+      this.ring(b.x, b.y - 10, 20, s.radius, '#7dff8f', 0.5, 5);
+      this.flash(b.x, b.y - 20, 120, '#c8ffd0', 0.3);
     } else if (s.kind === 'meteor') {
       // lluvia de golpes alrededor del punto elegido
       this.startAction(b, ang, 'Shoot', 0.45);
@@ -491,15 +561,25 @@ PB.Game = class {
         keep.push(p);
         continue;
       }
+      if (p.boomerang && p.back) {
+        const o = p.owner, dx = o.x - p.x, dy = o.y - 10 - p.y, d = Math.hypot(dx, dy) || 1;
+        const sp = Math.hypot(p.vx, p.vy);
+        p.vx = (dx / d) * sp;
+        p.vy = (dy / d) * sp;
+        if (d < 30 || o.dead || p.t > 4) continue;
+      }
       const step = Math.hypot(p.vx, p.vy) * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.traveled += step;
       if (p.traveled >= p.range) {
-        this.puff(p);
-        continue;
+        if (p.boomerang && !p.back) { p.back = true; p.hit = new Set(); }
+        else if (!p.boomerang) {
+          this.puff(p);
+          continue;
+        }
       }
-      if (this.world.shotBlockedAt(p.x, p.y)) {
+      if (!p.boomerang && this.world.shotBlockedAt(p.x, p.y)) {
         const T = PB.TILE, c = Math.floor(p.x / T), r = Math.floor(p.y / T);
         if (p.destroysWalls && this.breakWalls(p.x, p.y, 40).length) {
           this.shake = Math.max(this.shake, 6);
@@ -601,6 +681,90 @@ PB.Game = class {
       }
     }
     this.zones = this.zones.filter((z) => z.t > 0);
+  }
+
+  // rayo en cadena: golpea al más cercano y salta a los siguientes
+  chainHit(b, s, type, ang) {
+    const pts = [{ x: b.x, y: b.y - 20 }];
+    const hit = new Set();
+    let from = b, dmg = s.dmg;
+    for (let i = 0; i < s.count; i++) {
+      let best = null, bd = i === 0 ? s.range : s.hop;
+      for (const e of this.brawlers) {
+        if (e.dead || e.team === b.team || hit.has(e.idx) || !this.visibleTo(e, b.team)) continue;
+        const d = Math.hypot(e.x - from.x, e.y - from.y);
+        // el primero: hacia donde apuntas (o el más cercano)
+        const off = i === 0 ? Math.abs(((Math.atan2(e.y - b.y, e.x - b.x) - ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI) : 0;
+        if (d < bd && off < 0.9 && this.world.los(from.x, from.y, e.x, e.y)) { bd = d; best = e; }
+      }
+      if (!best) break;
+      hit.add(best.idx);
+      pts.push({ x: best.x, y: best.y - 20 });
+      this.damage(best, dmg, b, type, { stun: s.stun, big: true });
+      from = best;
+      dmg *= s.falloff || 0.85;
+    }
+    if (pts.length === 1) pts.push({ x: b.x + Math.cos(ang) * s.range * 0.6, y: b.y - 20 + Math.sin(ang) * s.range * 0.6 });
+    this.fx.push({ kind: 'chain', pts, t: 0, life: 0.35, type, seed: Math.random() * 100 });
+  }
+
+  // rayo recto: daña a todo lo que pille en la línea (atraviesa)
+  beamHit(b, s, type, ang) {
+    const x1 = b.x, y1 = b.y - 18, x2 = x1 + Math.cos(ang) * s.range, y2 = y1 + Math.sin(ang) * s.range;
+    for (const e of this.brawlers) {
+      if (e.dead || e.team === b.team) continue;
+      const t = Math.max(0, Math.min(1, ((e.x - x1) * (x2 - x1) + (e.y - 10 - y1) * (y2 - y1)) / (s.range * s.range)));
+      const d = Math.hypot(e.x - (x1 + (x2 - x1) * t), e.y - 10 - (y1 + (y2 - y1) * t));
+      if (d < s.width / 2 + e.r) this.damage(e, s.dmg, b, type, { knockback: 240, kx: x2 - x1, ky: y2 - y1, big: true });
+    }
+    for (const st of this.structures) {
+      if (st.hp <= 0 || st.team === b.team) continue;
+      const t = Math.max(0, Math.min(1, ((st.x - x1) * (x2 - x1) + (st.y - y1) * (y2 - y1)) / (s.range * s.range)));
+      if (Math.hypot(st.x - (x1 + (x2 - x1) * t), st.y - (y1 + (y2 - y1) * t)) < s.width / 2 + st.r) this.damageStructure(st, s.dmg, b, false, st.x, st.y - 30);
+    }
+    this.fx.push({ kind: 'beam', x1, y1, x2, y2, w: s.width, t: 0, life: 0.4, type });
+    this.shake = Math.max(this.shake, 8);
+  }
+
+  // trampas: se activan al acercarse un rival
+  updateMines(dt) {
+    for (const m of this.mines) {
+      m.t -= dt;
+      m.armT -= dt;
+      if (m.armT > 0) continue;
+      for (const e of this.brawlers) {
+        if (e.dead || e.team === m.team || Math.hypot(e.x - m.x, e.y - m.y) > m.atk.trigger + e.r) continue;
+        this.explode(m.owner, m.x, m.y, m.atk.radius, m.atk.dmg, m.type, { stun: m.atk.stun, big: true });
+        m.t = 0;
+        break;
+      }
+    }
+    this.mines = this.mines.filter((m) => m.t > 0);
+  }
+
+  // orbes que disparan solos al rival más cercano que vean
+  updateTurrets(dt) {
+    for (const tu of this.turrets) {
+      tu.t -= dt;
+      tu.fireT -= dt;
+      if (tu.fireT > 0) continue;
+      let best = null, bd = tu.atk.range;
+      for (const e of this.brawlers) {
+        if (e.dead || e.team === tu.team || !this.visibleTo(e, tu.team)) continue;
+        const d = Math.hypot(e.x - tu.x, e.y - tu.y);
+        if (d < bd && this.world.los(tu.x, tu.y, e.x, e.y)) { bd = d; best = e; }
+      }
+      if (!best) continue;
+      tu.fireT = tu.atk.rate;
+      const ang = Math.atan2(best.y - 8 - (tu.y - 24), best.x - tu.x);
+      this.projectiles.push({
+        x: tu.x, y: tu.y - 24, vx: Math.cos(ang) * tu.atk.speed, vy: Math.sin(ang) * tu.atk.speed, ang,
+        r: tu.atk.r, dmg: tu.atk.dmg, team: tu.team, owner: tu.owner, range: tu.atk.range + 40, traveled: 0,
+        pierce: false, hit: new Set(), look: tu.atk.look || {}, atkType: tu.type, charge: false,
+        destroysWalls: false, knockback: 0, stun: 0, isSuper: false, shotId: this.nextShotId++, powered: false, t: 0, trailT: 0,
+      });
+    }
+    this.turrets = this.turrets.filter((tu) => tu.t > 0);
   }
 
   explode(owner, x, y, radius, dmg, atkType, opts) {
@@ -711,7 +875,9 @@ PB.Game = class {
   damage(target, amount, source, atkType, opts) {
     if (target.dead || target.shieldT > 0 || target.spawnT > 0) return;
     const eff = atkType ? PB.effectiveness(atkType, target.types || target.def.types) : 1;
-    const amt = Math.round(amount * eff * this.powerMul(source));
+    // escudo de súper: reduce el daño
+    const shield = target.barrierT > 0 ? 1 - (target.barrierReduce || 0.5) : 1;
+    const amt = Math.round(amount * eff * this.powerMul(source) * shield);
     target.hp -= amt;
     target.lastCombat = this.time;
     target.hurtT = 0.2;

@@ -39,6 +39,18 @@ PB.Bot = class {
     }
 
     const closeRange = atk.range < 250;
+    // memoria: los rivales que ha visto hace muy poco. Si uno se mete en un arbusto delante de él, sabe que está ahí
+    this.memory = this.memory || {};
+    for (const e of g.enemiesOf(b)) if (g.visibleTo(e, b.team)) this.memory[e.idx] = { x: e.x, y: e.y, t: g.time };
+    let hidden = null, hd = Infinity;
+    if (!foe) {
+      for (const e of g.enemiesOf(b)) {
+        const m = this.memory[e.idx];
+        if (!m || g.time - m.t > 2.5 || !g.inBush(e)) continue;
+        const d = Math.hypot(m.x - b.x, m.y - b.y);
+        if (d < Math.max(atk.range, 300) && d < hd) { hd = d; hidden = m; }
+      }
+    }
 
     // el modo decide a dónde ir y qué atacar
     const plan = (g.mode.botPlan && g.mode.botPlan(this, { foe, fd, hpF })) || {};
@@ -107,6 +119,15 @@ PB.Bot = class {
     }
     this.seenT += dt;
     this.superWait -= dt;
+    // dispara al arbusto donde vio esconderse al rival (y se acerca a buscarlo)
+    if (hidden && !carrying && g.started && !plan.retreat) {
+      if (!input.mx && !input.my && hd > atk.range * 0.6) this.followTo(hidden, input);
+      if (b.ammo >= 1 && this.fireT <= 0 && hd <= atk.range * 0.95 && (atk.kind === 'lob' || W.los(b.x, b.y, hidden.x, hidden.y))) {
+        const ang = Math.atan2(hidden.y - b.y, hidden.x - b.x) + (Math.random() - 0.5) * 0.25;
+        input.attack = { dx: Math.cos(ang), dy: Math.sin(ang), dist: hd };
+        this.fireT = 0.5 + (1 - this.skill) * 0.8 + Math.random() * 0.4;
+      }
+    }
     // chutar el Voltorb
     if (carrying) {
       if (plan.kick && g.started) input.attack = { dx: plan.kick.dx, dy: plan.kick.dy };
@@ -118,7 +139,7 @@ PB.Bot = class {
       const ang = Math.atan2(tgt.y - b.y, tgt.x - b.x) + (Math.random() - 0.5) * 0.15;
       input.attack = { dx: Math.cos(ang), dy: Math.sin(ang), dist: Math.hypot(tgt.x - b.x, tgt.y - b.y) };
       this.fireT = 0.35 + (1 - this.skill) * 0.5 + Math.random() * 0.3;
-      if (b.superCharge >= 1 && tgt.struct && ['spread', 'zone', 'meteor'].includes(b.def.super.kind)) input.super = input.attack;
+      if (b.superCharge >= 1 && tgt.struct && ['spread', 'zone', 'meteor', 'beam', 'boomerang', 'nova', 'turret'].includes(b.def.super.kind)) input.super = input.attack;
     }
     if (foe && this.seenT >= this.reaction && g.started && !(plan.focus && input.attack)) {
       const canHit = atk.kind === 'lob' || W.los(b.x, b.y, foe.x, foe.y);
@@ -135,6 +156,13 @@ PB.Bot = class {
         else if (s.kind === 'dash') use = fd < s.range * 0.85 && W.walkable(b.x, b.y, foe.x, foe.y, 10);
         else if (s.kind === 'slam') use = fd < s.radius * 0.75;
         else if (s.kind === 'stealth') use = fd < 500 || hpF < 0.5;
+        else if (s.kind === 'nova') use = fd < s.range * 0.75;
+        else if (s.kind === 'boomerang' || s.kind === 'chain') use = fd < s.range * 0.9;
+        else if (s.kind === 'beam') use = fd < s.range * 0.85 && W.los(b.x, b.y, foe.x, foe.y);
+        else if (s.kind === 'mines') use = fd < s.range;
+        else if (s.kind === 'turret') use = fd < 420;
+        else if (s.kind === 'barrier') use = fd < 420 || hpF < 0.5;
+        else if (s.kind === 'wish') use = hpF < 0.55 || g.brawlers.some((a) => a.team === b.team && !a.dead && a.hp / a.maxHp < 0.4 && Math.hypot(a.x - b.x, a.y - b.y) < s.radius);
         if (use) {
           // los bots torpes a veces "se olvidan" un rato de usar el súper
           if (Math.random() < 0.5 - this.skill * 0.4) this.superWait = 1 + Math.random() * 2;

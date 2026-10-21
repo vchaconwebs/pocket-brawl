@@ -124,6 +124,9 @@ PB.Renderer = class {
 
     // zonas (Drenadoras)
     for (const z of game.zones) this.drawZone(z, t, team);
+    // trampas y orbes de los súper
+    for (const m of game.mines) this.drawMine(m, t, team);
+    for (const tu of game.turrets) this.drawTurret(tu, t);
 
     // indicador de apuntado (debajo de los personajes)
     if (view.aim && !view.aim.cancel && focus && !focus.dead && game.started) this.drawAim(focus, view.aim);
@@ -166,6 +169,12 @@ PB.Renderer = class {
 
     // proyectiles
     for (const p of game.projectiles) if (inView(p.x, p.y, 80)) this.drawShot(p, t);
+    // rayos de los súper
+    for (const f of game.fx) {
+      if (f.kind === 'chain') this.drawChain(f);
+      else if (f.kind === 'beam') this.drawBeam(f);
+      else if (f.kind === 'beamCharge') this.drawBeamCharge(f);
+    }
 
     // arbustos (por encima)
     for (let r = r0; r < r1; r++) for (let c = c0; c < c1; c++) {
@@ -604,6 +613,103 @@ PB.Renderer = class {
     PB.VFX.draw(ctx, T === 'grass' || T === 'poison' ? 'blob' : PB.VFX.forType(T).proj, T, z.x, z.y - 6, { scale: 1.6, frame: Math.floor(t * 4) });
   }
 
+  // trampa: los tuyos se ven bien; las del rival, casi transparentes
+  drawMine(m, t, team) {
+    const ctx = this.ctx;
+    const P = PB.VFX.PAL[m.type] || PB.VFX.PAL.normal;
+    const mine = m.team === team;
+    ctx.globalAlpha = mine ? 1 : 0.32;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(m.x, m.y + 4, 16, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const armed = m.armT <= 0;
+    ctx.fillStyle = '#141824';
+    ctx.fillRect(m.x - 12, m.y - 10, 24, 16);
+    ctx.fillStyle = P[1];
+    ctx.fillRect(m.x - 10, m.y - 8, 20, 12);
+    ctx.fillStyle = P[3];
+    ctx.fillRect(m.x - 10, m.y - 8, 20, 4);
+    // pinchos
+    ctx.fillStyle = '#141824';
+    for (const dx of [-8, 0, 8]) ctx.fillRect(m.x + dx - 2, m.y - 14, 4, 5);
+    ctx.fillStyle = armed && Math.sin(t * 8 + m.phase) > 0 ? '#ff4a3a' : P[4];
+    ctx.fillRect(m.x - 3, m.y - 4, 6, 4);
+    ctx.globalAlpha = 1;
+  }
+
+  // orbe que dispara solo, con un anillo que marca lo que le queda
+  drawTurret(tu, t) {
+    const ctx = this.ctx;
+    const P = PB.VFX.PAL[tu.type] || PB.VFX.PAL.normal;
+    const bob = Math.sin(t * 4) * 3;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(tu.x, tu.y + 4, 18, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    this.glow(tu.x, tu.y - 24 + bob, 34, this.hexA(P[3], 0.5));
+    PB.VFX.draw(ctx, PB.VFX.forType(tu.type).proj, tu.type, tu.x, tu.y - 24 + bob, { scale: 2.2, frame: Math.floor(t * 6), angle: t * 2 });
+    ctx.strokeStyle = this.hexA(P[4], 0.9);
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(tu.x, tu.y - 24 + bob, 22, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (tu.t / tu.life));
+    ctx.stroke();
+  }
+
+  // rayo en cadena: zigzag pixel entre los golpeados
+  drawChain(f) {
+    const ctx = this.ctx, P = PB.VFX.PAL[f.type] || PB.VFX.PAL.electric;
+    const a = 1 - f.t / f.life;
+    for (const [w, col] of [[9, this.hexA(P[2], a * 0.6)], [4, this.hexA(P[4], a)]]) {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = w;
+      ctx.beginPath();
+      for (let i = 0; i < f.pts.length - 1; i++) {
+        const p = f.pts[i], q = f.pts[i + 1];
+        const n = 6;
+        for (let k = 0; k <= n; k++) {
+          const x = p.x + ((q.x - p.x) * k) / n, y = p.y + ((q.y - p.y) * k) / n;
+          const j = k === 0 || k === n ? 0 : Math.sin(f.seed + k * 7.3 + i * 3 + f.t * 40) * 12;
+          if (i === 0 && k === 0) ctx.moveTo(x, y); else ctx.lineTo(x + j, y - j);
+        }
+      }
+      ctx.stroke();
+    }
+    for (const p of f.pts.slice(1)) this.glow(p.x, p.y, 40 * a + 10, this.hexA(P[3], a * 0.7));
+  }
+
+  // rayo recto que se va estrechando
+  drawBeam(f) {
+    const ctx = this.ctx, P = PB.VFX.PAL[f.type] || PB.VFX.PAL.normal;
+    const a = 1 - f.t / f.life;
+    ctx.lineCap = 'butt';
+    for (const [k, col] of [[1, this.hexA(P[2], a * 0.55)], [0.55, this.hexA(P[3], a * 0.9)], [0.22, this.hexA(P[4], a)]]) {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = f.w * k * (0.6 + a * 0.4);
+      ctx.beginPath();
+      ctx.moveTo(f.x1, f.y1);
+      ctx.lineTo(f.x2, f.y2);
+      ctx.stroke();
+    }
+    this.glow(f.x1, f.y1, f.w * a + 10, this.hexA(P[4], a));
+  }
+
+  // aviso del rayo mientras se carga
+  drawBeamCharge(f) {
+    const ctx = this.ctx, P = PB.VFX.PAL[f.type] || PB.VFX.PAL.normal;
+    const b = f.by, k = f.t / f.life;
+    const x1 = b.x, y1 = b.y - 18;
+    ctx.strokeStyle = this.hexA(P[3], 0.25 + k * 0.4);
+    ctx.lineWidth = 3;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 + Math.cos(f.ang) * f.len, y1 + Math.sin(f.ang) * f.len);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    this.glow(x1, y1, 20 + k * 30, this.hexA(P[4], 0.4 + k * 0.5));
+  }
+
   drawBrawler(b, game, team, ghostPass) {
     const ctx = this.ctx;
     const col = b.team === 'blue' ? '#3d8bff' : '#ff4d4d';
@@ -651,6 +757,22 @@ PB.Renderer = class {
     ctx.globalAlpha = prev;
 
     if (ghostPass) return;
+    // escudo del súper: burbuja hexagonal del color del tipo
+    if (b.barrierT > 0) {
+      const P = PB.VFX.PAL[b.barrierType] || PB.VFX.PAL.steel;
+      const a = Math.min(1, b.barrierT) * (0.6 + Math.sin(t * 10) * 0.15);
+      ctx.strokeStyle = this.hexA(P[3], a);
+      ctx.fillStyle = this.hexA(P[4], a * 0.18);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let i = 0; i <= 6; i++) {
+        const an = (i / 6) * Math.PI * 2 + Math.PI / 6;
+        const x = b.x + Math.cos(an) * 40, y = b.y - 22 + Math.sin(an) * 40;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.fill();
+      ctx.stroke();
+    }
     if (b.shieldT > 0) {
       ctx.strokeStyle = `rgba(150,220,255,${Math.min(1, b.shieldT)})`;
       ctx.lineWidth = 3;
