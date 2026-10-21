@@ -574,7 +574,8 @@ PB.Renderer = class {
     const appear = Math.min(1, k * 8);
     const r = z.r * (0.6 + 0.4 * appear);
     const a = 0.22 + Math.sin(t * 6) * 0.05;
-    const T = z.by && PB.VFX.PAL[z.by.def.atkType] ? z.by.def.atkType : 'grass';
+    const zt = z.atk.type || (z.by && z.by.def.atkType);
+    const T = PB.VFX.PAL[zt] ? zt : 'grass';
     const P = PB.VFX.PAL[T];
     ctx.fillStyle = this.hexA(P[z.team === team ? 3 : 2], a);
     ctx.beginPath();
@@ -783,6 +784,7 @@ PB.Renderer = class {
     const colors = PB.VFX.PAL[pal];
     const frame = Math.floor(p.t * 12);
     if (p.lob) {
+      if (p.t < 0) return; // meteoro que aún no ha salido
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath();
       ctx.ellipse(p.x, p.y, 12, 5, 0, 0, Math.PI * 2);

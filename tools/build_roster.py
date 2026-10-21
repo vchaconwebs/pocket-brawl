@@ -136,10 +136,17 @@ def main():
         full_depth = len(best_line_any(start, children))
         if len(line) < full_depth:
             continue
-        families.append((line[:3], legend))
+        # evoluciones con varias ramas (Eevee, Oddish, Ralts...): todas las líneas completas
+        def all_lines(i):
+            kids = [c for c in sorted(children.get(i, [])) if ok(c)]
+            if not kids:
+                return [[i]]
+            return [[i] + rest for c in kids for rest in all_lines(c)]
+        alts = [l[:3] for l in all_lines(start) if len(l) == len(line)]
+        families.append((line[:3], legend, alts if len(alts) > 1 else None))
 
     print('familias completas:', len(families))
-    used = sorted({i for line, _ in families for i in line})
+    used = sorted({i for line, _, alts in families for l in (alts or [line]) for i in l})
     print('especies:', len(used))
 
     # ---- copiar sprites
@@ -195,7 +202,8 @@ def main():
         if m.get('hv'):
             mm['hv'] = 1
         out_meta[i] = mm
-    fams = [dict({'id': re.sub(r'[^a-z0-9]', '', by[line[0]]['name']), 'line': line}, **({'leg': 1} if leg else {})) for line, leg in families]
+    fams = [dict({'id': re.sub(r'[^a-z0-9]', '', by[line[0]]['name']), 'line': line}, **({'leg': 1} if leg else {}), **({'alts': alts} if alts else {}))
+            for line, leg, alts in families]
     starters = {t: [i for i in ids if any(f['line'][0] == i for f in fams)] for t, ids in STARTERS.items()}
 
     with open(os.path.join(ROOT, 'js', 'roster-data.js'), 'w', encoding='utf-8') as f:

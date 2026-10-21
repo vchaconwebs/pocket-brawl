@@ -108,7 +108,7 @@ PB.Bot = class {
       const ang = Math.atan2(tgt.y - b.y, tgt.x - b.x) + (Math.random() - 0.5) * 0.15;
       input.attack = { dx: Math.cos(ang), dy: Math.sin(ang), dist: Math.hypot(tgt.x - b.x, tgt.y - b.y) };
       this.fireT = 0.35 + (1 - this.skill) * 0.5 + Math.random() * 0.3;
-      if (b.superCharge >= 1 && tgt.struct && ['spread', 'zone'].includes(b.def.super.kind)) input.super = input.attack;
+      if (b.superCharge >= 1 && tgt.struct && ['spread', 'zone', 'meteor'].includes(b.def.super.kind)) input.super = input.attack;
     }
     if (foe && this.seenT >= this.reaction && g.started && !(plan.focus && input.attack)) {
       const canHit = atk.kind === 'lob' || W.los(b.x, b.y, foe.x, foe.y);
@@ -121,7 +121,7 @@ PB.Bot = class {
         const s = b.def.super;
         let use = false;
         if (s.kind === 'spread') use = fd < s.range * 0.8 && W.los(b.x, b.y, foe.x, foe.y);
-        else if (s.kind === 'zone') use = fd < s.range;
+        else if (s.kind === 'zone' || s.kind === 'meteor') use = fd < s.range;
         else if (s.kind === 'dash') use = fd < s.range * 0.85 && W.walkable(b.x, b.y, foe.x, foe.y, 10);
         else if (s.kind === 'slam') use = fd < s.radius * 0.75;
         else if (s.kind === 'stealth') use = fd < 500 || hpF < 0.5;

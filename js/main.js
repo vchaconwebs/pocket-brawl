@@ -49,6 +49,13 @@
       opts.blue = shuffle(ids.slice()).slice(0, 3);
       opts.red = shuffle(ids.slice()).slice(0, 3);
     }
+    // rama de evolución de cada uno: la que eligió el jugador; los bots, una al azar
+    const all = [].concat(opts.ffa || [], opts.blue || [], opts.red || []);
+    opts.lines = all.map((id, i) => {
+      const b = PB.brawlerById(id);
+      if (playerId && i === 0) return PB.Save.lineOf(id);
+      return b.alts ? b.alts[Math.floor(Math.random() * b.alts.length)] : b.line;
+    });
     return opts;
   }
 
@@ -58,7 +65,7 @@
     const all = [].concat(opts.ffa || [], opts.blue || [], opts.red || []);
     all.forEach((id, i) => {
       const shiny = !!playerId && i === 0 && PB.Save.skin(id) === 'shiny';
-      for (const dex of PB.brawlerById(id).line) list.push({ dex, shiny });
+      for (const dex of opts.lines[i] || PB.brawlerById(id).line) list.push({ dex, shiny });
     });
     return list;
   }
@@ -194,12 +201,12 @@
     const top = game.brawlers.reduce((x, y) => (score(y) > score(x) ? y : x));
     const mvp = score(top) > 0 ? top : null;
     const row = (b) => {
-      const dex = b.def.line[b.stage] || b.dex;
+      const dex = b.line[b.stage] || b.dex;
       const lvl = b.lvl ? ' · Nv. ' + b.lvl : '';
       return `<div class="end-row${b.isPlayer ? ' me' : ''}">` +
         (M.ffa ? `<span class="er-rank">#${b.rank || '-'}</span>` : '') +
         `<span class="er-pt"><img src="${PB.Sprites.portraitURL(dex)}" alt="">${b === mvp ? '<i class="er-mvp">MVP</i>' : ''}</span>` +
-        `<span class="er-name"><b>${b.trainer || b.name}</b><small>${PB.stageName(b.def, b.stage)}${lvl}</small></span>` +
+        `<span class="er-name"><b>${b.trainer || b.name}</b><small>${PB.stageName(b, b.stage)}${lvl}</small></span>` +
         `<span class="er-st"><b>${b.kills}</b><small>K.O.</small></span>` +
         `<span class="er-st"><b>${b.deaths}</b><small>Caídas</small></span>` +
         `<span class="er-st"><b>${statTxt(b)}</b><small>${M.statName}</small></span>` +
@@ -226,7 +233,9 @@
     const dc = reward.copas;
     $('#end-rewards').innerHTML =
       `<div class="copas-change ${dc > 0 ? 'up' : dc < 0 ? 'down' : ''}"><img src="${PB.Icons.cup()}" alt=""><b>${dc > 0 ? '+' : ''}${dc}</b><small>${me.def.name}: ${reward.copasNow} copas</small></div>` +
-      `<div class="tokens"><img src="${PB.Icons.ball('poke', 2)}" alt=""><div class="tok-info"><small>+${reward.tokens} fichas</small><span class="bar"><i style="width:${pct}%"></i></span></div><b>${d.tokens}/${PB.META.tokensPerChest}</b></div>` +
+      `<div class="pill pay"><img src="${PB.Icons.coin()}" alt=""><b>+${reward.coins}</b><img src="${PB.Icons.star()}" alt=""><b>+${reward.points}</b>` +
+      (reward.rainbow ? `<img src="${PB.Icons.rainbow()}" alt=""><b>+${reward.rainbow}</b>` : '') + `</div>` +
+      `<div class="tokens"><img src="${PB.Icons.ball('poke', 2)}" alt=""><div class="tok-info"><small>+${reward.tokens} fichas${reward.bonus ? ' (¡dobles!)' : ''}</small><span class="bar"><i style="width:${pct}%"></i></span></div><b>${d.tokens}/${PB.META.tokensPerChest}</b></div>` +
       `<p class="got">${[
         reward.newChests.length ? '¡' + (reward.newChests.length > 1 ? reward.newChests.length + ' Poké Balls' : 'Poké Ball') + ' nueva!' : '',
         pend.missions ? pend.missions + ' misión' + (pend.missions > 1 ? 'es' : '') + ' para reclamar' : '',

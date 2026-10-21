@@ -1256,3 +1256,15 @@ h1.lose { color: #ff8a7a; }
 
 /* los botones de la pantalla final siempre a la vista */
 .end-panel .row { position: sticky; bottom: -2px; z-index: 2; background: rgba(16, 24, 58, 0.96); padding: 4px 0 2px; margin-bottom: 0 !important; }
+
+/* elegir rama de evolución (Eevee...) */
+.evo-branch { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px; margin-bottom: 4px; }
+.evo-branch small { width: 100%; text-align: center; font-size: 11px; color: #ffe066; }
+.evo-br { padding: 1px; background: rgba(0, 0, 0, 0.3); border: 2px solid #141824; cursor: pointer; }
+.evo-br img { width: 26px; height: 26px; image-rendering: pixelated; display: block; }
+.evo-br.sel { background: #ffd23a; border-color: #fff; }
+@media (max-height: 500px) { .evo-br img { width: 20px; height: 20px; } .col-filters select { max-width: 96px; } }
+
+.pill.pay { display: flex; align-items: center; gap: 4px; padding: 0 8px !important; }
+.pill.pay img { width: 18px; height: 18px; image-rendering: pixelated; }
+.pill.pay b { font-weight: normal; font-size: 17px; margin-right: 4px; }

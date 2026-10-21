@@ -24,10 +24,20 @@ The Pokémon Company. Ver [CREDITS.md](CREDITS.md).
 - Los ataques los decide el **tipo** (todos los de fuego tienen Ascuas y Lanzallamas...) y el **papel** sale de sus
   estadísticas (tanque, asesino, francotirador, luchador o lanzador). Los 6 primeros tienen ataques hechos a mano.
 - Al empezar se eligen **3 iniciales**: uno de planta, uno de fuego y uno de agua (de cualquier generación).
-- **Monedas**: suben de nivel a los Pokémon (Nv. 1 a 10, +2 % de vida y daño por nivel).
-- **Puntos Pokémon**: desbloquean Pokémon nuevos (Común 150, Inicial y Raro 300, Épico 600; provisional).
-- **Monedas Arcoíris**: solo sirven para comprar la **skin shiny** de cada Pokémon.
-- **Cofres** (Poké Ball, Super Ball, Ultra Ball): dan monedas, Puntos Pokémon, Monedas Arcoíris y, a veces, un Pokémon.
+- **490 Pokémon** en total: también los que no evolucionan (fuerza fija +17 %) y 81 legendarios y singulares.
+  Fuerza por fase: 3 fases = +0 / +12 / +25 %; una evolución = +5 / +20 %. Los que tienen varias ramas
+  (Eevee, Ralts, Oddish...) eligen su evolución en la ficha.
+- Cada tipo tiene dos súper; los de doble tipo usan el súper de su segundo tipo, y unos 40 famosos y
+  legendarios tienen súper propio (Onda Mental, Pulso Primigenio, Sentencia...).
+- **Cada partida** da monedas y Puntos Pokémon (victoria 20 / 12 y 1 Moneda Arcoíris; derrota 8 / 5).
+  Las 3 primeras victorias del día dan fichas dobles.
+- **Monedas**: suben de nivel a los Pokémon (Nv. 1 a 10, +2 % de vida y daño por nivel; 2.030 monedas en total).
+- **Puntos Pokémon**: desbloquean Pokémon (Común 100, Inicial y Raro 200, Épico 400, Legendario 800).
+- **Monedas Arcoíris**: solo sirven para comprar la **skin shiny** de cada Pokémon (80).
+- **Cofres** (Poké Ball, Super Ball, Ultra Ball): monedas, Puntos Pokémon, Monedas Arcoíris y Pokémon.
+  La Ultra Ball trae siempre uno nuevo y, tras 8 cofres seguidos sin ninguno, el siguiente trae uno seguro.
+- `node tools/sim_economy.js` simula jugadores de 4, 10 y 25 partidas al día y dice cuántos días tardan
+  en conseguir 25, 100, 200 o todos los Pokémon. A 10 partidas al día: 100 en ~3,5 semanas, todos en ~5,5 meses.
 - **Fichas**: se ganan en cada partida; con 100 fichas, una Poké Ball.
 - **Copas**: cada Pokémon tiene las suyas; se ganan al ganar y se pierden al perder. El total es la suma.
 - **Misiones** diarias (cambian a las 00:00) y semanales (cambian el lunes, más difíciles y con mejores premios).

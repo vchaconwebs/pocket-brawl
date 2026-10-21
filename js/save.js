@@ -7,17 +7,25 @@ PB.META = {
   maxLevel: 10,
   levelBonus: 0.02, // +2 % de vida y daño por nivel (lo importante es evolucionar en la partida)
   // monedas para pasar del nivel N al N+1 (índice = nivel actual)
-  levelCost: [0, 20, 35, 75, 140, 290, 480, 800, 1250, 1875],
+  levelCost: [0, 10, 20, 40, 80, 150, 250, 380, 500, 600], // 2.030 monedas del 1 al 10
   tokensPerChest: 100,
+  // premio de cada partida (en Niebla Tóxica cuenta como victoria quedar entre los 4 primeros)
+  matchReward: {
+    win: { coins: 20, points: 12, rainbow: 1 },
+    lose: { coins: 8, points: 5, rainbow: 0 },
+  },
+  bonusWins: 3, // las 3 primeras victorias del día dan el doble de fichas
   // cofres (Pokéballs): tiradas de premio y probabilidad de Pokémon nuevo en cada tirada
   chests: {
-    poke: { name: 'Poké Ball', rolls: 1, pokemon: 0.04, color: '#e8331c' },
-    great: { name: 'Super Ball', rolls: 3, pokemon: 0.05, color: '#3a7ad8' },
-    ultra: { name: 'Ultra Ball', rolls: 10, pokemon: 0.04, color: '#f8c030' },
+    poke: { name: 'Poké Ball', rolls: 2, pokemon: 0.08, color: '#e8331c' },
+    great: { name: 'Super Ball', rolls: 4, pokemon: 0.1, color: '#3a7ad8' },
+    ultra: { name: 'Ultra Ball', rolls: 8, pokemon: 0.1, guaranteed: true, color: '#f8c030' },
   },
+  pityChests: 8, // si abres 8 cofres seguidos sin Pokémon nuevo, el siguiente trae uno seguro
+  rainbowChance: { great: 0.25, ultra: 0.8 },
   clanCost: 300, // monedas para crear un clan
-  // skins shiny: se compran con Monedas Arcoíris (provisional, se ajusta con la economía)
-  shinyCost: 100,
+  // skins shiny: se compran con Monedas Arcoíris
+  shinyCost: 80,
   clanMax: 30,
 };
 
@@ -303,7 +311,7 @@ PB.Save = (() => {
   // skins shiny (todas las fases tienen que tener sprite shiny)
   const shinyAvailable = (id) => {
     const b = PB.brawlerById(id);
-    return !!b && b.line.every((dex) => PB.Sprites.hasShiny(dex));
+    return !!b && (b.alts || [b.line]).every((l) => l.every((dex) => PB.Sprites.hasShiny(dex)));
   };
   const hasShiny = (id) => !!get().shinies[id];
   const skin = (id) => (id && get().skins[id] === 'shiny' && hasShiny(id) ? 'shiny' : 'normal');
@@ -315,6 +323,22 @@ PB.Save = (() => {
     d.skins[id] = 'shiny';
     persist();
     return true;
+  }
+  // rama de evolución elegida (Eevee -> Vaporeon / Jolteon / ...)
+  const branch = (id) => {
+    const b = PB.brawlerById(id);
+    const i = (get().branches || {})[id] || 0;
+    return b && b.alts && b.alts[i] ? i : 0;
+  };
+  const lineOf = (id) => {
+    const b = PB.brawlerById(id);
+    return b.alts ? b.alts[branch(id)] : b.line;
+  };
+  function setBranch(id, i) {
+    const d = get();
+    d.branches = d.branches || {};
+    d.branches[id] = i;
+    persist();
   }
   function setSkin(id, sk) {
     if (sk === 'shiny' && !hasShiny(id)) return false;
@@ -347,7 +371,10 @@ PB.Save = (() => {
     const res = { kind, coins: 0, points: 0, pokemon: [] };
     for (let i = 0; i < C.rolls; i++) {
       const locked = PB.BRAWLERS.map((b) => b.id).filter((id) => !d.owned[id] && !res.pokemon.includes(id));
-      if (locked.length && Math.random() < C.pokemon) {
+      // la Ultra Ball trae siempre uno; y tras muchos cofres sin ninguno, sale seguro
+      const sure = (C.guaranteed && i === 0) || (d.pity || 0) >= PB.META.pityChests;
+      if (locked.length && (sure || Math.random() < C.pokemon)) {
+        d.pity = 0;
         // los comunes salen más que los raros, y los raros más que los épicos
         const W = { common: 3, starter: 2, rare: 2, epic: 1, legendary: 0.4 };
         let total = 0;
@@ -362,10 +389,11 @@ PB.Save = (() => {
       else res.points += 15 + Math.floor(Math.random() * 26);
     }
     if (!res.coins && !res.points && !res.pokemon.length) res.coins = 20;
-    // Monedas Arcoíris: a veces en Super Ball y casi siempre en Ultra Ball (provisional)
+    if (!res.pokemon.length) d.pity = (d.pity || 0) + 1;
+    // Monedas Arcoíris: a veces en Super Ball y casi siempre en Ultra Ball
     res.rainbow = 0;
-    if (kind === 'great' && Math.random() < 0.2) res.rainbow = 3 + Math.floor(Math.random() * 4);
-    if (kind === 'ultra' && Math.random() < 0.7) res.rainbow = 8 + Math.floor(Math.random() * 8);
+    if (kind === 'great' && Math.random() < PB.META.rainbowChance.great) res.rainbow = 3 + Math.floor(Math.random() * 4);
+    if (kind === 'ultra' && Math.random() < PB.META.rainbowChance.ultra) res.rainbow = 8 + Math.floor(Math.random() * 8);
     d.coins += res.coins;
     d.points += res.points;
     d.rainbow = (d.rainbow || 0) + res.rainbow;
@@ -399,7 +427,18 @@ PB.Save = (() => {
     let tokens;
     if (r.mode === 'showdown') tokens = [0, 50, 40, 40, 30, 30, 20, 20, 15, 10, 10][r.rank || 10] || 10;
     else tokens = r.win ? 40 : r.draw ? 25 : 15;
+    // las primeras victorias del día dan fichas dobles
+    const won = r.mode === 'showdown' ? (r.rank || 10) <= 4 : r.win;
+    const today = new Date().toDateString();
+    if (d.bonusDay !== today) { d.bonusDay = today; d.bonusLeft = PB.META.bonusWins; }
+    let bonus = false;
+    if (won && d.bonusLeft > 0) { d.bonusLeft--; tokens *= 2; bonus = true; }
     d.tokens += tokens;
+    // monedas, Puntos Pokémon y Monedas Arcoíris de la partida
+    const MR = PB.META.matchReward[won ? 'win' : 'lose'];
+    d.coins += MR.coins;
+    d.points += MR.points;
+    d.rainbow = (d.rainbow || 0) + (MR.rainbow || 0);
     const newChests = [];
     while (d.tokens >= PB.META.tokensPerChest) {
       d.tokens -= PB.META.tokensPerChest;
@@ -429,7 +468,7 @@ PB.Save = (() => {
       if (!m.claimed) m.progress = Math.min(m.n, m.progress + (add[m.type] || 0));
     }
     persist();
-    return { tokens, newChests, copas: delta, copasNow: d.copas[id] };
+    return { tokens, newChests, copas: delta, copasNow: d.copas[id], coins: MR.coins, points: MR.points, rainbow: MR.rainbow || 0, bonus, bonusLeft: d.bonusLeft };
   }
 
   function missions(group) {
@@ -463,7 +502,7 @@ PB.Save = (() => {
 
   return {
     load, get, persist, setName, owned, level, copas, totalCopas, select, upgradeCost, upgrade, unlockCost, unlock, spendCoins,
-    needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin,
+    needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, branch, lineOf, setBranch,
     openChest, nextChest, applyMatch, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
   };
 })();

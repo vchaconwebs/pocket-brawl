@@ -31,11 +31,12 @@ PB.Game = class {
 
     const add = (id, team, sp, isPlayer) => {
       const def = PB.brawlerById(id);
+      const line = (opts.lines && opts.lines[this.brawlers.length]) || def.line;
       this.brawlers.push({
         idx: this.brawlers.length, def, team, isPlayer: !!isPlayer,
         name: isPlayer ? 'TÚ' : def.name,
         // evolución: fase actual (0 = primera), su número de Pokédex y sus tipos
-        stage: 0, xp: 0, dex: def.line[0], types: PB.stageTypes(def, 0), shiny: false, evoT: 0,
+        line, stage: 0, xp: 0, dex: line[0], types: PB.stageTypes({ line }, 0), shiny: false, evoT: 0,
         x: sp.x, y: sp.y, r: 22, vx: 0, vy: 0, kx: 0, ky: 0,
         hp: def.hp, maxHp: def.hp, ammo: this.rules.maxAmmo, shotCd: 0, superCharge: 0,
         balls: 0, power: 0, stat: 0, dead: false, out: false, respawnT: 0, lastCombat: -99, revealT: 0,
@@ -85,12 +86,12 @@ PB.Game = class {
 
   evolve(b) {
     const before = PB.stageMul(b.def, b.stage);
-    const oldName = PB.stageName(b.def, b.stage);
+    const oldName = PB.stageName(b, b.stage);
     b.stage++;
     const after = PB.stageMul(b.def, b.stage);
-    b.dex = b.def.line[b.stage];
-    b.types = PB.stageTypes(b.def, b.stage);
-    if (!b.isPlayer) b.name = PB.stageName(b.def, b.stage);
+    b.dex = b.line[b.stage];
+    b.types = PB.stageTypes(b, b.stage);
+    if (!b.isPlayer) b.name = PB.stageName(b, b.stage);
     // más vida máxima y se cura una parte
     b.maxHp = Math.round((b.maxHp * after) / before);
     b.hp = Math.min(b.maxHp, (b.hp * after) / before + b.maxHp * 0.25);
@@ -102,7 +103,7 @@ PB.Game = class {
     this.flash(b.x, b.y - 24, 120, '#ffffff', 0.35);
     for (let i = 0; i < 22; i++) this.px(b.x, b.y - 24, i % 2 ? '#ffffff' : pal[3], { speed: 260, vy: -60, life: 0.6, size: 5 });
     this.text(b.x, b.y - 110, '¡Evoluciona!', '#ffe066', 18);
-    this.events.push({ type: 'evolve', b, from: oldName, to: PB.stageName(b.def, b.stage) });
+    this.events.push({ type: 'evolve', b, from: oldName, to: PB.stageName(b, b.stage) });
   }
 
   get player() {
@@ -214,13 +215,13 @@ PB.Game = class {
       if (d.ghostT <= 0) {
         d.ghostT = 0.035;
         this.fx.push({ kind: 'ghost', dex: b.dex, shiny: b.shiny, x: b.x, y: b.y, facing: b.facing, t: 0, life: 0.25, type: b.def.atkType });
-        const T = b.def.atkType;
+        const T = d.type || b.def.atkType;
         this.vfx(T === 'electric' ? 'bolt' : PB.VFX.forType(T).proj, T, b.x + (Math.random() - 0.5) * 40, b.y - 20 + (Math.random() - 0.5) * 30, { angle: Math.random() * 6, scale: 1, life: 0.15 });
       }
       for (const e of this.enemiesOf(b)) {
         if (!d.hit.has(e.idx) && Math.hypot(e.x - b.x, e.y - b.y) < d.r + e.r) {
           d.hit.add(e.idx);
-          this.damage(e, d.dmg, b, b.def.atkType, { stun: d.stun, knockback: 300, kx: d.vx, ky: d.vy, big: true });
+          this.damage(e, d.dmg, b, d.type || b.def.atkType, { stun: d.stun, knockback: 300, kx: d.vx, ky: d.vy, big: true });
         }
       }
       if (d.t <= 0) b.dash = null;
@@ -382,7 +383,8 @@ PB.Game = class {
     b.superCharge = 0;
     b.supersUsed = (b.supersUsed || 0) + 1;
     this.events.push({ type: 'super', b });
-    const pal = PB.VFX.PAL[b.def.atkType];
+    const sT = s.type || b.def.atkType;
+    const pal = PB.VFX.PAL[sT] || PB.VFX.PAL.normal;
     this.ring(b.x, b.y - 10, 20, 90, pal[3], 0.35, 6);
     this.flash(b.x, b.y - 20, 90, pal[3], 0.25);
     if (s.kind === 'spread') {
@@ -395,14 +397,27 @@ PB.Game = class {
     } else if (s.kind === 'dash') {
       this.startAction(b, ang, 'Attack', s.time + 0.1);
       const v = s.range / s.time;
-      b.dash = { t: s.time, vx: Math.cos(ang) * v, vy: Math.sin(ang) * v, dmg: s.dmg, stun: s.stun, r: s.r, hit: new Set() };
+      b.dash = { t: s.time, vx: Math.cos(ang) * v, vy: Math.sin(ang) * v, dmg: s.dmg, stun: s.stun, r: s.r, hit: new Set(), type: sT };
       for (let i = 0; i < 14; i++) this.px(b.x, b.y - 10, i % 2 ? pal[3] : '#ffffff', { speed: 220, life: 0.4, size: 4 });
     } else if (s.kind === 'slam') {
       this.startAction(b, b.facing, 'Attack', 0.5);
-      this.explode(b, b.x, b.y, s.radius, s.dmg, b.def.atkType, { knockback: s.knockback, stun: s.stun, big: true });
+      this.explode(b, b.x, b.y, s.radius, s.dmg, sT, { knockback: s.knockback, stun: s.stun, big: true });
       if (s.destroysWalls) this.breakWalls(b.x, b.y, s.radius);
       this.fx.push({ kind: 'crack', x: b.x, y: b.y, r: s.radius, t: 0, life: 1.2, seed: Math.random() * 100 });
       this.shake = Math.max(this.shake, 16);
+    } else if (s.kind === 'meteor') {
+      // lluvia de golpes alrededor del punto elegido
+      this.startAction(b, ang, 'Shoot', 0.45);
+      const d = Math.min(dist, s.range);
+      const cx = b.x + Math.cos(ang) * d, cy = b.y + Math.sin(ang) * d;
+      for (let i = 0; i < s.count; i++) {
+        const a = (i / s.count) * Math.PI * 2 + Math.random(), r = i ? s.spreadR * (0.5 + Math.random() * 0.5) : 0;
+        this.projectiles.push({
+          lob: true, sx: b.x, sy: b.y, tx: cx + Math.cos(a) * r, ty: cy + Math.sin(a) * r,
+          t: -i * 0.12, T: s.flight, x: b.x, y: b.y, z: 0, team: b.team, owner: b, look: s.look || {}, atkType: sT,
+          atk: s, isSuper: true, mul: 1, charge: false, trailT: 0,
+        });
+      }
     } else if (s.kind === 'stealth') {
       this.startAction(b, b.facing, 'Attack', 0.4);
       b.stealthT = s.time;
@@ -426,7 +441,7 @@ PB.Game = class {
     this.projectiles.push({
       x: ox, y: oy, vx: Math.cos(ang) * atk.speed, vy: Math.sin(ang) * atk.speed, ang,
       r: atk.r || 12, dmg: atk.dmg * (mul || 1), team: b.team, owner: b, range: atk.range, traveled: 0,
-      pierce: !!atk.pierce, hit: new Set(), look: atk.look || {}, atkType: b.def.atkType, charge: !isSuper,
+      pierce: !!atk.pierce, hit: new Set(), look: atk.look || {}, atkType: (isSuper && atk.type) || b.def.atkType, charge: !isSuper,
       destroysWalls: !!atk.destroysWalls, knockback: atk.knockback || 0, stun: atk.stun || 0, isSuper, shotId: shotId || this.nextShotId++,
       powered: (mul || 1) > 1, t: 0, trailT: 0,
     });
@@ -435,7 +450,7 @@ PB.Game = class {
   spawnLob(b, atk, ang, dist, isSuper, mul) {
     this.projectiles.push({
       lob: true, sx: b.x, sy: b.y, tx: b.x + Math.cos(ang) * dist, ty: b.y + Math.sin(ang) * dist,
-      t: 0, T: atk.flight, x: b.x, y: b.y, z: 0, team: b.team, owner: b, look: atk.look || {}, atkType: b.def.atkType,
+      t: 0, T: atk.flight, x: b.x, y: b.y, z: 0, team: b.team, owner: b, look: atk.look || {}, atkType: (isSuper && atk.type) || b.def.atkType,
       atk, isSuper, mul: mul || 1, charge: !isSuper, trailT: 0,
     });
   }
@@ -446,22 +461,23 @@ PB.Game = class {
       p.t += dt;
       this.trail(p, dt);
       if (p.lob) {
-        const k = Math.min(1, p.t / p.T);
+        const k = Math.max(0, Math.min(1, p.t / p.T));
         p.x = p.sx + (p.tx - p.sx) * k;
         p.y = p.sy + (p.ty - p.sy) * k;
         p.z = Math.sin(k * Math.PI) * (60 + Math.hypot(p.tx - p.sx, p.ty - p.sy) * 0.18);
         if (k >= 1) {
           if (p.atk.kind === 'zone') {
             this.zones.push({ x: p.x, y: p.y, r: p.atk.radius, t: p.atk.duration, life: p.atk.duration, team: p.team, atk: p.atk, by: p.owner, tickT: 0 });
-            this.ring(p.x, p.y, 20, p.atk.radius, '#97e36c', 0.4, 5);
-            for (let i = 0; i < 16; i++) this.px(p.x, p.y, i % 2 ? '#45b23c' : '#97e36c', { speed: 260, life: 0.5, size: 5 });
+            const zp = PB.VFX.PAL[p.atkType] || PB.VFX.PAL.grass;
+            this.ring(p.x, p.y, 20, p.atk.radius, zp[3], 0.4, 5);
+            for (let i = 0; i < 16; i++) this.px(p.x, p.y, i % 2 ? zp[2] : zp[3], { speed: 260, life: 0.5, size: 5 });
             this.events.push({ type: 'zone' });
           } else {
             this.explode(p.owner, p.x, p.y, p.atk.radius, p.atk.dmg * p.mul, p.atkType, { charge: p.charge });
             // trozos de roca
             for (let i = 0; i < 6; i++) {
               const a = Math.random() * Math.PI * 2, s = 80 + Math.random() * 140;
-              this.vfx('rock', 'rock', p.x, p.y, { vx: Math.cos(a) * s, vy: Math.sin(a) * s, z: 10, vz: 220 + Math.random() * 200, scale: 0.6, life: 0.7, spin: 8 });
+              this.vfx('rock', PB.VFX.PAL[p.atkType] ? p.atkType : 'rock', p.x, p.y, { vx: Math.cos(a) * s, vy: Math.sin(a) * s, z: 10, vz: 220 + Math.random() * 200, scale: 0.6, life: 0.7, spin: 8 });
             }
           }
           continue;
@@ -515,7 +531,7 @@ PB.Game = class {
   // Partículas que deja cada proyectil al volar
   trail(p, dt) {
     const tr = p.look && p.look.trail;
-    if (!tr) return;
+    if (!tr || p.t < 0) return;
     p.trailT -= dt;
     if (p.trailT > 0) return;
     p.trailT = p.isSuper ? 0.02 : 0.035;
@@ -556,20 +572,25 @@ PB.Game = class {
       if (tick) z.tickT = 0.25;
       for (const b of this.brawlers) {
         if (b.dead || Math.hypot(b.x - z.x, b.y - z.y) > z.r) continue;
+        if (b.team !== z.team && z.atk.pull) {
+          // remolino: arrastra hacia el centro
+          const dx = z.x - b.x, dy = z.y - b.y, d = Math.hypot(dx, dy) || 1;
+          if (d > 12) this.world.moveCircle(b, (dx / d) * z.atk.pull * dt, (dy / d) * z.atk.pull * dt);
+        }
         if (b.team === z.team) {
           if (z.atk.heal > 0 && b.hp < b.maxHp) {
             b.hp = Math.min(b.maxHp, b.hp + z.atk.heal * dt);
             if (tick) this.vfx('heart', 'fairy', b.x + (Math.random() - 0.5) * 30, b.y - 40, { vy: -50, life: 0.6, scale: 1, fade: true });
           }
         } else if (tick) {
-          this.damage(b, z.atk.dps * 0.25, z.by, z.by.def.atkType, { quiet: true });
+          this.damage(b, z.atk.dps * 0.25, z.by, z.atk.type || z.by.def.atkType, { quiet: true });
           // drenado: partícula que va hacia el centro
-          this.px(b.x, b.y - 20, (PB.VFX.PAL[z.by.def.atkType] || PB.VFX.PAL.grass)[3], { vx: (z.x - b.x) * 2, vy: (z.y - b.y) * 2, life: 0.45, size: 5 });
+          this.px(b.x, b.y - 20, (PB.VFX.PAL[z.atk.type || z.by.def.atkType] || PB.VFX.PAL.grass)[3], { vx: (z.x - b.x) * 2, vy: (z.y - b.y) * 2, life: 0.45, size: 5 });
         }
       }
       if (Math.random() < 0.5) {
         const a = Math.random() * Math.PI * 2, d = Math.random() * z.r;
-        const T = z.by.def.atkType;
+        const T = z.atk.type || z.by.def.atkType;
         this.vfx(T === 'grass' ? 'leaf' : T === 'poison' ? 'bubble' : PB.VFX.forType(T).proj, T, z.x + Math.cos(a) * d, z.y + Math.sin(a) * d, { vy: -40, life: 0.6, scale: 0.8, spin: 6, fade: true });
       }
     }

@@ -161,7 +161,7 @@ PB.Lobby = (() => {
   }
 
   // ------------------------------------------------------------------ colección
-  const colFilter = { q: '', type: '', gen: '', own: 'all' };
+  const colFilter = { q: '', type: '', gen: '', rar: '', own: 'all' };
 
   function showCollection() {
     // filtros: tipo y generación (se rellenan una vez)
@@ -172,6 +172,9 @@ PB.Lobby = (() => {
       const gens = [...new Set(PB.BRAWLERS.map((b) => b.gen))].sort((x, y) => x - y);
       $('#col-gen').innerHTML = '<option value="">Todas las gen.</option>' + gens.map((g) => `<option value="${g}">Generación ${g}</option>`).join('');
       ts.onchange = () => { colFilter.type = ts.value; renderCollection(); };
+      $('#col-rar').innerHTML = '<option value="">Todas las rarezas</option>' +
+        Object.entries({ starter: 'Iniciales', common: 'Comunes', rare: 'Raros', epic: 'Épicos', legendary: 'Legendarios' }).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+      $('#col-rar').onchange = () => { colFilter.rar = $('#col-rar').value; renderCollection(); };
       $('#col-gen').onchange = () => { colFilter.gen = $('#col-gen').value; renderCollection(); };
       $('#col-q').oninput = () => { colFilter.q = $('#col-q').value.trim().toLowerCase(); renderCollection(); };
       document.querySelectorAll('#col-own button').forEach((bt) => (bt.onclick = () => {
@@ -188,14 +191,15 @@ PB.Lobby = (() => {
     const d = PB.Save.get();
     const grid = $('#col-grid');
     const F = colFilter;
-    const names = (b) => b.line.map((dex) => PB.DEX[dex].name.toLowerCase()).join(' ');
+    const names = (b) => [].concat(...(b.alts || [b.line])).map((dex) => PB.DEX[dex].name.toLowerCase()).join(' ');
     const list = PB.BRAWLERS.filter((b) => {
       const own = PB.Save.owned(b.id);
       if (F.own === 'mine' && !own) return false;
       if (F.own === 'locked' && own) return false;
       if (F.gen && b.gen !== +F.gen) return false;
       // el filtro de tipo mira toda la línea (Charmander sale en Volador por Charizard)
-      if (F.type && !b.line.some((dex) => PB.DEX[dex].types.includes(F.type))) return false;
+      if (F.type && ![].concat(...(b.alts || [b.line])).some((dex) => PB.DEX[dex].types.includes(F.type))) return false;
+      if (F.rar && b.rarity !== F.rar) return false;
       if (F.q && !names(b).includes(F.q)) return false;
       return true;
     }).sort((x, y) => (PB.Save.owned(y.id) ? 1 : 0) - (PB.Save.owned(x.id) ? 1 : 0) || x.dex - y.dex);
@@ -235,25 +239,38 @@ PB.Lobby = (() => {
     const own = PB.Save.owned(id);
     const lvl = own ? PB.Save.level(id) : 1;
     const r = rarityOf(b);
+    const L = { line: PB.Save.lineOf(id) }; // línea con la rama elegida
     const sm = PB.stageMul(b, dtStage);
     const scaleStats = (st) => Object.assign({}, st, { hp: Math.round(st.hp * sm), dmg: Math.round(st.dmg * sm), superDmg: Math.round(st.superDmg * sm) });
     const now = scaleStats(PB.statsAt(b, lvl));
     const next = lvl < PB.META.maxLevel ? scaleStats(PB.statsAt(b, lvl + 1)) : null;
     const plus = (k) => (next && own && next[k] !== now[k] ? ` <em>+${next[k] - now[k]}</em>` : '');
-    $('#dt-name').textContent = PB.stageName(b, dtStage);
+    $('#dt-name').textContent = PB.stageName(L, dtStage);
     $('#dt-role').textContent = b.role + ' · Generación ' + b.gen;
     $('#dt-rar').textContent = r.name;
     $('#dt-rar').style.background = r.color;
-    $('#dt-types').innerHTML = typeTags(b, PB.stageTypes(b, dtStage));
+    $('#dt-types').innerHTML = typeTags(b, PB.stageTypes(L, dtStage));
     $('#dt-desc').textContent = b.desc;
     // línea evolutiva: se puede tocar cada fase para verla
     const steps = PB.evoSteps(b);
-    $('#dt-evo').innerHTML = '<div class="evo-row">' + b.line.map((dex, i) =>
+    const branchPick = b.alts
+      ? '<div class="evo-branch"><small>Evoluciona a:</small>' + b.alts.map((l, i) => {
+        const fin = l[l.length - 1];
+        return `<button class="evo-br${i === PB.Save.branch(id) ? ' sel' : ''}" data-br="${i}" title="${PB.DEX[fin].name}"><img src="${PB.Sprites.portraitURL(fin)}" alt=""></button>`;
+      }).join('') + '</div>'
+      : '';
+    $('#dt-evo').innerHTML = branchPick + '<div class="evo-row">' + L.line.map((dex, i) =>
       (i ? '<span class="evo-arrow">▶</span>' : '') +
       `<button class="evo-st${i === dtStage ? ' sel' : ''}" data-st="${i}"><img src="${PB.Sprites.portraitURL(dex)}" alt=""><b>${PB.DEX[dex].name}</b>` +
       `<small>${i ? '+' + Math.round((PB.stageMul(b, i) - 1) * 100) + ' %' : 'Empieza así'}</small></button>`).join('') + '</div>' +
       '<p class="evo-note">Evoluciona en mitad de la partida al ganar EXP: haciendo daño, debilitando y con los objetivos del modo.</p>';
     document.querySelectorAll('#dt-evo .evo-st').forEach((e) => (e.onclick = () => { dtStage = +e.dataset.st; PB.Audio.play('tick'); renderDetail(); }));
+    document.querySelectorAll('#dt-evo .evo-br').forEach((e) => (e.onclick = () => {
+      PB.Save.setBranch(id, +e.dataset.br);
+      dtStage = L.line.length - 1;
+      PB.Audio.play('ball');
+      renderDetail();
+    }));
     let bar = '';
     for (let i = 1; i <= PB.META.maxLevel; i++) bar += `<i class="${i <= lvl && own ? 'on' : ''}"></i>`;
     $('#dt-level').innerHTML = `<b>Nivel ${own ? lvl : '-'}</b><span class="lvbar">${bar}</span>`;
@@ -939,7 +956,7 @@ PB.Lobby = (() => {
       if (b) drawHero($('#hero-cv'), b.dex, 5, true, PB.Save.skin(b.id) === 'shiny');
     } else if (current === 'detail' && detailId) {
       const b = PB.brawlerById(detailId);
-      drawHero($('#dt-cv'), b.line[dtStage] || b.dex, 4, PB.Save.owned(detailId), PB.Save.skin(detailId) === 'shiny');
+      drawHero($('#dt-cv'), PB.Save.lineOf(detailId)[dtStage] || b.dex, 4, PB.Save.owned(detailId), PB.Save.skin(detailId) === 'shiny');
     } else if (current === 'chestopen' && chest) {
       drawChest(dt);
     }
