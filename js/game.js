@@ -111,7 +111,7 @@ PB.Game = class {
     this.ring(b.x, b.y - 20, 10, 80, pal[3], 0.4, 5);
     this.flash(b.x, b.y - 24, 120, '#ffffff', 0.35);
     for (let i = 0; i < 22; i++) this.px(b.x, b.y - 24, i % 2 ? '#ffffff' : pal[3], { speed: 260, vy: -60, life: 0.6, size: 5 });
-    this.text(b.x, b.y - 110, '¡Evoluciona!', '#ffe066', 18);
+    this.text(b.x, b.y - 110, PB.T('¡Evoluciona!'), '#ffe066', 18);
     this.events.push({ type: 'evolve', b, from: oldName, to: PB.stageName(b, b.stage) });
   }
 
@@ -312,7 +312,7 @@ PB.Game = class {
           this.events.push({ type: 'candy', b });
           this.ring(g.x, g.y - 10, 6, 40, '#9ad4ff', 0.3, 4);
           for (let i = 0; i < 8; i++) this.px(g.x, g.y - 10, i % 2 ? '#5a86ea' : '#e8f6ff', { speed: 140, vy: -40, life: 0.45, size: 4 });
-          this.text(b.x, b.y - 96, '¡Sube de nivel!', '#9ad4ff', 15);
+          this.text(b.x, b.y - 96, PB.T('¡Sube de nivel!'), '#9ad4ff', 15);
         } else {
           b.balls++;
           b.ballsTaken++;
@@ -961,7 +961,7 @@ PB.Game = class {
     this.text(target.x + (Math.random() - 0.5) * 24, target.y - 64, String(amt), col, eff > 1 ? 26 : opts.quiet ? 15 : 20, true);
     if (eff > 1 && opts.shotId && this._lastEffShot !== opts.shotId) {
       this._lastEffShot = opts.shotId;
-      this.text(target.x, target.y - 92, '¡Muy eficaz!', '#ffcf3a', 16);
+      this.text(target.x, target.y - 92, PB.T('¡Muy eficaz!'), '#ffcf3a', 16);
     }
     this.events.push({ type: 'hit', target, source });
     if (target.hp <= 0) this.kill(target, source);

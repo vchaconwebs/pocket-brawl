@@ -150,7 +150,7 @@
     const opts = plan(id);
     const wait = PB.Sprites.ensure(spritesFor(opts, id));
     const slow = setTimeout(() => {
-      $('#loading h1').textContent = 'Preparando a los Pokémon…';
+      $('#loading h1').textContent = PB.T('Preparando a los Pokémon…');
       showScreen('loading');
     }, 120);
     await wait;
@@ -251,11 +251,11 @@
       `<div class="copas-change ${dc > 0 ? 'up' : dc < 0 ? 'down' : ''}"><img src="${PB.Icons.cup()}" alt=""><b>${dc > 0 ? '+' : ''}${dc}</b><small>${me.def.name}: ${reward.copasNow} copas</small></div>` +
       `<div class="pill pay"><img src="${PB.Icons.coin()}" alt=""><b>+${reward.coins}</b><img src="${PB.Icons.star()}" alt=""><b>+${reward.points}</b>` +
       (reward.rainbow ? `<img src="${PB.Icons.rainbow()}" alt=""><b>+${reward.rainbow}</b>` : '') + `</div>` +
-      `<div class="tokens"><img src="${PB.Icons.ball('poke', 2)}" alt=""><div class="tok-info"><small>+${reward.tokens} fichas${reward.bonus ? ' (¡dobles!)' : ''} · +${reward.passXp} EXP de pase${reward.passUp ? ' ¡sube de nivel!' : ''}</small><span class="bar"><i style="width:${pct}%"></i></span></div><b>${d.tokens}/${PB.META.tokensPerChest}</b></div>` +
+      `<div class="tokens"><img src="${PB.Icons.ball('poke', 2)}" alt=""><div class="tok-info"><small>${PB.T('+{n} fichas', { n: reward.tokens })}${reward.bonus ? ' ' + PB.T('(¡dobles!)') : ''} · ${PB.T('+{n} EXP de pase', { n: reward.passXp })}${reward.passUp ? ' ' + PB.T('¡Sube de nivel!') : ''}</small><span class="bar"><i style="width:${pct}%"></i></span></div><b>${d.tokens}/${PB.META.tokensPerChest}</b></div>` +
       `<p class="got">${[
-        reward.newChests.length ? '¡' + (reward.newChests.length > 1 ? reward.newChests.length + ' Poké Balls' : 'Poké Ball') + ' nueva!' : '',
-        pend.missions ? pend.missions + ' misión' + (pend.missions > 1 ? 'es' : '') + ' para reclamar' : '',
-        pend.achievements ? pend.achievements + ' logro' + (pend.achievements > 1 ? 's' : '') + ' nuevo' + (pend.achievements > 1 ? 's' : '') : '',
+        reward.newChests.length ? (reward.newChests.length > 1 ? PB.T('¡{n} Poké Balls nuevas!', { n: reward.newChests.length }) : PB.T('¡Poké Ball nueva!')) : '',
+        pend.missions ? (pend.missions > 1 ? PB.T('{n} misiones para reclamar', { n: pend.missions }) : PB.T('1 misión para reclamar')) : '',
+        pend.achievements ? (pend.achievements > 1 ? PB.T('{n} logros nuevos', { n: pend.achievements }) : PB.T('1 logro nuevo')) : '',
       ].filter(Boolean).join(' · ')}</p>`;
     showScreen('end');
     help().classList.add('hidden');
@@ -298,7 +298,7 @@
           if (ev.b === me) {
             PB.Audio.play('evolve');
             PB.vibrate(60);
-            renderer.announce('¡' + ev.from + ' ha evolucionado a ' + ev.to + '!', '#ffe066', '', 1.6);
+            renderer.announce(PB.T('¡{a} ha evolucionado a {b}!', { a: ev.from, b: ev.to }), '#ffe066', '', 1.6);
           } else if (near(ev.b)) PB.Audio.play('ready');
           break;
         case 'super': if (ev.b === me || near(ev.b)) PB.Audio.play('super', { type: ev.b.def.super.type || ev.b.def.atkType, me: ev.b === me }); break;
@@ -316,7 +316,7 @@
         case 'voltorbBoom': break;
         case 'goal':
           PB.Audio.play('goal');
-          renderer.announce('¡Gol! ' + game.score[myTeam] + ' - ' + game.score[otherOf(myTeam)], tc(ev.team), '', 1.6);
+          renderer.announce(PB.T('¡Gol! {a} - {b}', { a: game.score[myTeam], b: game.score[otherOf(myTeam)] }), tc(ev.team), '', 1.6);
           break;
         case 'zoneTaken': if (ev.team === myTeam) PB.Audio.play('ready'); break;
         case 'end': endTimer = game.mode.ffa && game.winner === 'out' ? 1.2 : 1.8; break;
@@ -390,6 +390,7 @@
     : Promise.resolve();
 
   PB.Settings.apply();
+  PB.I18nStart(); // traduce la página (si el idioma no es español)
   PB.Lobby.init({
     backToPause: () => showScreen('pause'),
     getMode: () => gameMode,

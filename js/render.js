@@ -35,7 +35,7 @@ PB.Renderer = class {
   }
 
   announce(text, color, sub, life) {
-    this.banner = { text, color: color || '#ffffff', sub: sub || '', t: 0, life: life || 1.4 };
+    this.banner = { text: PB.T(text), color: color || '#ffffff', sub: sub ? PB.T(sub) : '', t: 0, life: life || 1.4 };
   }
 
   // Suelo pintado en pixel art (PB.Tiles) y escalado ×4 una sola vez por mapa.
@@ -1107,9 +1107,9 @@ PB.Renderer = class {
       ctx.fillStyle = 'rgba(0,0,0,0.18)';
       ctx.fillRect(0, 0, W, H);
       ctx.font = '22px "Jersey 10", system-ui, sans-serif';
-      const tw = ctx.measureText(game.mode.name).width + 40;
+      const tw = ctx.measureText(PB.T(game.mode.name)).width + 40;
       UI.panel(ctx, W / 2 - tw / 2, H / 2 - 92, tw, 42, { p: 3, fill: 'rgba(30,50,110,0.95)' });
-      this.outlined(game.mode.name, W / 2, H / 2 - 63, 22, '#ffffff');
+      this.outlined(PB.T(game.mode.name), W / 2, H / 2 - 63, 22, '#ffffff');
       this.outlined(String(n), W / 2, H / 2 + 46, Math.round(68 * (1.3 - k * 0.3)), '#ffcf2e');
     }
 
@@ -1135,7 +1135,7 @@ PB.Renderer = class {
       if (me.dead && !me.out) {
         UI.panel(ctx, W / 2 - 130, H / 2 - 34, 260, 62, { p: 3, fill: 'rgba(14,20,48,0.88)' });
         PB.Pokeball.draw(ctx, W / 2 - 92, H / 2 - 3, 2, { angle: Math.sin(game.clock * 6) * 0.3 });
-        this.outlined('Vuelves en ' + Math.ceil(me.respawnT), W / 2 + 20, H / 2 + 8, 26, '#ffffff');
+        this.outlined(PB.T('Vuelves en {n}', { n: Math.ceil(me.respawnT) }), W / 2 + 20, H / 2 + 8, 26, '#ffffff');
       }
       if (view.touch) this.drawTouch(view, me, game);
       else { this.drawDesktopSuper(me, game); this.drawDesktopSuperHint(view); }
@@ -1198,17 +1198,17 @@ PB.Renderer = class {
         const ours = game.countdown.team === team;
         UI.panel(ctx, cx - 120, 104, 240, 40, { p: 2, fill: ours ? 'rgba(30,70,150,0.85)' : 'rgba(140,30,40,0.85)' });
         this.outlined(String(Math.ceil(game.countdown.t)), cx - 88, 134, 28, '#ffffff');
-        this.outlined(ours ? '¡Aguantad!' : '¡Quitádselas!', cx + 18, 131, 17, '#ffffff');
+        this.outlined(PB.T(ours ? '¡Aguantad!' : '¡Quitádselas!'), cx + 18, 131, 17, '#ffffff');
       }
     } else if (id === 'showdown') {
       const alive = game.brawlers.filter((b) => !b.dead).length;
       panel(200, 42);
       PB.Pokeball.draw(ctx, cx - 66, 27, 1.4, {});
-      this.outlined('Quedan ' + alive, cx + 10, 34, 20, '#ffffff');
+      this.outlined(PB.T('Quedan {n}', { n: alive }), cx + 10, 34, 20, '#ffffff');
       const me = view.player;
       if (me && !me.dead && Math.hypot(me.x - game.gas.x, me.y - game.gas.y) > game.gas.r) {
         UI.panel(ctx, cx - 110, 58, 220, 30, { p: 2, fill: 'rgba(90,30,120,0.9)' });
-        this.outlined('¡Sal de la niebla!', cx, 79, 18, Math.floor(game.clock * 4) % 2 ? '#e8b0ff' : '#ffffff');
+        this.outlined(PB.T('¡Sal de la niebla!'), cx, 79, 18, Math.floor(game.clock * 4) % 2 ? '#e8b0ff' : '#ffffff');
       }
     } else if (id === 'heist') {
       const m = game.structures.find((s2) => s2.team === team), t2 = game.structures.find((s2) => s2.team !== team);
@@ -1226,7 +1226,7 @@ PB.Renderer = class {
       if (me && v.carrier === me) {
         const left = Math.max(0, 10 - v.holdT);
         UI.panel(ctx, cx - 150, 98, 300, 28, { p: 2, fill: left < 4 ? 'rgba(150,30,30,0.9)' : 'rgba(16,24,56,0.86)' });
-        this.outlined('¡Chuta! Voltorb explota en ' + left.toFixed(1) + ' s', cx, 117, 15, left < 4 ? '#ffd0c0' : '#fff36a');
+        this.outlined(PB.T('¡Chuta! Voltorb explota en {n} s', { n: left.toFixed(1) }), cx, 117, 15, left < 4 ? '#ffd0c0' : '#fff36a');
       }
     } else if (id === 'zone') {
       bars('Territorio', game.progress[team] / 100, game.progress[foe] / 100, Math.floor(game.progress[team]) + '%', Math.floor(game.progress[foe]) + '%');
@@ -1255,7 +1255,7 @@ PB.Renderer = class {
       ctx.fillRect(sx - 3, sy - 3, 6, 6);
     }
     UI.icon(ctx, 'bolt', x - 18, y - 22, 3);
-    this.outlined('SÚPER', x, y + 22, 12, ready ? '#3a2500' : '#ffd23a');
+    this.outlined(PB.T('SÚPER'), x, y + 22, 12, ready ? '#3a2500' : '#ffd23a');
     if (key) {
       UI.panel(ctx, x - 12, y + r + 2, 24, 22, { p: 2, fill: '#2c3f78' });
       this.outlined(key, x, y + r + 18, 12, '#ffffff');
@@ -1266,9 +1266,9 @@ PB.Renderer = class {
     const inp = view.inputState;
     if (!inp || view.touch) return;
     if (inp.superKeyHeld && view.player && view.player.superCharge >= 1) {
-      this.outlined('Suelta E para lanzar · X o clic derecho para cancelar', this.cw / 2, this.ch - 22, 14, '#ffe066');
+      this.outlined(PB.T('Suelta E para lanzar · X o clic derecho para cancelar'), this.cw / 2, this.ch - 22, 14, '#ffe066');
     } else if (inp.superCancelled && performance.now() - inp.superCancelled < 900) {
-      this.outlined('Súper cancelado', this.cw / 2, this.ch - 22, 15, '#ffb0b0');
+      this.outlined(PB.T('Súper cancelado'), this.cw / 2, this.ch - 22, 15, '#ffb0b0');
     }
   }
 
@@ -1299,10 +1299,10 @@ PB.Renderer = class {
     // súper devuelto al centro: se cancela al soltar
     if (view.aim && view.aim.cancel) {
       UI.panel(ctx, L.super.x - 56, L.super.y - L.sr - 40, 112, 26, { p: 2, fill: 'rgba(150,30,30,0.92)' });
-      this.outlined('✕ Cancelar', L.super.x, L.super.y - L.sr - 21, 15, '#ffffff');
+      this.outlined(PB.T('✕ Cancelar'), L.super.x, L.super.y - L.sr - 21, 15, '#ffffff');
     }
     if (inp.superCancelled && performance.now() - inp.superCancelled < 900) {
-      this.outlined('Súper cancelado', L.super.x, L.super.y - L.sr - 21, 15, '#ffb0b0');
+      this.outlined(PB.T('Súper cancelado'), L.super.x, L.super.y - L.sr - 21, 15, '#ffb0b0');
     }
   }
 

@@ -353,7 +353,13 @@ PB.Lobby = (() => {
 
   function moveText(m, isSuper) {
     switch (m.kind) {
-      case 'spread': return (m.count > 1 ? `${m.count} proyectiles en abanico` : m.boomerang ? 'Un proyectil que va y vuelve' : m.homing ? 'Un proyectil teledirigido que persigue al rival' : 'Un proyectil') + (m.pierce && !m.boomerang ? ' que atraviesan' : '') + (m.destroysWalls ? ', rompe muros' : '') + (m.knockback ? ' y empuja' : '') + (m.stun ? ' y congela un momento' : '') + '.';
+      case 'spread': {
+        // frase por partes (cada una se traduce)
+        const T = PB.T;
+        const extra = [m.pierce && !m.boomerang ? T('Atraviesa') : '', m.destroysWalls ? T('Rompe muros') : '', m.knockback ? T('Empuja') : '', m.stun ? T('Congela un momento') : ''].filter(Boolean);
+        const main = m.count > 1 ? T('{n} proyectiles en abanico', { n: m.count }) : m.boomerang ? T('Un proyectil que va y vuelve') : m.homing ? T('Un proyectil teledirigido que persigue al rival') : T('Un proyectil');
+        return main + '.' + (extra.length ? ' ' + extra.join('. ') + '.' : '');
+      }
       case 'burst': return `Ráfaga de ${m.count} disparos rápidos.`;
       case 'melee': return 'Golpe cuerpo a cuerpo que barre a todos los que tiene delante.';
       case 'twin': return 'Dos disparos a la vez, en paralelo.';
@@ -503,7 +509,7 @@ PB.Lobby = (() => {
     const link = location.origin + location.pathname + '?sala=' + p.code;
     $('#pt-copy').onclick = () => { navigator.clipboard && navigator.clipboard.writeText(link); toast('Enlace copiado: ' + p.code); };
     $('#pt-share').onclick = () => {
-      if (navigator.share) navigator.share({ title: 'PokéVersus', text: '¡Únete a mi sala en PokéVersus! Código ' + p.code, url: link }).catch(() => {});
+      if (navigator.share) navigator.share({ title: 'PokéVersus', text: PB.T('¡Únete a mi sala en PokéVersus! Código {code}', { code: p.code }), url: link }).catch(() => {});
       else { navigator.clipboard && navigator.clipboard.writeText(link); toast('Enlace copiado: ' + p.code); }
     };
     box.querySelectorAll('[data-kick]').forEach((e) => (e.onclick = () => PB.Online.kick(e.dataset.kick)));
@@ -1244,6 +1250,8 @@ PB.Lobby = (() => {
     let html = '';
     if (stTab === 'sound') {
       html =
+        `<div class="st-row"><div><b>Idioma · Language</b><small>Se detecta solo; puedes cambiarlo aquí</small></div>` +
+        `<select class="px-select" id="st-lang">${Object.entries(PB.LANGS).map(([k, v]) => `<option value="${k}" ${k === PB.lang ? 'selected' : ''}>${v}</option>`).join('')}</select></div>` +
         `<div class="st-row"><div><b>Volumen</b><small id="vol-txt">${S.get('volume')} %</small></div>` +
         `<input type="range" class="px-range" id="st-vol" min="0" max="100" step="5" value="${S.get('volume')}"></div>` +
         `<div class="st-row"><div><b>Música</b><small id="mus-txt">${S.get('music')} %</small></div>` +
@@ -1272,6 +1280,8 @@ PB.Lobby = (() => {
       html =
         `<div class="st-row"><div><b>${d.name}</b><small>Código de amigo: ${d.tag}</small></div><button class="act blue" id="st-profile">Perfil</button></div>` +
         `<div class="st-row"><div><b>Cuenta online</b><small>Pronto podrás entrar con Google o con tu correo para guardar el progreso en la nube.</small></div><button class="act gray" disabled>Próximamente</button></div>` +
+        `<div class="st-row"><div><b>Apoyar el juego</b><small>Donación voluntaria para pagar servidores y dominio. No da nada dentro del juego.</small></div>` +
+        (PB.DONATE_URL ? `<a class="act gold" href="${PB.DONATE_URL}" target="_blank" rel="noopener">Donar</a>` : `<button class="act gray" disabled>Próximamente</button>`) + `</div>` +
         `<div class="st-row"><div><b>Créditos y licencias</b><small>Sprites, efectos, fuente y avisos legales</small></div><a class="act blue" href="CREDITS.md" target="_blank" rel="noopener">Ver</a></div>` +
         `<div class="st-row"><div><b>Restablecer ajustes</b></div><button class="act gray" id="st-reset">Restablecer</button></div>` +
         `<div class="st-row danger"><div><b>Borrar progreso</b><small>Pierdes Pokémon, niveles, copas, monedas y logros de este navegador</small></div><button class="act red" id="st-wipe">Borrar</button></div>` +
@@ -1293,6 +1303,8 @@ PB.Lobby = (() => {
       vol.oninput = () => { S.set('volume', +vol.value); $('#vol-txt').textContent = vol.value + ' %'; };
       vol.onchange = () => { PB.Audio.init(); PB.Audio.play('ball'); };
     }
+    const lang = $('#st-lang');
+    if (lang) lang.onchange = () => PB.setLang(lang.value);
     const mus = $('#st-mus');
     if (mus) mus.oninput = () => { S.set('music', +mus.value); $('#mus-txt').textContent = mus.value + ' %'; PB.Audio.init(); };
     const test = $('#st-test');

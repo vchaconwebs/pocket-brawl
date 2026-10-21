@@ -165,6 +165,7 @@
     legendary: { name: 'Legendario', color: '#ffd23a', cost: 800 },
   };
   PB.RARITY = RARITY;
+  for (const r of Object.values(RARITY)) r.name = PB.T(r.name);
   const STARTERS = new Set([].concat(PB.STARTER_DEX.grass, PB.STARTER_DEX.fire, PB.STARTER_DEX.water));
 
   // typesOverride: para cuando un Pokémon con ramas evoluciona y cambia de tipo (Eevee -> Flareon)
@@ -201,13 +202,13 @@
     const rarity = fam.leg ? 'legendary' : STARTERS.has(line[0]) ? 'starter' : fin.bst > 530 ? 'epic' : fin.bst > 470 ? 'rare' : 'common';
     return {
       id: fam.id, dex: line[0], line, name: base.name, types, atkType, gen: base.gen,
-      roleId, role: R.name,
+      roleId, role: PB.T(R.name),
       hp: Math.round((R.hp * hpMul) / 50) * 50,
       speed: Math.round(R.speed + zSpd * 5),
       reload: R.reload, superHits: R.superHits,
-      attack: Object.assign({ name: basicName }, atk, { dmg: Math.round((atk.dmg * dmgMul) / 10) * 10, look: Object.assign({ scale: as }, look) }),
-      super: Object.assign({ name: supName, type: supType }, sup, sup.dmg ? { dmg: Math.round((sup.dmg * dmgMul) / 10) * 10 } : {}, sup.dps ? { dps: Math.round(sup.dps * dmgMul) } : {}, { look: Object.assign({ scale: ss || 1.4 }, supLook) }),
-      desc: R.desc + ' Su súper, ' + supName + ' (' + PB.TYPE_INFO[supType].name + '), es ' + sd + '.',
+      attack: Object.assign({ name: PB.TM(basicName) }, atk, { dmg: Math.round((atk.dmg * dmgMul) / 10) * 10, look: Object.assign({ scale: as }, look) }),
+      super: Object.assign({ name: PB.TM(supName), type: supType }, sup, sup.dmg ? { dmg: Math.round((sup.dmg * dmgMul) / 10) * 10 } : {}, sup.dps ? { dps: Math.round(sup.dps * dmgMul) } : {}, { look: Object.assign({ scale: ss || 1.4 }, supLook) }),
+      desc: PB.T(R.desc) + ' ' + PB.T('Su súper, {name} ({type}), es {what}.', { name: PB.TM(supName), type: PB.T(PB.TYPE_INFO[supType].name), what: PB.T(sd) }),
       alts: fam.alts || null,
       rarity,
     };
@@ -219,7 +220,13 @@
     const b = build(fam);
     const h = hand[fam.id];
     // los originales conservan sus ataques; solo cogen la línea evolutiva y la rareza
-    return h ? Object.assign({}, h, { dex: b.dex, line: b.line, alts: b.alts, gen: b.gen, rarity: h.rarity || b.rarity, roleId: b.roleId }) : b;
+    // (sus textos también se traducen)
+    return h ? Object.assign({}, h, {
+      dex: b.dex, line: b.line, alts: b.alts, gen: b.gen, rarity: h.rarity || b.rarity, roleId: b.roleId,
+      role: PB.T(h.role), desc: PB.T(h.desc), name: PB.DEX[b.dex].name,
+      attack: Object.assign({}, h.attack, { name: PB.TM(h.attack.name) }),
+      super: Object.assign({}, h.super, { name: PB.TM(h.super.name) }),
+    }) : b;
   });
   const byId = {};
   for (const b of PB.BRAWLERS) byId[b.id] = b;
