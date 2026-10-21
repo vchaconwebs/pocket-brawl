@@ -1075,3 +1075,10 @@ h1.lose { color: #ff8a7a; }
 }
 .tile .badge { right: -14px !important; top: -16px !important; z-index: 2; }
 .tile .tl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Avisos de estilo Rojo Fuego con los colores del juego (ventana oscura con el marco elegido) */
+.modal-box, .modal-choices { border-image-source: var(--sk-win) !important; color: #fff !important; text-shadow: 2px 2px 0 #02040c !important; }
+.modal-choices button { color: #fff !important; text-shadow: 2px 2px 0 #02040c !important; }
+.modal-choices button:first-child::before, .modal-choices button:hover::before { color: var(--frame) !important; }
+.modal-box::after { color: var(--frame) !important; }
+.mock-note { border-image-source: var(--sk-row) !important; color: #ffe9a8 !important; text-shadow: 1px 1px 0 #02040c !important; }
