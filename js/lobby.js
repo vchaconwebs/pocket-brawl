@@ -1350,6 +1350,8 @@ PB.Lobby = (() => {
     $('#btn-missions').onclick = () => showMissions();
     $('#btn-mode').onclick = showModes;
     $('#btn-pass').onclick = showPass;
+    // donar: abre Ko-fi en otra pestaña (no da nada dentro del juego)
+    $('#btn-donate').onclick = () => { if (PB.DONATE_URL) window.open(PB.DONATE_URL, '_blank', 'noopener'); };
     $('#lb-quests').onclick = () => showMissions('daily');
     $('#pt-go').onclick = async () => {
       const r = await PB.Online.joinByCode($('#pt-code').value);

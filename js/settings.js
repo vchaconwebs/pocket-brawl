@@ -2,7 +2,7 @@
 
 // Página de donaciones voluntarias (Ko-fi). Vacío = el botón sale como "Próximamente".
 // Donar no da nada dentro del juego.
-PB.DONATE_URL = '';
+PB.DONATE_URL = 'https://ko-fi.com/pokeversus';
 PB.Settings = (() => {
   const KEY = 'pb.settings.v1';
   const DEFAULTS = {
