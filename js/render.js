@@ -730,14 +730,6 @@ PB.Renderer = class {
     const col = isMe ? '#43e05a' : mine ? '#3d8bff' : '#ff4545';
     UI.bar(ctx, x - w / 2, y - 2, w, 14, hpk, col, { p: 2, seg: true, segCount: Math.min(12, Math.ceil(b.maxHp / 1000)) });
     if (PB.Settings.get('hpNumbers')) this.outlined(String(Math.ceil(b.hp)), x, y + 9, 11, '#ffffff');
-    // nivel
-    if (b.lvl) {
-      UI.panel(ctx, x + w / 2 + 2, y - 4, 18, 18, { p: 2, fill: '#ffd23a', light: 'rgba(255,255,255,0.45)', dark: 'rgba(120,70,0,0.35)' });
-      ctx.textAlign = 'center';
-      ctx.font = '12px "Jersey 10", system-ui, sans-serif';
-      ctx.fillStyle = '#3a2500';
-      ctx.fillText(b.lvl, x + w / 2 + 11, y + 9);
-    }
     if (b.superCharge >= 1) UI.icon(ctx, 'bolt', x - w / 2 - 20, y - 6, 1.5);
     // munición (solo la tuya)
     if (isMe) {

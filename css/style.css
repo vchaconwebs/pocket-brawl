@@ -531,11 +531,11 @@ button { font: inherit; cursor: pointer; }
   display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 16px; border-radius: 14px;
   background: rgba(10, 15, 40, 0.85); border: 3px solid #0c1838; animation: pop 0.45s ease;
 }
-.reward.big { padding: 16px 30px; border-width: 4px; animation: rise 0.5s cubic-bezier(.2, 1.6, .4, 1); }
-.reward.big img { width: 84px; height: 84px; }
-.reward.big b { font-size: 34px; }
-.reward.big span { font-size: 16px; }
-.reward.big.new img { width: 120px; height: 120px; }
+.reward.large { padding: 16px 30px; border-width: 4px; animation: rise 0.5s cubic-bezier(.2, 1.6, .4, 1); }
+.reward.large img { width: 84px; height: 84px; }
+.reward.large b { font-size: 34px; }
+.reward.large span { font-size: 16px; }
+.reward.large.new img { width: 120px; height: 120px; }
 @keyframes rise { 0% { transform: translateY(40px) scale(0.3); opacity: 0; } 100% { transform: none; opacity: 1; } }
 #chest-hint { margin: 8px 0 0; }
 
@@ -548,9 +548,9 @@ button { font: inherit; cursor: pointer; }
   .cw-ball img { width: 40px; height: 40px; }
   .cw-info b { font-size: 13px; }
   .chest-ui h2 { font-size: 24px; }
-  .reward.big img { width: 56px; height: 56px; }
-  .reward.big.new img { width: 80px; height: 80px; }
-  .reward.big b { font-size: 26px; }
+  .reward.large img { width: 56px; height: 56px; }
+  .reward.large.new img { width: 80px; height: 80px; }
+  .reward.large b { font-size: 26px; }
   .reward img { width: 34px; height: 34px; }
 }
 
@@ -1083,3 +1083,12 @@ h1.lose { color: #ff8a7a; }
 .modal-choices button:first-child::before, .modal-choices button:hover::before { color: var(--frame) !important; }
 .modal-box::after { color: var(--frame) !important; }
 .mock-note { border-image-source: var(--sk-row) !important; color: #ffe9a8 !important; text-shadow: 1px 1px 0 #02040c !important; }
+
+/* botón del cofre: hueco de la bola más grande y número pequeño en la esquina */
+.cw-ball { width: 70px !important; height: 70px !important; border-width: 9px !important; border-image-width: 9px !important; }
+.cw-ball img { width: 46px !important; height: 46px !important; }
+.cw-badge { min-width: 22px !important; height: 22px !important; padding: 0 5px !important; font-size: 14px !important; line-height: 18px !important; right: -16px !important; top: -16px !important; z-index: 2; }
+@media (max-height: 500px) {
+  .cw-ball { width: 54px !important; height: 54px !important; }
+  .cw-ball img { width: 36px !important; height: 36px !important; }
+}

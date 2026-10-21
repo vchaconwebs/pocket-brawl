@@ -604,7 +604,7 @@ PB.Lobby = (() => {
   }
 
   function rewardCard(it, big) {
-    return `<div class="reward ${it.cls || ''} ${big ? 'big' : ''}"><img src="${it.icon}" alt=""><b>${it.title}</b><span>${it.sub}</span></div>`;
+    return `<div class="reward ${it.cls || ''} ${big ? 'large' : ''}"><img src="${it.icon}" alt=""><b>${it.title}</b><span>${it.sub}</span></div>`;
   }
 
   function chestTap(e) {
