@@ -252,6 +252,7 @@ PB.Save = (() => {
 
   function persist() {
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
+    if (PB.Online && PB.Online.saveCloud) PB.Online.saveCloud();
   }
 
   const get = () => data || load();
@@ -577,6 +578,15 @@ PB.Save = (() => {
     return { missions: mis, achievements: ach, pass: ps };
   }
 
+  // progreso traído de la nube (al entrar con una cuenta de Google que ya jugaba)
+  function importJSON(json) {
+    try {
+      data = Object.assign(fresh(), JSON.parse(json));
+      persist();
+      return true;
+    } catch (e) { return false; }
+  }
+
   function reset() {
     data = fresh();
     checkResets();
@@ -587,6 +597,6 @@ PB.Save = (() => {
     load, get, persist, setName, owned, level, copas, totalCopas, select, upgradeCost, upgrade, unlockCost, unlock, spendCoins,
     pass, claimPass, claimPassExtra,
     needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, branch, lineOf, setBranch,
-    openChest, nextChest, applyMatch, applyAbandon, abandonWait, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
+    importJSON, openChest, nextChest, applyMatch, applyAbandon, abandonWait, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
   };
 })();

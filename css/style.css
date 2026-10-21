@@ -1761,3 +1761,9 @@ h1.lose { color: #ff8a7a; }
   .donate-btn { font-size: clamp(20px, 1.4vw, 28px); }
   .donate-btn .pxi { width: clamp(26px, 1.8vw, 36px); height: clamp(26px, 1.8vw, 36px); }
 }
+
+/* buscando partida */
+#loading { flex-direction: column; gap: 10px; }
+#ld-sub { margin: 0; color: #cfdcff; font-size: 16px; min-height: 20px; }
+#ld-cancel { min-width: 160px; }
+#cl-reqs h3 { margin: 10px 0 4px; font-weight: 400; color: #ffcf2e; }

@@ -193,7 +193,7 @@
       else if (m.k === 'hello' && net.host) net.link.send(peer, Object.assign({ k: 's', ack: 0 }, net.host.snapshot(true)));
       else if (m.k === 'bye') onNetLeave(peer);
     } else {
-      if (m.k === 'start' && !game_isNet()) { net.hostPeer = peer; net.seats = m.seats; beginMatch(m.opts, net.myIdx); }
+      if (m.k === 'start' && !game_isNet()) { net.hostPeer = peer; net.seats = m.seats; net.myIdx = m.seats[net.link.me]; beginMatch(m.opts, net.myIdx); }
       else if (m.k === 's' && net.client) net.client.apply(m);
       else if (m.k === 'bye') onNetLeave(peer);
     }
@@ -412,16 +412,68 @@
       ].filter(Boolean).join(' · ')}</p>`;
     showScreen('end');
     help().classList.add('hidden');
+    PB.Online.saveCloud(true);
+    PB.Online.updateMe();
     PB.Audio.play(res.cls === 'win' ? 'win' : 'lose');
   }
 
-  $('#play').onclick = () => { if (PB.Lobby.playPressed()) startMatch(); };
-  $('#again').onclick = startMatch;
+  // ------------------------------------------------------------ buscar partida online
+  // Si hay más gente buscando el mismo modo, partida en red; si no, en unos segundos, con bots.
+  let searching = false;
+  function searchScreen(title, sub, cancel) {
+    $('#loading h1').textContent = PB.T(title);
+    $('#ld-sub').textContent = sub || '';
+    $('#ld-cancel').classList.toggle('hidden', !cancel);
+    showScreen('loading');
+  }
+  async function play() {
+    if (searching || starting) return;
+    const wait = PB.Save.abandonWait();
+    if (wait > 0) { PB.Lobby.toast(PB.T('Has abandonado varias partidas. Podrás jugar online en {n} s', { n: wait })); return; }
+    searching = true;
+    goLandscape();
+    PB.Audio.init();
+    searchScreen('Buscando partida…', '', true);
+    $('#ld-cancel').onclick = () => { PB.Online.cancelMatch(); };
+    let r = { local: true };
+    try {
+      if (await PB.Online.start()) {
+        r = await PB.Online.findMatch(gameMode, (st) => {
+          $('#ld-sub').textContent = PB.T('{n} jugadores buscando · {s} s', { n: Math.max(1, st.players), s: Math.floor(st.waited) });
+        });
+      }
+    } catch (e) { r = { local: true }; }
+    searching = false;
+    if (r.cancelled) { PB.Lobby.show('lobby'); return; }
+    if (r.mid) return joinAndStart(r.mid);
+    startMatch();
+  }
+  async function joinAndStart(mid) {
+    if (mode === 'play') return;
+    searchScreen('¡Partida encontrada!', PB.T('Conectando con los demás jugadores…'), false);
+    let j = { local: true };
+    try { j = await PB.Online.joinMatch(mid); } catch (e) { j = { local: true, failed: true }; }
+    if (j.local) {
+      if (j.failed) PB.Lobby.toast(PB.T('No se ha podido conectar. Juegas con bots.'));
+      return startMatch();
+    }
+    if (j.role === 'client') {
+      // si el anfitrión no empieza en unos segundos, partida con bots
+      setTimeout(() => { if (net && net.role === 'client' && !net.client) { endNet(); PB.Lobby.toast(PB.T('No se ha podido conectar. Juegas con bots.')); startMatch(); } }, 15000);
+    }
+    startNetMatch(j);
+  }
+  // los de tu sala: el jefe ha encontrado partida
+  PB.Online.on('matchFound', ({ mid }) => { if (mode !== 'play') joinAndStart(mid); });
+  PB.Online.on('partySearch', (on) => { if (on) PB.Lobby.toast(PB.T('Tu grupo está buscando partida…')); });
+
+  $('#play').onclick = () => { if (PB.Lobby.playPressed()) play(); };
+  $('#again').onclick = () => { if (PB.Online.party() && PB.Online.party().leader !== 'me') { toMenu(); return; } play(); };
   $('#back').onclick = toMenu;
   window.addEventListener('keydown', (e) => {
     if (e.target && e.target.tagName === 'INPUT') return;
     if (e.key === 'Escape' && mode === 'play') (paused ? resume() : pause());
-    if (e.key === 'Enter' && mode !== 'play' && PB.Lobby.current === 'lobby' && PB.Lobby.playPressed()) startMatch();
+    if (e.key === 'Enter' && mode !== 'play' && PB.Lobby.current === 'lobby' && PB.Lobby.playPressed()) play();
     if (e.key.toLowerCase() === 'm') PB.Settings.set('muted', !PB.Settings.get('muted'));
   });
   // si la pestaña se oculta en mitad de la partida, pausar
@@ -578,7 +630,7 @@
   PB.Lobby.init({
     backToPause: () => showScreen('pause'),
     getMode: () => gameMode,
-    start: () => startMatch(),
+    start: () => play(),
     startNet: (o) => startNetMatch(o),
     setMode: (id) => { gameMode = id; save('pb.mode', id); newGame(null); },
   });
@@ -588,6 +640,8 @@
     localStorage.removeItem('pb.netMatch');
     if (left && Date.now() - left.t < 15 * 60 * 1000 && PB.Save.applyAbandon) PB.Save.applyAbandon(left);
   } catch (e) {}
+
+  PB.Online.start();
 
   PB.Sprites.load(() => fontReady.then(() => {
     $('#loading').classList.add('hidden');

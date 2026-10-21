@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signed() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function onlyKeys(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
+
+    // Perfil público: cada uno escribe solo el suyo
+    match /users/{uid} {
+      allow read: if signed();
+      allow write: if signed() && me() == uid
+        && request.resource.data.get('name', '').size() <= 16
+        && request.resource.data.get('friends', []).size() <= 100;
+      // progreso guardado en la nube: solo su dueño
+      match /private/{doc} {
+        allow read, write: if signed() && me() == uid;
+      }
+    }
+
+    // Solicitudes de amistad: id = destinatario_remitente
+    match /friendReqs/{id} {
+      allow read: if signed() && (resource == null || resource.data.from == me() || resource.data.to == me());
+      allow create: if signed() && request.resource.data.from == me()
+        && id == request.resource.data.to + '_' + me()
+        && request.resource.data.status == 'pending';
+      allow update: if signed() && resource.data.to == me() && onlyKeys(['status']);
+      allow delete: if signed() && (resource.data.from == me() || resource.data.to == me());
+    }
+
+    match /clans/{cid} {
+      function clan() { return get(/databases/$(database)/documents/clans/$(cid)).data; }
+      function isMember() { return me() in clan().members; }
+      allow read: if signed();
+      allow create: if signed() && request.resource.data.leader == me()
+        && request.resource.data.members == [me()]
+        && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 20;
+      allow update: if signed() && (
+        // el líder lo gestiona todo
+        resource.data.leader == me()
+        // entrar en un clan público (solo uno mismo y si cabe)
+        || (resource.data.type == 'public' && onlyKeys(['members'])
+            && request.resource.data.members.toSet() == resource.data.members.toSet().union([me()].toSet())
+            && request.resource.data.members.size() <= 30)
+        // salir (solo uno mismo)
+        || (onlyKeys(['members']) && me() in resource.data.members
+            && request.resource.data.members.toSet() == resource.data.members.toSet().difference([me()].toSet()))
+        // las copas del clan las actualiza cualquier miembro
+        || (onlyKeys(['copas']) && me() in resource.data.members)
+      );
+      allow delete: if signed() && resource.data.leader == me() && resource.data.members.size() <= 1;
+
+      match /chat/{msg} {
+        allow read: if signed() && isMember();
+        allow create: if signed() && request.resource.data.uid == me()
+          && request.resource.data.text is string && request.resource.data.text.size() <= 140
+          && (isMember() || request.resource.data.get('sys', false) == true);
+      }
+      match /requests/{uid} {
+        allow create: if signed() && me() == uid;
+        allow read: if signed() && (me() == uid || clan().leader == me());
+        allow delete: if signed() && (me() == uid || clan().leader == me());
+      }
+    }
+  }
+}

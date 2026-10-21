@@ -1,0 +1,61 @@
+{
+  "rules": {
+    "status": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.child('name').isString() && newData.child('name').val().length <= 16"
+      }
+    },
+    "invites": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$from": {
+          ".write": "auth != null && (auth.uid === $from || auth.uid === $uid)"
+        }
+      }
+    },
+    "parties": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.child('leader').val() === auth.uid || !newData.exists() && data.child('members').child(auth.uid).exists())",
+        "leader": {
+          ".write": "auth != null && data.parent().child('members').child(auth.uid).exists()"
+        },
+        "state": {
+          ".write": "auth != null && data.parent().child('leader').val() === auth.uid"
+        },
+        "members": {
+          "$uid": {
+            ".write": "auth != null && (auth.uid === $uid || data.parent().parent().child('leader').val() === auth.uid)",
+            ".validate": "!newData.exists() || newData.child('name').isString() && newData.child('name').val().length <= 16"
+          }
+        }
+      }
+    },
+    "mm": {
+      "$mode": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "matches": {
+      "$mid": {
+        ".read": "auth != null && data.child('players').child(auth.uid).exists()",
+        ".write": "auth != null && (!data.exists() || data.child('players').child(auth.uid).exists())"
+      }
+    },
+    "signal": {
+      "$mid": {
+        ".write": "auth != null && !newData.exists()",
+        "$to": {
+          ".read": "auth != null && auth.uid === $to",
+          "$from": {
+            ".write": "auth != null && auth.uid === $from",
+            ".validate": "newData.hasChildren() || newData.isString()"
+          }
+        }
+      }
+    }
+  }
+}

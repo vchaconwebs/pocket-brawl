@@ -739,7 +739,34 @@ PB.Lobby = (() => {
       ['Logros', PB.Save.achievements().filter((a) => a.claimed).length],
     ];
     $('#pf-stats').innerHTML = rows.map(([k, v]) => `<div><small>${k}</small><b>${typeof v === 'number' ? v.toLocaleString('es-ES') : v}</b></div>`).join('');
+    renderAccount();
     show('profile');
+  }
+
+  // cuenta: invitado o Google
+  function renderAccount() {
+    const a = PB.Online.account();
+    const g = a && !a.anonymous;
+    $('#pf-acc-text').textContent = !a ? PB.T('Sin conexión: tu progreso se guarda en este navegador.')
+      : g ? PB.T('Has entrado con Google ({email}). Tu progreso se guarda en la nube.', { email: a.email })
+      : PB.T('Juegas como invitado: tu progreso se guarda en este navegador. Entra con Google para guardarlo en la nube y no perderlo.');
+    $('#pf-google').classList.toggle('hidden', !!g);
+    $('#pf-logout').classList.toggle('hidden', !g);
+  }
+  async function googleLogin() {
+    const r = await PB.Online.loginGoogle();
+    if (r.cancelled) return;
+    if (r.error) return modal(r.error);
+    if (r.switched && r.save) {
+      if (await modal(PB.T('Esa cuenta de Google ya tiene una partida guardada. ¿Cargarla? (sustituye a la de este navegador)'), true)) {
+        PB.Save.importJSON(r.save);
+        location.reload();
+        return;
+      }
+    }
+    PB.Audio.play('win');
+    toast(PB.T('Progreso guardado en tu cuenta de Google'));
+    renderAccount();
   }
 
   // ------------------------------------------------------------------ amigos
@@ -871,7 +898,18 @@ PB.Lobby = (() => {
     $('#cl-body').innerHTML =
       `<div class="clan-head"><img class="av big" src="${clanIcon(c)}" alt=""><div><p>${c.desc || ''}</p><small>${c.count}/${PB.META.clanMax} miembros · ${c.type === 'invite' ? '🔒 Solo invitación' : '🌐 Público'} · <img class="cup" src="${cupIcon()}" alt="">${c.copas.toLocaleString('es-ES')}</small></div><button class="act gray" id="cl-leave">Abandonar</button></div>` +
       `<div class="clan-grid"><div class="plist">${c.members.map((m, i) => prow({ ...m, pos: i + 1, sub: m.role + (m.me ? '' : m.online ? ' · <span class="on">●</span>' : ' · <span class="off">●</span>') })).join('')}</div>` +
-      `<div class="chat"><div id="chat-log"></div><div class="chat-in"><input id="chat-q" maxlength="140" placeholder="Escribe al clan…"><button class="act blue" id="chat-send">Enviar</button></div></div></div>`;
+      `<div class="chat"><div id="chat-log"></div><div class="chat-in"><input id="chat-q" maxlength="140" placeholder="Escribe al clan…"><button class="act blue" id="chat-send">Enviar</button></div></div></div>` +
+      '<div id="cl-reqs"></div>';
+    const meLead = c.members.some((m) => m.me && m.id === c.leader);
+    if (meLead) {
+      PB.Online.clanRequests().then((reqs) => {
+        const box = $('#cl-reqs');
+        if (!box || !reqs.length) return;
+        box.innerHTML = `<h3>${PB.T('Quieren entrar')}</h3><div class="plist">` + reqs.map((p) => prow({ ...p, sub: PB.T('Solicitud para unirse') }, `<button class="mini ok" data-cy="${p.id}">✓</button><button class="mini" data-cn="${p.id}">✕</button>`)).join('') + '</div>';
+        box.querySelectorAll('[data-cy]').forEach((e) => (e.onclick = async () => { const r = await PB.Online.answerClanRequest(e.dataset.cy, true); if (r.error) toast(r.error); showClan(); }));
+        box.querySelectorAll('[data-cn]').forEach((e) => (e.onclick = async () => { await PB.Online.answerClanRequest(e.dataset.cn, false); showClan(); }));
+      });
+    }
     $('#cl-leave').onclick = async () => {
       if (!(await modal('¿Seguro que quieres abandonar el clan?', true))) return;
       await PB.Online.leaveClan();
@@ -912,7 +950,7 @@ PB.Lobby = (() => {
       const list = await PB.Online.topPlayers();
       const mine = list.find((p) => p.me);
       const top = list.slice(0, 50);
-      box.innerHTML = top.map((p) => prow({ ...p, sub: p.clanName || 'Sin clan' })).join('') + (mine && mine.pos > 50 ? '<p class="sep">…</p>' + prow({ ...mine, sub: 'Tú' }) : '');
+      box.innerHTML = top.map((p) => prow({ ...p, sub: p.clanName || 'Sin clan' })).join('') + (mine && (mine.pos === '50+' || mine.pos > 50) ? '<p class="sep">…</p>' + prow({ ...mine, sub: 'Tú' }) : '');
     } else {
       const list = await PB.Online.topClans();
       const my = await PB.Online.myClan();
@@ -1374,7 +1412,17 @@ PB.Lobby = (() => {
       if (current === 'lobby') renderPartySlots();
       if (current === 'party') { renderParty(); PB.Online.friends().then(renderFriendsInvite); }
     });
-    PB.Online.on('partyStart', () => { if (current === 'lobby' && api.start) api.start(); });
+    PB.Online.on('invite', async (inv) => {
+      if (PB.Match && PB.Match.busy) return;
+      PB.Audio.play('ready');
+      if (await modal(PB.T('{name} te invita a su sala. ¿Quieres unirte?', { name: inv.name }), true)) {
+        const r = await PB.Online.joinByCode(inv.code);
+        if (r.error) toast(r.error); else show('lobby');
+      }
+    });
+    PB.Online.on('party', (info) => { if (info && info.kicked) toast(PB.T('Has salido de la sala')); });
+    $('#pf-google').onclick = googleLogin;
+    $('#pf-logout').onclick = async () => { if (await modal(PB.T('¿Cerrar sesión? En este navegador volverás a jugar como invitado.'), true)) PB.Online.logout(); };
     // enlace de invitación: ?sala=CODIGO
     const sala = new URLSearchParams(location.search).get('sala');
     if (sala) PB.Online.joinByCode(sala).then((r) => { if (r.error) toast(r.error); history.replaceState(null, '', location.pathname); });
