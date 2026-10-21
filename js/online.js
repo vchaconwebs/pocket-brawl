@@ -198,7 +198,18 @@ PB.Online = (() => {
 
   async function logout() {
     if (!auth) return;
+    // el progreso ya queda en la cuenta; en este navegador se empieza de cero
+    if (user && !user.isAnonymous) {
+      await fs.collection('users').doc(uid).collection('private').doc('save')
+        .set({ json: JSON.stringify(PB.Save.get()), t: Date.now() }).catch(() => {});
+    }
+    clearTimeout(saveT);
+    user = null;
     await auth.signOut();
+    try {
+      localStorage.removeItem('pb.save.v1');
+      localStorage.removeItem('pb.welcomed');
+    } catch (e) {}
     location.reload();
   }
   const account = () => (user ? { anonymous: user.isAnonymous, email: user.email || '', name: user.displayName || '' } : null);
@@ -754,7 +765,7 @@ PB.Online = (() => {
   }
 
   // anfitrión: abre una conexión con cada jugador; devuelve los que han conectado a tiempo
-  async function hostConnect(mid, others, link) {
+  async function hostConnect(mid, others, link, onPeer) {
     const sig = rtdb.ref('signal/' + mid);
     const ok = new Set();
     await Promise.all(others.map(async (peer) => {
@@ -773,7 +784,7 @@ PB.Online = (() => {
       tr('respuesta de', peer.slice(0, 5), !!a);
       if (!a) { pc.close(); return; }
       await pc.setRemoteDescription(JSON.parse(a));
-      if (await opened) { link.add(peer, ch, pc); ok.add(peer); } else pc.close();
+      if (await opened) { link.add(peer, ch, pc); ok.add(peer); if (onPeer) onPeer(peer); } else pc.close();
     }));
     setTimeout(() => sig.remove().catch(() => {}), 5000);
     return ok;
@@ -824,12 +835,31 @@ PB.Online = (() => {
       const humans = [uid, ...others.filter((id) => ok.has(id))];
       const { opts, seats, myIdx } = buildOpts(m, humans);
       if (!Object.keys(seats).length) { link.close(); return { local: true }; }
-      return { role: 'host', link, opts, seats, myIdx };
+      return { role: 'host', link, opts, seats, myIdx, mid };
     }
     const ok = await clientConnect(mid, m.host, link);
     tr('cliente conectado', ok);
     if (!ok) { link.close(); return { local: true, failed: true }; }
-    return { role: 'client', link };
+    return { role: 'client', link, mid };
+  }
+
+  // Anfitrión de reserva: si el anfitrión se va, el que va primero en la lista pasa a serlo
+  // y los demás se conectan a él (una "ronda" nueva de conexiones para esa partida).
+  // nuevo anfitrión: target = lista de los demás; jugador: target = el nuevo anfitrión
+  async function migrate(mid, round, amHost, target, onPeer) {
+    const link = makeLink(uid);
+    const sid = mid + '_m' + round;
+    tr('migración', round, amHost ? 'soy el nuevo anfitrión' : 'me conecto al nuevo');
+    if (amHost) {
+      // la partida sigue ya; cada jugador vuelve en cuanto conecta (onPeer)
+      const done = (target.length ? hostConnect(sid, target, link, onPeer) : Promise.resolve(new Set()))
+        .then((ok) => { tr('reconectados', ok.size, 'de', target.length); return ok; });
+      return { link, done };
+    }
+    const ok = await clientConnect(sid, target, link);
+    tr('reconectado', ok);
+    if (!ok) { link.close(); return null; }
+    return { link };
   }
 
   // Monta la partida (como plan() en main.js) con los humanos en sus sitios
@@ -882,7 +912,7 @@ PB.Online = (() => {
     chat, sendChat,
     party: () => party, createParty, invite, joinByCode, setReady, updateMe, kick, leaveParty,
     friends, requests, searchPlayers, addFriend, answerRequest, removeFriend,
-    findMatch, cancelMatch, joinMatch,
+    findMatch, cancelMatch, joinMatch, migrate,
     get searching() { return !!search; },
     trace,
   };

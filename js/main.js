@@ -144,8 +144,8 @@
   // Empieza una partida en red. link = canal hacia los demás (lo crea js/online.js):
   //   link.send(peerId | null, msg), link.onMessage = (peerId, msg) => ..., link.onLeave = (peerId) => ..., link.close()
   // host: opts.humans[idx] y seats (peerId -> idx) ya decididos; client: espera el mensaje 'start' del anfitrión.
-  async function startNetMatch({ role, link, opts, seats, myIdx }) {
-    net = { role, link, seats: seats || {}, myIdx, remotes: {}, sendT: 0, inT: 0, lastIn: '', fullT: 0, gone: false };
+  async function startNetMatch({ role, link, opts, seats, myIdx, mid }) {
+    net = { role, link, seats: seats || {}, myIdx, mid, round: 0, humans: {}, remotes: {}, sendT: 0, inT: 0, lastIn: '', fullT: 0, gone: false };
     if (bgTimer) bgTimer.postMessage(role === 'host');
     link.onMessage = (peer, m) => onNetMessage(peer, m);
     link.onLeave = (peer) => onNetLeave(peer);
@@ -157,7 +157,8 @@
       const avg = Math.round(lv.reduce((a, b) => a + b, 0) / lv.length);
       opts.names = shuffle(PB.TRAINER_NAMES.slice());
       opts.botLvls = Array.from({ length: n }, () => Math.max(1, Math.min(PB.META.maxLevel, avg + Math.floor(Math.random() * 3) - 1)));
-      link.send(null, { k: 'start', opts, seats: net.seats });
+      net.humans = Object.assign({}, net.seats, { [link.me]: myIdx });
+      link.send(null, { k: 'start', opts, seats: net.seats, hostIdx: myIdx });
       await beginMatch(opts, myIdx);
     }
   }
@@ -193,8 +194,15 @@
       else if (m.k === 'hello' && net.host) net.link.send(peer, Object.assign({ k: 's', ack: 0 }, net.host.snapshot(true)));
       else if (m.k === 'bye') onNetLeave(peer);
     } else {
-      if (m.k === 'start' && !game_isNet()) { net.hostPeer = peer; net.seats = m.seats; net.myIdx = m.seats[net.link.me]; beginMatch(m.opts, net.myIdx); }
+      if (m.k === 'start' && !game_isNet()) {
+        net.hostPeer = peer;
+        net.seats = m.seats;
+        net.humans = Object.assign({}, m.seats, { [peer]: m.hostIdx });
+        net.myIdx = m.seats[net.link.me];
+        beginMatch(m.opts, net.myIdx);
+      }
       else if (m.k === 's' && net.client) net.client.apply(m);
+      else if (m.k === 'left') { const i = net.humans[m.u]; delete net.humans[m.u]; if (game.brawlers[i]) game.brawlers[i].isBot = true; }
       else if (m.k === 'bye') onNetLeave(peer);
     }
   }
@@ -208,18 +216,101 @@
       if (idx === undefined) return;
       delete net.seats[peer];
       delete net.remotes[idx];
+      delete net.humans[peer];
+      net.link.send(null, { k: 'left', u: peer });
       const b = game.brawlers[idx];
       if (b && !game.winner) {
         b.isBot = true;
         bots.push(new PB.Bot(game, b, 0.6));
         game.feed.push({ killer: b.name, kdex: null, victim: PB.T('se ha desconectado'), vdex: null, team: b.team, t: game.time, info: true });
       }
-    } else if (peer === net.hostPeer && mode === 'play' && !game.winner) {
+    } else if (peer === net.hostPeer && mode === 'play' && !game.winner && !net.migrating) {
+      migrateHost();
+    }
+  }
+
+  // Se ha ido el anfitrión: el primero de los que quedan (por orden) toma el relevo con la
+  // partida tal y como iba. Si solo quedas tú, sigues contra los bots y la partida cuenta.
+  async function migrateHost() {
+    const old = net.hostPeer, me = net.link.me;
+    delete net.humans[old];
+    const left = Object.keys(net.humans).sort();
+    const newHost = left[0];
+    net.migrating = true;
+    net.round++;
+    const oldIdx = game.brawlers.findIndex((b) => !b.isBot && b !== game.player && !Object.values(net.humans).includes(b.idx));
+    const oldB = game.brawlers[oldIdx];
+    if (oldB) game.feed.push({ killer: oldB.name, kdex: null, victim: PB.T('se ha desconectado'), vdex: null, team: oldB.team, t: game.time, info: true });
+    renderer.announce(PB.T('Cambiando de anfitrión…'), '#ffe066', '', 2.5);
+    try { net.link.close(); } catch (e) {}
+    const cur = net;
+    let r = null;
+    const onPeer = (u) => {
+      // un jugador ha vuelto a conectar con el nuevo anfitrión
+      if (!net || net.humans[u] === undefined) return;
+      net.seats[u] = net.humans[u];
+      net.remotes[net.humans[u]] = new PB.Net.Remote();
+    };
+    try { r = await PB.Online.migrate(net.mid, net.round, newHost === me, newHost === me ? left.filter((u) => u !== me) : newHost, onPeer); } catch (e) { r = null; }
+    if (net !== cur || mode !== 'play') return;
+    if (!r) {
+      // no ha habido manera: la partida no cuenta
       endNet();
       try { localStorage.removeItem('pb.netMatch'); } catch (e) {}
       PB.Lobby.toast(PB.T('El anfitrión se ha desconectado. Esta partida no cuenta.'));
       toMenu();
+      return;
     }
+    net.link = r.link;
+    r.link.onMessage = (peer, m) => onNetMessage(peer, m);
+    r.link.onLeave = (peer) => onNetLeave(peer);
+    if (newHost === me) {
+      becomeHost();
+      // los que no vuelven en unos segundos pasan a ser bots
+      r.done.then((ok) => {
+        if (!net || net !== cur) return;
+        for (const u of Object.keys(net.humans)) {
+          if (u === me || ok.has(u)) continue;
+          const b = game.brawlers[net.humans[u]];
+          delete net.humans[u];
+          if (b) { b.isBot = true; bots.push(new PB.Bot(game, b, 0.65)); }
+        }
+      });
+    } else {
+      net.hostPeer = newHost;
+      net.client = new PB.Net.Client(game, net.myIdx);
+      r.link.send(newHost, { k: 'hello' });
+    }
+    net.migrating = false;
+  }
+
+  // Pasa de jugador a anfitrión: la partida ya la tengo (por las fotos); faltan los bots
+  function becomeHost() {
+    const c = net.client;
+    game.brawlers.forEach((b, i) => {
+      if (c && c.target[i] && i !== net.myIdx) { b.x = c.target[i].x; b.y = c.target[i].y; }
+      if (b.dash && !b.dash.hit) b.dash.hit = new Set();
+    });
+    for (const p of game.projectiles) if (!p.hit) p.hit = new Set();
+    game.timers = [];
+    game.nextShotId = 100000 + Math.floor(Math.random() * 100000);
+    game.events.length = 0;
+    net.role = 'host';
+    net.client = null;
+    // (los jugadores que van volviendo se añaden en onPeer)
+    for (const u of Object.keys(net.seats)) if (!net.remotes[net.seats[u]]) delete net.seats[u];
+    const humanIdx = new Set(Object.values(net.humans));
+    const skill = 0.65;
+    bots = [];
+    for (const b of game.brawlers) {
+      if (humanIdx.has(b.idx)) continue;
+      b.isBot = true;
+      bots.push(new PB.Bot(game, b, skill));
+    }
+    net.host = new PB.Net.Host(game);
+    net.sendT = 0;
+    net.fullT = 0;
+    if (bgTimer) bgTimer.postMessage(true);
   }
 
   function endNet() {

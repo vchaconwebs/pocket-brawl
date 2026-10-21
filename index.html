@@ -32,13 +32,34 @@
    "offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
   </script>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=56">
+  <link rel="stylesheet" href="css/style.css?v=57">
 </head>
 <body>
   <canvas id="game"></canvas>
 
   <div id="loading" class="screen"><h1>Cargando…</h1><p id="ld-sub"></p><button class="act gray hidden" id="ld-cancel">Cancelar</button></div>
   <noscript><h1>PokéVersus</h1><p>Fangame gratuito de combates 3v3 con Pokémon en el navegador. Activa JavaScript para jugar. / Free 3v3 Pokémon fan game. Enable JavaScript to play.</p></noscript>
+
+  <!-- INICIO (la primera vez o al cerrar sesión) -->
+  <div id="welcome" class="screen hidden">
+    <div class="wl-box">
+      <h1 class="wl-title">PokéVersus</h1>
+      <p class="wl-sub">Combates 3 contra 3 con tus Pokémon favoritos</p>
+      <div class="panel wl-panel">
+        <button class="act blue" id="wl-google">Entrar con Google</button>
+        <button class="act blue" id="wl-mail">Entrar con correo</button>
+        <div class="mail-form hidden" id="wl-mail-form">
+          <input id="wl-mail-email" type="email" autocomplete="email" placeholder="Correo electrónico">
+          <input id="wl-mail-pass" type="password" autocomplete="current-password" placeholder="Contraseña (mínimo 6)">
+          <div class="row"><button class="act gold" id="wl-mail-login">Entrar</button><button class="act blue" id="wl-mail-create">Crear cuenta</button></div>
+          <button class="linkbtn" id="wl-mail-forgot">¿Has olvidado la contraseña?</button>
+        </div>
+        <p class="wl-or">o</p>
+        <button class="act gold" id="wl-guest">Jugar como invitado</button>
+        <small>Con una cuenta tu progreso se guarda en la nube y puedes jugar en cualquier dispositivo. Como invitado se guarda solo en este navegador.</small>
+      </div>
+    </div>
+  </div>
 
   <!-- LOBBY -->
   <div id="lobby" class="screen hidden">
@@ -107,10 +128,8 @@
 
       <footer class="lb-bottom">
         <p class="legal">
-          Fangame gratuito y sin ánimo de lucro, no afiliado a Nintendo, Creatures, GAME FREAK ni The Pokémon Company.
-          Sprites de <a href="https://github.com/PMDCollab/SpriteCollab" target="_blank" rel="noopener">PMD SpriteCollab</a> (CC BY-NC 4.0) ·
-          Efectos de <a href="https://github.com/JPTER78/pokesurvivor" target="_blank" rel="noopener">PokéSurvivor</a> (© 2026 JPTER78) ·
-          <a href="CREDITS.md" target="_blank">Créditos</a>
+          Fangame no oficial y sin ánimo de lucro ·
+          <a href="CREDITS.md" target="_blank">Créditos y licencias</a>
         </p>
       </footer>
     </div>
@@ -375,30 +394,30 @@
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=56"></script>
-  <script src="js/data.js?v=56"></script>
-  <script src="js/roster-data.js?v=56"></script>
-  <script src="js/i18n-data.js?v=56"></script>
-  <script src="js/i18n-names.js?v=56"></script>
-  <script src="js/i18n.js?v=56"></script>
-  <script src="js/sprites.js?v=56"></script>
-  <script src="js/vfx.js?v=56"></script>
-  <script src="js/roster.js?v=56"></script>
-  <script src="js/pokeball.js?v=56"></script>
-  <script src="js/tiles.js?v=56"></script>
-  <script src="js/world.js?v=56"></script>
-  <script src="js/game.js?v=56"></script>
-  <script src="js/net.js?v=56"></script>
-  <script src="js/modes.js?v=56"></script>
-  <script src="js/ai.js?v=56"></script>
-  <script src="js/audio.js?v=56"></script>
-  <script src="js/render.js?v=56"></script>
-  <script src="js/input.js?v=56"></script>
-  <script src="js/settings.js?v=56"></script>
-  <script src="js/pixui.js?v=56"></script>
-  <script src="js/save.js?v=56"></script>
-  <script src="js/online.js?v=56"></script>
-  <script src="js/lobby.js?v=56"></script>
-  <script src="js/main.js?v=56"></script>
+  <script src="js/sprite-data.js?v=57"></script>
+  <script src="js/data.js?v=57"></script>
+  <script src="js/roster-data.js?v=57"></script>
+  <script src="js/i18n-data.js?v=57"></script>
+  <script src="js/i18n-names.js?v=57"></script>
+  <script src="js/i18n.js?v=57"></script>
+  <script src="js/sprites.js?v=57"></script>
+  <script src="js/vfx.js?v=57"></script>
+  <script src="js/roster.js?v=57"></script>
+  <script src="js/pokeball.js?v=57"></script>
+  <script src="js/tiles.js?v=57"></script>
+  <script src="js/world.js?v=57"></script>
+  <script src="js/game.js?v=57"></script>
+  <script src="js/net.js?v=57"></script>
+  <script src="js/modes.js?v=57"></script>
+  <script src="js/ai.js?v=57"></script>
+  <script src="js/audio.js?v=57"></script>
+  <script src="js/render.js?v=57"></script>
+  <script src="js/input.js?v=57"></script>
+  <script src="js/settings.js?v=57"></script>
+  <script src="js/pixui.js?v=57"></script>
+  <script src="js/save.js?v=57"></script>
+  <script src="js/online.js?v=57"></script>
+  <script src="js/lobby.js?v=57"></script>
+  <script src="js/main.js?v=57"></script>
 </body>
 </html>

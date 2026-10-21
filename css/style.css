@@ -1773,3 +1773,20 @@ h1.lose { color: #ff8a7a; }
 .mail-form input { font: inherit; font-size: 16px; padding: 6px 8px; color: #fff; background: #10183a; border: 3px solid #141824; box-shadow: inset 0 0 0 2px #3a4a8a; }
 .mail-form small { color: #a9b8e8; font-size: 12px; }
 .linkbtn { background: none; border: 0; color: #9ad4ff; font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; align-self: flex-start; padding: 0; }
+
+/* pantalla de inicio */
+#welcome { background: radial-gradient(ellipse at 50% 30%, rgba(40,70,140,0.55), rgba(10,14,30,0.85)); }
+.wl-box { display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(420px, 100%); }
+.wl-title { margin: 0; font-size: clamp(56px, 11vw, 96px); line-height: 0.9; color: #ffe066; letter-spacing: 1px;
+  text-shadow: 0 5px 0 #c83c32, 4px 0 0 #141824, -4px 0 0 #141824, 0 -4px 0 #141824, 0 9px 0 #141824; }
+.wl-sub { margin: 4px 0 10px; color: #e8f0ff; font-size: 18px; text-align: center; text-shadow: 0 2px 0 #000; }
+.wl-panel { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.wl-panel > .act { width: 100%; }
+.wl-panel small { color: #a9b8e8; font-size: 12px; text-align: center; }
+.wl-or { margin: 0; text-align: center; color: #a9b8e8; }
+@media (max-height: 520px) {
+  .wl-title { font-size: 48px; }
+  .wl-sub { margin: 0 0 4px; font-size: 14px; }
+  .wl-panel { gap: 5px; }
+  .wl-panel small { display: none; }
+}
