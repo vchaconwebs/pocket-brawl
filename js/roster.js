@@ -97,6 +97,7 @@
     common: { name: 'Común', color: '#c8c8c8', cost: 150 },
     rare: { name: 'Raro', color: '#5aa8ff', cost: 300 },
     epic: { name: 'Épico', color: '#c07aff', cost: 600 },
+    legendary: { name: 'Legendario', color: '#ffd23a', cost: 1000 },
   };
   PB.RARITY = RARITY;
   const STARTERS = new Set([].concat(PB.STARTER_DEX.grass, PB.STARTER_DEX.fire, PB.STARTER_DEX.water));
@@ -118,7 +119,7 @@
     const dmgMul = (1 + 0.06 * zAtk) / Math.sqrt(hpMul);
     const { scale: as, ...atk } = R.atk;
     const { d: sd, scale: ss, ...sup } = SUPER[kit.sup];
-    const rarity = STARTERS.has(line[0]) ? 'starter' : fin.bst > 530 ? 'epic' : fin.bst > 470 ? 'rare' : 'common';
+    const rarity = fam.leg ? 'legendary' : STARTERS.has(line[0]) ? 'starter' : fin.bst > 530 ? 'epic' : fin.bst > 470 ? 'rare' : 'common';
     return {
       id: fam.id, dex: line[0], line, name: base.name, types, atkType, gen: base.gen,
       roleId, role: R.name,
@@ -150,15 +151,16 @@
     xp3: [70, 165], // EXP total para la 2ª y 3ª fase
     xp2: [70], // los de una sola evolución tardan lo mismo que la 1ª evolución de los de tres
     mul3: [1, 1.12, 1.25],
-    mul2: [1, 1.22],
+    mul2: [1.05, 1.2], // una evolución: empieza algo más fuerte y acaba algo por debajo de una 3ª fase
+    mul1: [1.12], // no evolucionan (y legendarios): fuerza fija, como una 2ª fase
     passive: 0.8, // EXP por segundo solo por estar vivo
     perDamage: 0.0015, // EXP por punto de daño a rivales
     perKO: 15, // EXP por debilitar (+8 por cada fase del rival)
     perKOStage: 8,
     catchUp: 1.3, // si vas por detrás en evolución de algún rival, ganas EXP más rápido
   };
-  PB.evoSteps = (def) => (def.line.length >= 3 ? PB.EVO.xp3 : PB.EVO.xp2);
-  PB.stageMul = (def, stage) => (def.line.length >= 3 ? PB.EVO.mul3 : PB.EVO.mul2)[stage] || 1;
+  PB.evoSteps = (def) => (def.line.length >= 3 ? PB.EVO.xp3 : def.line.length === 2 ? PB.EVO.xp2 : []);
+  PB.stageMul = (def, stage) => (def.line.length >= 3 ? PB.EVO.mul3 : def.line.length === 2 ? PB.EVO.mul2 : PB.EVO.mul1)[stage] || 1;
   PB.stageName = (def, stage) => (PB.DEX[def.line[stage]] || PB.DEX[def.line[0]]).name;
   PB.stageTypes = (def, stage) => (PB.DEX[def.line[stage]] || PB.DEX[def.line[0]]).types;
 })();

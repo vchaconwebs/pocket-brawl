@@ -349,7 +349,7 @@ PB.Save = (() => {
       const locked = PB.BRAWLERS.map((b) => b.id).filter((id) => !d.owned[id] && !res.pokemon.includes(id));
       if (locked.length && Math.random() < C.pokemon) {
         // los comunes salen más que los raros, y los raros más que los épicos
-        const W = { common: 3, starter: 2, rare: 2, epic: 1 };
+        const W = { common: 3, starter: 2, rare: 2, epic: 1, legendary: 0.4 };
         let total = 0;
         for (const id of locked) total += W[PB.brawlerById(id).rarity] || 1;
         let r = Math.random() * total;

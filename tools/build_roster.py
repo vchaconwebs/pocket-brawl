@@ -120,8 +120,7 @@ def main():
             continue
         seen.add(r['id'])
         fam = family(r)
-        if len(fam) < 2 or any(x['is_legendary'] or x['is_mythical'] for x in fam):
-            continue
+        legend = any(x['is_legendary'] or x['is_mythical'] for x in fam)
         if any(x['name'] in EXCLUDE_ROOTS for x in fam):
             continue
         start = r['id']
@@ -133,16 +132,14 @@ def main():
         if not ok(start):
             continue
         line = best_line(start)
-        if len(line) < 2:
-            continue
         # si a la familia le faltan sprites de la fase final, se queda fuera (no se mete "a medias")
         full_depth = len(best_line_any(start, children))
         if len(line) < full_depth:
             continue
-        families.append(line[:3])
+        families.append((line[:3], legend))
 
     print('familias completas:', len(families))
-    used = sorted({i for line in families for i in line})
+    used = sorted({i for line, _ in families for i in line})
     print('especies:', len(used))
 
     # ---- copiar sprites
@@ -198,7 +195,7 @@ def main():
         if m.get('hv'):
             mm['hv'] = 1
         out_meta[i] = mm
-    fams = [{'id': re.sub(r'[^a-z0-9]', '', by[line[0]]['name']), 'line': line} for line in families]
+    fams = [dict({'id': re.sub(r'[^a-z0-9]', '', by[line[0]]['name']), 'line': line}, **({'leg': 1} if leg else {})) for line, leg in families]
     starters = {t: [i for i in ids if any(f['line'][0] == i for f in fams)] for t, ids in STARTERS.items()}
 
     with open(os.path.join(ROOT, 'js', 'roster-data.js'), 'w', encoding='utf-8') as f:
