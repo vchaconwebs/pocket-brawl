@@ -1654,3 +1654,23 @@ h1.lose { color: #ff8a7a; }
   .mode-card b { font-size: clamp(26px, 1.8vw, 38px) !important; }
   .lb-right .big { font-size: clamp(44px, 3.2vw, 66px) !important; }
 }
+
+/* =====================================================================
+   FLECHAS PIXEL ART (volver, cursores de menú y evolución)
+   ===================================================================== */
+.back { font-size: 0 !important; min-width: 52px; display: inline-flex !important; align-items: center; justify-content: center; }
+.back::after { content: ''; display: block; width: 30px; height: 30px; background: var(--ico-arrow-lw) center / contain no-repeat; image-rendering: pixelated; }
+.pn-head .back::after { background-image: var(--ico-arrow-l); }
+.back:hover::after { animation: arrow-nudge 0.5s steps(2) infinite; }
+@keyframes arrow-nudge { 50% { transform: translateX(-3px); } }
+.lb-btn:hover::before, .tabs button.sel::before, .px-seg button.sel::before, .mode-card2.sel::before {
+  content: '' !important; width: 12px; height: 12px; background: var(--ico-arrow-r) center / contain no-repeat; image-rendering: pixelated; text-shadow: none !important;
+}
+.modal-choices button:first-child::before, .modal-choices button:hover::before {
+  content: '' !important; width: 13px; height: 13px; top: 8px !important; background: var(--ico-arrow-rd) center / contain no-repeat; image-rendering: pixelated;
+}
+.modal-choices button:hover ~ button::before, .modal-choices:hover button:first-child:not(:hover)::before { background: none; }
+#dt-evo .evo-arrow { width: 12px; height: 12px; flex: none; background: var(--ico-arrow-r) center / contain no-repeat; image-rendering: pixelated; }
+.with-arrow { display: inline-flex !important; align-items: center; gap: 6px; }
+.with-arrow::before { content: ''; width: 16px; height: 16px; background: var(--ico-arrow-lw) center / contain no-repeat; image-rendering: pixelated; }
+@media (max-height: 500px) { .back::after { width: 24px; height: 24px; } .back { min-width: 44px; } }

@@ -126,7 +126,7 @@ PB.Renderer = class {
     for (const z of game.zones) this.drawZone(z, t, team);
 
     // indicador de apuntado (debajo de los personajes)
-    if (view.aim && focus && !focus.dead && game.started) this.drawAim(focus, view.aim);
+    if (view.aim && !view.aim.cancel && focus && !focus.dead && game.started) this.drawAim(focus, view.aim);
 
     // objetos ordenados por Y
     const items = [];
@@ -979,7 +979,7 @@ PB.Renderer = class {
         this.outlined('Vuelves en ' + Math.ceil(me.respawnT), W / 2 + 20, H / 2 + 8, 26, '#ffffff');
       }
       if (view.touch) this.drawTouch(view, me, game);
-      else this.drawDesktopSuper(me, game);
+      else { this.drawDesktopSuper(me, game); this.drawDesktopSuperHint(view); }
     }
 
     // FPS
@@ -1103,6 +1103,16 @@ PB.Renderer = class {
     }
   }
 
+  drawDesktopSuperHint(view) {
+    const inp = view.inputState;
+    if (!inp || view.touch) return;
+    if (inp.superKeyHeld && view.player && view.player.superCharge >= 1) {
+      this.outlined('Suelta E para lanzar · X o clic derecho para cancelar', this.cw / 2, this.ch - 22, 14, '#ffe066');
+    } else if (inp.superCancelled && performance.now() - inp.superCancelled < 900) {
+      this.outlined('Súper cancelado', this.cw / 2, this.ch - 22, 15, '#ffb0b0');
+    }
+  }
+
   drawTouch(view, me, game) {
     const ctx = this.ctx, inp = view.inputState;
     const UI = PB.PixUI;
@@ -1126,7 +1136,15 @@ PB.Renderer = class {
     }
     this.superButton(L.super.x, L.super.y, L.sr, me.superCharge, game.clock, '');
     const sp = inp.sticks.super;
-    if (sp) stick(sp.origin, sp.pos, L.sr, 'rgba(255,210,40,0.95)');
+    if (sp) stick(sp.origin, sp.pos, L.sr, view.aim && view.aim.cancel ? 'rgba(230,60,50,0.95)' : 'rgba(255,210,40,0.95)');
+    // súper devuelto al centro: se cancela al soltar
+    if (view.aim && view.aim.cancel) {
+      UI.panel(ctx, L.super.x - 56, L.super.y - L.sr - 40, 112, 26, { p: 2, fill: 'rgba(150,30,30,0.92)' });
+      this.outlined('✕ Cancelar', L.super.x, L.super.y - L.sr - 21, 15, '#ffffff');
+    }
+    if (inp.superCancelled && performance.now() - inp.superCancelled < 900) {
+      this.outlined('Súper cancelado', L.super.x, L.super.y - L.sr - 21, 15, '#ffb0b0');
+    }
   }
 
   roundRect(x, y, w, h, r) {

@@ -31,7 +31,7 @@ PB.Bot = class {
     const hpF = b.hp / b.maxHp;
 
     // enemigo visible más cercano
-    let foe = null, fd = Infinity;
+    let foe = null, fd = Infinity; // (pueden cambiar si el modo pide perseguir a alguien)
     for (const e of g.enemiesOf(b)) {
       if (!g.visibleTo(e, b.team)) continue;
       const d = Math.hypot(e.x - b.x, e.y - b.y);
@@ -50,6 +50,12 @@ PB.Bot = class {
     } else if (foe && !plan.avoidFight && !carrying && fd < Math.max(atk.range * 0.95, closeRange ? 520 : 0)) {
       fight = true;
     }
+    // modo agresivo (el rival va a ganar): se persigue al que lleva las Pokéballs aunque esté lejos o escondido
+    if (plan.aggressive && plan.hunt && !plan.hunt.dead) {
+      const hd = Math.hypot(plan.hunt.x - b.x, plan.hunt.y - b.y);
+      if (!foe || foe === plan.hunt || hd < fd + 200) { foe = plan.hunt; fd = hd; }
+      fight = fd < atk.range * 0.95;
+    }
     // con un objetivo prioritario (Snorlax), solo se pelea si el enemigo está muy encima
     if (fight && plan.focus && plan.target && foe && fd > atk.range * 0.55) fight = false;
 
@@ -67,7 +73,7 @@ PB.Bot = class {
         // los de corta distancia van directos a por el rival, zigzagueando poco
         push = fd > atk.range * 0.45 ? 1 : 0.2;
         side = fd > atk.range * 0.45 ? 0.35 : 1;
-      } else push = fd < atk.range * 0.55 ? -0.8 : fd > atk.range * 0.85 ? 0.6 : 0;
+      } else push = plan.aggressive ? (fd > atk.range * 0.6 ? 0.9 : 0) : fd < atk.range * 0.55 ? -0.8 : fd > atk.range * 0.85 ? 0.6 : 0;
       input.mx = -ay * this.strafe * side + ax * push;
       input.my = ax * this.strafe * side + ay * push;
       if (!W.los(b.x, b.y, foe.x, foe.y) && atk.kind !== 'lob') this.followTo(foe, input);

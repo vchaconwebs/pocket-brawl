@@ -47,7 +47,7 @@
     },
     sniper: {
       name: 'Francotirador', hp: 2900, speed: 148, reload: 1.7, superHits: 5,
-      atk: { kind: 'spread', count: 1, spread: 0, range: 340, speed: 720, dmg: 820, r: 18, scale: 1.3 },
+      atk: { kind: 'spread', count: 1, spread: 0, range: 340, speed: 740, dmg: 860, r: 18, scale: 1.3 },
       desc: 'Un disparo potente de largo alcance. Frágil de cerca.',
     },
     fighter: {
@@ -56,8 +56,8 @@
       desc: 'Equilibrado: tres disparos a media distancia.',
     },
     thrower: {
-      name: 'Lanzador', hp: 4300, speed: 140, reload: 1.8, superHits: 5,
-      atk: { kind: 'lob', range: 310, flight: 0.6, radius: 72, dmg: 850, scale: 1.6 },
+      name: 'Lanzador', hp: 4550, speed: 142, reload: 1.8, superHits: 5,
+      atk: { kind: 'lob', range: 300, flight: 0.75, radius: 54, dmg: 720, scale: 1.5 },
       desc: 'Lanza sus ataques por encima de los muros.',
     },
   };
@@ -75,7 +75,7 @@
     freeze: { kind: 'spread', count: 7, spread: 0.6, range: 300, speed: 560, dmg: 340, r: 16, pierce: true, stun: 0.6, scale: 1.4, d: 'una tormenta helada que congela un momento' },
     draco: { kind: 'spread', count: 5, spread: 0.4, range: 330, speed: 620, dmg: 540, r: 20, pierce: true, scale: 1.8, d: 'cinco meteoros dracónicos que lo atraviesan todo' },
     vortex: { kind: 'zone', range: 330, flight: 0.5, radius: 130, duration: 3, dps: 650, heal: 0, pull: 170, scale: 1.4, d: 'un remolino que arrastra a los rivales a su centro y los va dañando' },
-    meteor: { kind: 'meteor', range: 330, flight: 0.7, count: 5, spreadR: 85, radius: 66, dmg: 720, scale: 1.6, d: 'una lluvia de golpes que caen sobre la zona elegida' },
+    meteor: { kind: 'meteor', range: 330, flight: 0.85, count: 5, spreadR: 85, radius: 54, dmg: 600, scale: 1.6, d: 'una lluvia de golpes que caen sobre la zona elegida' },
     gust: { kind: 'spread', count: 7, spread: 0.7, range: 280, speed: 640, dmg: 300, r: 20, pierce: true, knockback: 520, scale: 1.6, d: 'un vendaval que atraviesa y empuja a todos' },
   };
 

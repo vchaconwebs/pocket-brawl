@@ -14,6 +14,8 @@ PB.Input = class {
       const k = e.key.toLowerCase();
       if (this.enabled && [' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
       if (k === 'e' && !this.keys.has('e')) this.superKeyHeld = true;
+      // PC: con E pulsada, X cancela el súper
+      if (k === 'x' && this.superKeyHeld) { this.superKeyHeld = false; this.superCancelled = performance.now(); }
       if (k === ' ' && !this.keys.has(' ')) this.pending.attack = { auto: true };
       if (k === 'q' && !this.keys.has('q')) this.pending.super = { auto: true };
       this.keys.add(k);
@@ -63,7 +65,11 @@ PB.Input = class {
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
       if (e.button === 0) this.mouse.left = true;
-      if (e.button === 2) this.pending.super = 'mouse';
+      // clic derecho: lanza el súper; si estabas apuntándolo con E, lo cancela
+      if (e.button === 2) {
+        if (this.superKeyHeld) { this.superKeyHeld = false; this.superCancelled = performance.now(); }
+        else this.pending.super = 'mouse';
+      }
       return;
     }
     e.preventDefault();
@@ -105,6 +111,8 @@ PB.Input = class {
       this.sticks[name] = null;
       if (name === 'move' || cancel) continue;
       const v = this.stickVec(s, name === 'super' ? L.sr : L.r);
+      // súper: si lo arrastraste y lo devuelves al centro antes de soltar, se cancela
+      if (name === 'super' && (s.maxLen || 0) >= 0.5 && v.len < 0.3) { this.superCancelled = performance.now(); continue; }
       // toque rápido o casi sin arrastrar = disparo automático al enemigo más cercano
       const quick = performance.now() - s.t0 < 220;
       if (v.len < 0.35 || (quick && v.len < 0.7)) this.pending[name] = PB.Settings.get('autoAim') ? { auto: true } : { facing: true };
@@ -150,6 +158,11 @@ PB.Input = class {
         const s = this.sticks[name];
         if (!s) continue;
         const v = this.stickVec(s, name === 'super' ? L.sr : L.r);
+        s.maxLen = Math.max(s.maxLen || 0, v.len);
+        if (name === 'super' && s.maxLen >= 0.5 && v.len < 0.3) {
+          out.aim = { isSuper: true, cancel: true, ang: 0, dist: 0 };
+          break;
+        }
         if (v.len >= 0.2) {
           out.aim = { isSuper: name === 'super', ang: Math.atan2(v.y, v.x), dist: rangeOf(name === 'super') * v.len, strong: true };
           break;

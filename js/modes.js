@@ -82,6 +82,13 @@ PB.MODES = {
       const losing = g.countdown && g.countdown.team === foeTeam;
       const home = W.spawns[b.team][1];
       const safe = { x: home.x + (W.mine.x - home.x) * 0.3, y: home.y + (W.mine.y - home.y) * 0.3 };
+      // el otro equipo tiene la cuenta atrás: hay que ir a por quien lleva las Pokéballs, sin miedo
+      if (losing) {
+        let carrier = null, most = 0;
+        for (const e of g.brawlers) if (e.team === foeTeam && !e.dead && e.balls > most) { most = e.balls; carrier = e; }
+        if (carrier) return { goal: carrier, aggressive: true, hunt: carrier };
+        if (info.foe) return { goal: info.foe, aggressive: true };
+      }
       // jugar seguro: con poca vida, si va ganando la cuenta atrás y lleva Pokéballs, o si lleva muchas
       const teamBalls = g.teamBalls(b.team);
       if ((info.hpF < 0.3 && info.foe && info.fd < 450) || (winning && b.balls > 0) || (b.balls >= 5 && info.hpF < 0.6) ||
@@ -113,8 +120,8 @@ PB.MODES = {
     },
     update(g, dt) {
       const gas = g.gas;
-      // la niebla empieza a cerrarse a los 30 s y llega al mínimo a los 2:40
-      const k = Math.max(0, Math.min(1, (g.time - 30) / 130));
+      // la niebla empieza a cerrarse a los 15 s y llega al mínimo a los 1:35
+      const k = Math.max(0, Math.min(1, (g.time - 15) / 80));
       gas.r = gas.maxR + (gas.minR - gas.maxR) * k;
       if (k > 0 && !gas.warn) { gas.warn = true; g.events.push({ type: 'gas' }); }
       gas.tickT -= dt;

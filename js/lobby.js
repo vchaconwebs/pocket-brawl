@@ -274,7 +274,7 @@ PB.Lobby = (() => {
       }).join('') + '</div>'
       : '';
     $('#dt-evo').innerHTML = branchPick + '<div class="evo-row">' + L.line.map((dex, i) =>
-      (i ? '<span class="evo-arrow">▶</span>' : '') +
+      (i ? '<span class="evo-arrow"></span>' : '') +
       `<button class="evo-st${i === dtStage ? ' sel' : ''}" data-st="${i}"><img src="${PB.Sprites.portraitURL(dex)}" alt=""><b>${PB.DEX[dex].name}</b>` +
       `<small>${i ? '+' + Math.round((PB.stageMul(b, i) - 1) * 100) + ' %' : 'Empieza así'}</small></button>`).join('') + '</div>' +
       '<p class="evo-note">Evoluciona en mitad de la partida al ganar EXP: haciendo daño, debilitando y con los objetivos del modo.</p>';
@@ -810,7 +810,7 @@ PB.Lobby = (() => {
     const btnTxt = c.pending ? 'Solicitud enviada' : full ? 'Clan lleno' : c.type === 'invite' ? 'Pedir unirse' : 'Unirse';
     $('#cl-body').innerHTML =
       `<div class="clan-head"><img class="av big" src="${clanIcon(c)}" alt=""><div><p>${c.desc || ''}</p><small>${c.count}/${PB.META.clanMax} miembros · ${c.type === 'invite' ? '🔒 Solo invitación' : '🌐 Público'} · <img class="cup" src="${cupIcon()}" alt="">${c.copas.toLocaleString('es-ES')}</small></div></div>` +
-      `<div class="row left"><button class="act gray" id="cl-back">← Volver</button><button class="act gold" id="cl-join" ${c.pending || full ? 'disabled' : ''}>${btnTxt}</button></div>` +
+      `<div class="row left"><button class="act gray with-arrow" id="cl-back">Volver</button><button class="act gold" id="cl-join" ${c.pending || full ? 'disabled' : ''}>${btnTxt}</button></div>` +
       `<div class="plist">${c.members.map((m, i) => prow({ ...m, pos: i + 1, sub: m.role })).join('')}</div>`;
     $('#cl-back').onclick = showClan;
     $('#cl-join').onclick = async () => {
@@ -832,7 +832,7 @@ PB.Lobby = (() => {
       `<label>Descripción<input id="cc-desc" maxlength="80" placeholder="¿Cómo es tu clan?"></label>` +
       `<label>Tipo<select id="cc-type"><option value="public">🌐 Público (cualquiera puede entrar)</option><option value="invite">🔒 Solo invitación</option></select></label>` +
       `<label>Escudo<div class="icons" id="cc-icons">${icons.map((d, i) => `<button data-ic="${d}" class="${i ? '' : 'sel'}"><img src="${PB.Sprites.portraitURL(d)}" alt=""></button>`).join('')}</div></label>` +
-      `<div class="row left"><button class="act gray" id="cc-back">← Volver</button><button class="act gold" id="cc-ok">Crear · ${money(PB.META.clanCost, coinIcon)}</button></div>` +
+      `<div class="row left"><button class="act gray with-arrow" id="cc-back">Volver</button><button class="act gold" id="cc-ok">Crear · ${money(PB.META.clanCost, coinIcon)}</button></div>` +
       `<p class="sub">Tienes ${PB.Save.get().coins} monedas. Máximo ${PB.META.clanMax} miembros por clan.</p></div>`;
     let icon = icons[0];
     $('#cc-icons').querySelectorAll('button').forEach((b) => (b.onclick = () => {
@@ -1239,7 +1239,7 @@ PB.Lobby = (() => {
         `<input type="range" class="px-range" id="st-mus" min="0" max="100" step="5" value="${S.get('music')}"></div>` +
         toggle('muted', 'Silenciar todo') +
         toggle('vibration', 'Vibración', 'Al recibir golpes fuertes, súper listo y cofres (en móviles que lo permitan)') +
-        `<div class="st-row"><div><b>Probar sonido</b></div><button class="act blue" id="st-test">▶ Probar</button></div>`;
+        `<div class="st-row"><div><b>Probar sonido</b></div><button class="act blue" id="st-test">Probar</button></div>`;
     } else if (stTab === 'graphics') {
       html =
         choice('quality', 'Calidad de efectos', [['alta', 'Alta'], ['baja', 'Baja']], 'Baja: menos partículas y brillos, va mejor en móviles lentos') +
@@ -1352,6 +1352,10 @@ PB.Lobby = (() => {
     // la Pokéball como imagen para el CSS (cabeceras, botón de jugar, tarjetas)
     document.documentElement.style.setProperty('--ico-ball', 'url("' + ballIcon('poke', 2) + '")');
     document.documentElement.style.setProperty('--ico-ball-great', 'url("' + ballIcon('great', 2) + '")');
+    // flechas pixel para volver, cursores de menú y la línea evolutiva
+    for (const [v, n] of [['--ico-arrow-l', 'arrowL'], ['--ico-arrow-lw', 'arrowLw'], ['--ico-arrow-r', 'arrowR'], ['--ico-arrow-rd', 'arrowRd']]) {
+      document.documentElement.style.setProperty(v, 'url("' + PB.PixUI.iconURL(n, 3) + '")');
+    }
     $('#btn-settings').onclick = () => openSettings('lobby');
     $('#st-back').onclick = () => (stReturn === 'pause' ? api.backToPause() : show('lobby'));
     document.querySelectorAll('#st-tabs button').forEach((b) => (b.onclick = () => showSettings(b.dataset.tab)));

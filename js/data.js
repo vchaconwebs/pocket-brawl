@@ -225,7 +225,7 @@ PB.HANDMADE = [
   {
     id: 'geodude', name: 'Geodude', types: ['rock', 'ground'], atkType: 'rock',
     role: 'Tanque', hp: 4300, speed: 138, reload: 2.1, superHits: 5,
-    attack: { name: 'Lanzarrocas', kind: 'lob', range: 300, flight: 0.65, radius: 60, dmg: 740, look: { shape: 'rock', trail: 'dirt', scale: 1.6 } },
+    attack: { name: 'Lanzarrocas', kind: 'lob', range: 290, flight: 0.75, radius: 52, dmg: 680, look: { shape: 'rock', trail: 'dirt', scale: 1.6 } },
     super: { name: 'Magnitud', kind: 'slam', radius: 180, dmg: 1600, knockback: 600, stun: 0.5, destroysWalls: true, look: { shape: 'rock' } },
     desc: 'Lanza rocas por encima de los muros. Su súper sacude el suelo y rompe muros.',
   },
