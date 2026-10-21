@@ -1268,3 +1268,12 @@ h1.lose { color: #ff8a7a; }
 .pill.pay { display: flex; align-items: center; gap: 4px; padding: 0 8px !important; }
 .pill.pay img { width: 18px; height: 18px; image-rendering: pixelated; }
 .pill.pay b { font-weight: normal; font-size: 17px; margin-right: 4px; }
+
+/* botón "Volver al lobby" con el mismo marco pixel que los demás */
+#back {
+  border-style: solid !important; border-width: 12px !important; border-image-slice: 12 fill !important;
+  border-image-width: 12px !important; border-image-source: var(--sk-blue) !important; background: transparent !important;
+  box-shadow: none !important; border-radius: 0 !important; color: #fff !important; text-shadow: 2px 2px 0 #0c1838 !important;
+  padding: 4px 18px 6px !important;
+}
+.move.evo b { color: #ffe066; }

@@ -11,17 +11,17 @@ PB.META = {
   tokensPerChest: 100,
   // premio de cada partida (en Niebla Tóxica cuenta como victoria quedar entre los 4 primeros)
   matchReward: {
-    win: { coins: 20, points: 12, rainbow: 1 },
-    lose: { coins: 8, points: 5, rainbow: 0 },
+    win: { coins: 25, points: 16, rainbow: 1 },
+    lose: { coins: 10, points: 7, rainbow: 0 },
   },
   bonusWins: 3, // las 3 primeras victorias del día dan el doble de fichas
   // cofres (Pokéballs): tiradas de premio y probabilidad de Pokémon nuevo en cada tirada
   chests: {
-    poke: { name: 'Poké Ball', rolls: 2, pokemon: 0.08, color: '#e8331c' },
+    poke: { name: 'Poké Ball', rolls: 2, pokemon: 0.1, color: '#e8331c' },
     great: { name: 'Super Ball', rolls: 4, pokemon: 0.1, color: '#3a7ad8' },
     ultra: { name: 'Ultra Ball', rolls: 8, pokemon: 0.1, guaranteed: true, color: '#f8c030' },
   },
-  pityChests: 8, // si abres 8 cofres seguidos sin Pokémon nuevo, el siguiente trae uno seguro
+  pityChests: 6, // si abres 6 cofres seguidos sin Pokémon nuevo, el siguiente trae uno seguro
   rainbowChance: { great: 0.25, ultra: 0.8 },
   clanCost: 300, // monedas para crear un clan
   // skins shiny: se compran con Monedas Arcoíris

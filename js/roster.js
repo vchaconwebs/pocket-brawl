@@ -127,10 +127,11 @@
   PB.RARITY = RARITY;
   const STARTERS = new Set([].concat(PB.STARTER_DEX.grass, PB.STARTER_DEX.fire, PB.STARTER_DEX.water));
 
-  function build(fam) {
+  // typesOverride: para cuando un Pokémon con ramas evoluciona y cambia de tipo (Eevee -> Flareon)
+  function build(fam, typesOverride) {
     const line = fam.line;
     const base = PB.DEX[line[0]], fin = PB.DEX[line[line.length - 1]];
-    const types = base.types.slice();
+    const types = (typesOverride || base.types).slice();
     const atkType = attackType(types);
     const roleId = roleOf(fin, atkType);
     const R = ROLE[roleId];
@@ -139,7 +140,7 @@
     // súper: si tiene un segundo tipo, usa el súper de ese tipo (Charizard: Volador, Gengar: Veneno...);
     // si no, los asesinos y lanzadores usan el súper alternativo de su tipo
     const second = types.find((t) => t !== atkType && t !== 'normal' && KIT[t]);
-    const sig = SIGNATURE[fam.id];
+    const sig = typesOverride ? null : SIGNATURE[fam.id];
     const supType = sig ? sig[2] : second || atkType;
     const [supKind, supName] = sig || (second ? KIT[second].sup[0] : (KIT[atkType] || KIT.normal).sup[roleId === 'assassin' || roleId === 'thrower' ? 1 : 0]);
     const supLook = { shape: PB.VFX.forType(supType).proj, trail: TRAIL[supType] || 'spark' };
@@ -177,6 +178,18 @@
   const byId = {};
   for (const b of PB.BRAWLERS) byId[b.id] = b;
   PB.brawlerById = (id) => byId[id];
+
+  // Al evolucionar por una rama que cambia de tipo (Eevee -> Jolteon, Ralts -> Gallade...),
+  // sus ataques pasan a ser los de su nuevo tipo y su nuevo papel. La vida no cambia aquí (la sube la evolución).
+  PB.retype = (def, line, stage) => {
+    const types = PB.DEX[line[stage]].types;
+    if (!def.alts || types.join() === PB.DEX[line[0]].types.join()) return def;
+    const n = build({ id: def.id, line, alts: def.alts }, types);
+    return Object.assign({}, def, {
+      atkType: n.atkType, attack: n.attack, super: n.super, roleId: n.roleId, role: n.role,
+      speed: n.speed, reload: n.reload, superHits: n.superHits, desc: n.desc,
+    });
+  };
 
   // ---------------------------------------------------------------- evolución
   // Fases: las líneas de 3 evolucionan dos veces (+12 % cada vez); las de 2, una vez con un salto mayor (+22 %).

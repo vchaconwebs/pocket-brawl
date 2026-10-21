@@ -286,7 +286,13 @@ PB.Lobby = (() => {
       `<tr><td>${si('target')}Alcance</td><td>${Math.round((now.range || b.super.radius || 0) / PB.TILE * 10) / 10} casillas</td></tr>`;
     $('#dt-moves').innerHTML =
       `<div class="move"><b>Ataque · ${b.attack.name}</b><span>${moveText(b.attack, false)}</span></div>` +
-      `<div class="move super"><b>Súper · ${b.super.name}</b><span>${moveText(b.super, true)}</span></div>`;
+      `<div class="move super"><b>Súper · ${b.super.name}</b><span>${moveText(b.super, true)}</span></div>` +
+      (() => {
+        // rama que cambia de tipo: al evolucionar cambian los ataques
+        const last = L.line.length - 1;
+        const nd = last > 0 ? PB.retype(b, L.line, last) : b;
+        return nd === b ? '' : `<div class="move evo"><b>Al evolucionar a ${PB.DEX[L.line[last]].name}</b><span>${nd.role}: ${nd.attack.name} y súper ${nd.super.name}.</span></div>`;
+      })();
     // skins: normal y shiny (se compra con Monedas Arcoíris)
     const sk = $('#dt-skins');
     if (PB.Save.shinyAvailable(id)) {

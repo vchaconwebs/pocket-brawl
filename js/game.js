@@ -91,6 +91,13 @@ PB.Game = class {
     const after = PB.stageMul(b.def, b.stage);
     b.dex = b.line[b.stage];
     b.types = PB.stageTypes(b, b.stage);
+    // ramas que cambian de tipo (Eevee): ataques nuevos
+    const nd = PB.retype(b.def, b.line, b.stage);
+    if (nd !== b.def) {
+      b.def = nd;
+      b.superCharge = Math.max(b.superCharge, 0.5);
+      this.text(b.x, b.y - 128, nd.attack.name + ' · ' + nd.super.name, '#ffffff', 14);
+    }
     if (!b.isPlayer) b.name = PB.stageName(b, b.stage);
     // más vida máxima y se cura una parte
     b.maxHp = Math.round((b.maxHp * after) / before);

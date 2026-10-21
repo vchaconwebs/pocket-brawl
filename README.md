@@ -29,15 +29,15 @@ The Pokémon Company. Ver [CREDITS.md](CREDITS.md).
   (Eevee, Ralts, Oddish...) eligen su evolución en la ficha.
 - Cada tipo tiene dos súper; los de doble tipo usan el súper de su segundo tipo, y unos 40 famosos y
   legendarios tienen súper propio (Onda Mental, Pulso Primigenio, Sentencia...).
-- **Cada partida** da monedas y Puntos Pokémon (victoria 20 / 12 y 1 Moneda Arcoíris; derrota 8 / 5).
+- **Cada partida** da monedas y Puntos Pokémon (victoria 25 / 16 y 1 Moneda Arcoíris; derrota 10 / 7).
   Las 3 primeras victorias del día dan fichas dobles.
 - **Monedas**: suben de nivel a los Pokémon (Nv. 1 a 10, +2 % de vida y daño por nivel; 2.030 monedas en total).
 - **Puntos Pokémon**: desbloquean Pokémon (Común 100, Inicial y Raro 200, Épico 400, Legendario 800).
 - **Monedas Arcoíris**: solo sirven para comprar la **skin shiny** de cada Pokémon (80).
 - **Cofres** (Poké Ball, Super Ball, Ultra Ball): monedas, Puntos Pokémon, Monedas Arcoíris y Pokémon.
-  La Ultra Ball trae siempre uno nuevo y, tras 8 cofres seguidos sin ninguno, el siguiente trae uno seguro.
+  La Ultra Ball trae siempre uno nuevo y, tras 6 cofres seguidos sin ninguno, el siguiente trae uno seguro.
 - `node tools/sim_economy.js` simula jugadores de 4, 10 y 25 partidas al día y dice cuántos días tardan
-  en conseguir 25, 100, 200 o todos los Pokémon. A 10 partidas al día: 100 en ~3,5 semanas, todos en ~5,5 meses.
+  en conseguir 25, 100, 200 o todos los Pokémon. A 10 partidas al día: 100 en 3 semanas, todos en unos 5 meses.
 - **Fichas**: se ganan en cada partida; con 100 fichas, una Poké Ball.
 - **Copas**: cada Pokémon tiene las suyas; se ganan al ganar y se pierden al perder. El total es la suma.
 - **Misiones** diarias (cambian a las 00:00) y semanales (cambian el lunes, más difíciles y con mejores premios).
