@@ -3,13 +3,17 @@ PB.Bot = class {
   constructor(game, b, skill) {
     this.g = game;
     this.b = b;
-    this.skill = skill == null ? 0.6 : skill; // 0 = torpe, 1 = muy bueno
+    this.skill = skill == null ? 0.45 : skill; // 0 = torpe, 1 = muy bueno
     this.path = [];
     this.goal = null;
     this.repathT = 0;
     this.strafe = Math.random() < 0.5 ? 1 : -1;
     this.strafeT = 0;
     this.fireT = 0.5;
+    this.lastFoe = null;
+    this.seenT = 0;
+    this.reaction = 0.5;
+    this.superWait = 0;
     this.stuckT = 0;
     this.lastPos = { x: b.x, y: b.y };
   }
@@ -25,9 +29,9 @@ PB.Bot = class {
 
     const atk = b.def.attack;
     const hpF = b.hp / b.maxHp;
-    const myGems = g.teamGems(b.team);
+    const myBalls = g.teamBalls(b.team);
     const foeTeam = b.team === 'blue' ? 'red' : 'blue';
-    const foeGems = g.teamGems(foeTeam);
+    const foeBalls = g.teamBalls(foeTeam);
 
     // enemigo visible más cercano
     let foe = null, fd = Infinity;
@@ -46,7 +50,7 @@ PB.Bot = class {
     const winning = g.countdown && g.countdown.team === b.team;
     const losing = g.countdown && g.countdown.team === foeTeam;
 
-    if ((hpF < 0.3 && foe && fd < atk.range * 1.4) || (winning && b.gems > 0) || (b.gems >= 5 && hpF < 0.6)) {
+    if ((hpF < 0.3 && foe && fd < atk.range * 1.4) || (winning && b.balls > 0) || (b.balls >= 5 && hpF < 0.6)) {
       goal = safe; // retirarse
       if (foe && fd < atk.range) fight = true;
     } else if (foe && fd < Math.max(atk.range * 0.95, closeRange ? 520 : 0)) {
@@ -54,9 +58,9 @@ PB.Bot = class {
     } else if (foe && (fd < 700 || losing) && hpF > 0.45) {
       goal = foe; // perseguir (sobre todo si nos van a ganar)
     } else {
-      // gema suelta más cercana, o la mina
+      // balla suelta más cercana, o la mina
       let best = null, bd = Infinity;
-      for (const gm of g.gems) {
+      for (const gm of g.balls) {
         const d = Math.hypot(gm.x - b.x, gm.y - b.y);
         if (d < bd) { bd = d; best = gm; }
       }
@@ -92,24 +96,36 @@ PB.Bot = class {
       if (this.stuckT > 0.5) { this.repathT = 0; this.strafe *= -1; this.stuckT = 0; }
     } else this.stuckT = 0;
 
-    // disparar
-    if (foe) {
+    // disparar: los bots tardan en reaccionar y no vacían el cargador de golpe
+    if (foe !== this.lastFoe) {
+      this.lastFoe = foe;
+      this.seenT = 0;
+      this.reaction = 0.25 + (1 - this.skill) * 0.75 + Math.random() * 0.25;
+    }
+    this.seenT += dt;
+    this.superWait -= dt;
+    if (foe && this.seenT >= this.reaction && g.started) {
       const canHit = atk.kind === 'lob' || W.los(b.x, b.y, foe.x, foe.y);
-      if (fd <= atk.range * 0.98 && canHit && b.ammo >= 1 && this.fireT <= 0) {
+      const keepAmmo = this.skill < 0.5 && b.ammo < 2 && hpF > 0.5 && Math.random() < 0.6;
+      if (fd <= atk.range * 0.95 && canHit && b.ammo >= 1 && this.fireT <= 0 && !keepAmmo) {
         input.attack = this.aimAt(foe, fd, atk);
-        this.fireT = 0.25 + (1 - this.skill) * 0.6 + Math.random() * 0.3;
+        this.fireT = 0.4 + (1 - this.skill) * 0.9 + Math.random() * 0.4;
       }
-      if (b.superCharge >= 1) {
+      if (b.superCharge >= 1 && this.superWait <= 0) {
         const s = b.def.super;
         let use = false;
-        if (s.kind === 'spread') use = fd < s.range * 0.85 && W.los(b.x, b.y, foe.x, foe.y);
+        if (s.kind === 'spread') use = fd < s.range * 0.8 && W.los(b.x, b.y, foe.x, foe.y);
         else if (s.kind === 'zone') use = fd < s.range;
-        else if (s.kind === 'dash') use = fd < s.range * 0.9 && W.walkable(b.x, b.y, foe.x, foe.y, 10);
-        else if (s.kind === 'slam') use = fd < s.radius * 0.8;
+        else if (s.kind === 'dash') use = fd < s.range * 0.85 && W.walkable(b.x, b.y, foe.x, foe.y, 10);
+        else if (s.kind === 'slam') use = fd < s.radius * 0.75;
         else if (s.kind === 'stealth') use = fd < 500 || hpF < 0.5;
         if (use) {
-          input.super = this.aimAt(foe, fd, s);
-          input.attack = null;
+          // los bots torpes a veces "se olvidan" un rato de usar el súper
+          if (Math.random() < 0.5 - this.skill * 0.4) this.superWait = 1 + Math.random() * 2;
+          else {
+            input.super = this.aimAt(foe, fd, s);
+            input.attack = null;
+          }
         }
       }
     }
@@ -119,11 +135,11 @@ PB.Bot = class {
   aimAt(foe, dist, atk) {
     const b = this.b;
     const t = atk.speed ? dist / atk.speed : atk.flight || atk.time || 0;
-    const lead = 0.4 + this.skill * 0.6;
+    const lead = this.skill * 0.85;
     const px = foe.x + foe.vx * t * lead, py = foe.y + foe.vy * t * lead;
-    const err = (Math.random() - 0.5) * 0.35 * (1 - this.skill);
+    const err = (Math.random() - 0.5) * 0.7 * (1 - this.skill);
     const ang = Math.atan2(py - b.y, px - b.x) + err;
-    return { dx: Math.cos(ang), dy: Math.sin(ang), dist: Math.hypot(px - b.x, py - b.y) };
+    return { dx: Math.cos(ang), dy: Math.sin(ang), dist: Math.hypot(px - b.x, py - b.y) * (0.9 + Math.random() * 0.2) };
   }
 
   followTo(target, input) {

@@ -20,7 +20,7 @@ POKEMON = {
     "0074": "Geodude",
     "0092": "Gastly",
 }
-ANIMS = ["Idle", "Walk", "Shoot", "Attack", "Hurt"]
+ANIMS = ["Idle", "Walk", "Shoot", "Attack", "Hurt", "Faint"]
 
 
 def get(url):
@@ -113,6 +113,12 @@ def main():
     for name, authors in credits.items():
         lines.append(f"- **{name}**: {', '.join(authors) or 'ver SpriteCollab'}")
     lines += [
+        "",
+        "## Efectos de los ataques",
+        "Generador de efectos pixel art adaptado de [PokéSurvivor](https://github.com/JPTER78/pokesurvivor)",
+        "(`js/vfx.js`), bajo PolyForm Noncommercial 1.0.0 (ver `LICENSE-POKESURVIVOR.md`).",
+        "",
+        "Required Notice: Copyright 2026 JPTER78 (https://github.com/JPTER78/pokesurvivor)",
         "",
         "## Pokémon",
         "Pokémon y sus nombres son propiedad de Nintendo, Creatures Inc., GAME FREAK y",

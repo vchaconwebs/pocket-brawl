@@ -212,3 +212,20 @@ button { font: inherit; cursor: pointer; }
   .row { margin-top: 10px; }
   #help { top: 70px; font-size: 11px; }
 }
+
+/* Selector de dificultad */
+#difficulty { display: flex; gap: 8px; justify-content: center; align-items: center; margin: 0 0 14px; font-family: system-ui, sans-serif; font-size: 13px; color: #bcd0ff; }
+.diff {
+  color: #dfe7ff;
+  font-size: 15px;
+  padding: 5px 14px;
+  border-radius: 10px;
+  border: 3px solid #0c1838;
+  background: #34529c;
+  box-shadow: 0 3px 0 #0c1838;
+}
+.diff.sel { background: linear-gradient(#ffd84a, #f0a81c); color: #3a2500; }
+@media (max-height: 500px) {
+  #difficulty { margin-bottom: 8px; }
+  .diff { font-size: 13px; padding: 3px 10px; }
+}

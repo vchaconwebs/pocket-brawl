@@ -13,6 +13,11 @@
     const saved = localStorage.getItem('pb.brawler');
     if (PB.brawlerById(saved)) selected = saved;
   } catch (e) {}
+  let difficulty = 'normal';
+  try {
+    const d = localStorage.getItem('pb.difficulty');
+    if (PB.DIFFICULTY[d]) difficulty = d;
+  } catch (e) {}
   let endTimer = 0;
   let spectate = 0;
 
@@ -34,8 +39,11 @@
       blue = shuffle(ids.slice()).slice(0, 3);
       red = shuffle(ids.slice()).slice(0, 3);
     }
-    game = new PB.Game({ blue, red, playerInBlue: !!playerId });
-    bots = game.brawlers.filter((b) => !b.isPlayer).map((b) => new PB.Bot(game, b, b.team === 'blue' ? 0.55 : 0.6));
+    game = new PB.Game({ blue, red, playerInBlue: !!playerId, noCountdown: !playerId });
+    const diff = PB.DIFFICULTY[difficulty];
+    bots = game.brawlers
+      .filter((b) => !b.isPlayer)
+      .map((b) => new PB.Bot(game, b, playerId ? (b.team === 'blue' ? diff.ally : diff.foe) : 0.45));
     const f = game.player || game.brawlers[0];
     renderer.cam.x = f.x;
     renderer.cam.y = f.y;
@@ -66,6 +74,19 @@
       `<p>${b.desc}</p>` +
       `<div class="stats"><span>❤ ${b.hp}</span><span>⚡ Vel. ${b.speed}</span><span>🔄 Recarga ${b.reload}s</span></div>` +
       `<p class="moves"><b>Ataque:</b> ${b.attack.name} &nbsp; <b>Súper:</b> ${b.super.name}</p>`;
+    const dz = $('#difficulty');
+    dz.innerHTML = '<span>Bots:</span>';
+    for (const [id, d] of Object.entries(PB.DIFFICULTY)) {
+      const el = document.createElement('button');
+      el.className = 'diff' + (id === difficulty ? ' sel' : '');
+      el.textContent = d.name;
+      el.onclick = () => {
+        difficulty = id;
+        try { localStorage.setItem('pb.difficulty', id); } catch (e) {}
+        buildMenu();
+      };
+      dz.appendChild(el);
+    }
   }
 
   function showScreen(id) {
@@ -122,10 +143,10 @@
       .sort((a, b) => (a.team === b.team ? b.kills - a.kills : a.team === 'blue' ? -1 : 1))
       .map((b) =>
         `<tr class="${b.team}${b.isPlayer ? ' me' : ''}"><td>${b.name}${b.isPlayer ? ' (' + b.def.name + ')' : ''}</td>` +
-        `<td>${b.kills}</td><td>${b.deaths}</td><td>${b.gemsTaken}</td><td>${Math.round(b.dmgDone)}</td></tr>`
+        `<td>${b.kills}</td><td>${b.deaths}</td><td>${b.ballsTaken}</td><td>${Math.round(b.dmgDone)}</td></tr>`
       )
       .join('');
-    $('#scores').innerHTML = `<tr><th></th><th>K.O.</th><th>Muertes</th><th>Gemas</th><th>Daño</th></tr>${rows}`;
+    $('#scores').innerHTML = `<tr><th></th><th>K.O.</th><th>Muertes</th><th>Ballas</th><th>Daño</th></tr>${rows}`;
     showScreen('end');
     $('#help').classList.add('hidden');
     PB.Audio.play(won ? 'win' : 'lose');
@@ -146,19 +167,34 @@
   });
 
   // ------------------------------------------------------------ bucle
+  const STREAK = ['', '¡K.O.!', '¡DOBLE K.O.!', '¡TRIPLE K.O.!', '¡IMPARABLE!'];
+
   function handleEvents() {
     const me = game.player;
     for (const ev of game.events) {
       if (mode !== 'play') continue;
       switch (ev.type) {
-        case 'shoot': if (ev.b === me || near(ev.b)) PB.Audio.play('shoot', { fx: ev.fx }); break;
+        case 'count': if (ev.n > 0) PB.Audio.play('count'); break;
+        case 'go': PB.Audio.play('go'); renderer.announce('¡A LUCHAR!', '#ffcf2e', '', 1.1); break;
+        case 'shoot': if (ev.b === me || near(ev.b)) PB.Audio.play('shoot', { type: ev.atkType, me: ev.b === me }); break;
         case 'hit': if (ev.target === me || ev.source === me) PB.Audio.play('hit', { me: ev.target === me }); break;
-        case 'gem': if (ev.b === me) PB.Audio.play('gem'); break;
-        case 'ko': PB.Audio.play('ko'); break;
+        case 'ball': if (ev.b === me) PB.Audio.play('ball'); break;
+        case 'ballspawn': PB.Audio.play('ballspawn'); break;
+        case 'ko':
+          PB.Audio.play('ko');
+          if (ev.b === me) renderer.announce('¡Debilitado!', '#ff6b6b', ev.killer ? 'Te ha vencido ' + ev.killer.def.name : '', 1.4);
+          else if (ev.killer === me) renderer.announce(STREAK[Math.min(ev.streak, 4)] || '¡K.O.!', '#ffcf2e', ev.b.def.name + ' debilitado', 1.3);
+          break;
         case 'super': if (ev.b === me || near(ev.b)) PB.Audio.play('super'); break;
+        case 'superReady': if (ev.b === me) { PB.Audio.play('ready'); if (navigator.vibrate) navigator.vibrate(30); } break;
         case 'boom': PB.Audio.play('boom', { big: ev.big }); break;
+        case 'wall': PB.Audio.play('wall'); break;
+        case 'respawn': if (ev.b === me) PB.Audio.play('release'); break;
+        case 'countdown':
+          renderer.announce(ev.team === 'blue' ? '¡Tenéis 10 Pokéballs!' : '¡Tienen 10 Pokéballs!', ev.team === 'blue' ? '#5aa8ff' : '#ff5f5f', ev.team === 'blue' ? 'Aguantad 15 segundos' : 'Quitádselas antes de que acabe la cuenta', 1.8);
+          break;
         case 'tick': PB.Audio.play('tick'); break;
-        case 'end': endTimer = 1.6; break;
+        case 'end': endTimer = 1.8; break;
       }
     }
     game.events.length = 0;
@@ -216,7 +252,7 @@
   }
 
   // acceso para depurar desde la consola: PB.debug.game
-  PB.debug = { get game() { return game; }, input };
+  PB.debug = { get game() { return game; }, input, renderer };
 
   PB.Sprites.load(() => {
     $('#loading').classList.add('hidden');

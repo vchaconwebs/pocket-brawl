@@ -12,6 +12,12 @@ Algunos sprites base proceden de Pokémon Mundo Misterioso (CHUNSOFT).
 - **Geodude**: CHUNSOFT, JustAGunk
 - **Gastly**: CHUNSOFT, JFain
 
+## Efectos de los ataques
+Generador de efectos pixel art adaptado de [PokéSurvivor](https://github.com/JPTER78/pokesurvivor)
+(`js/vfx.js`), bajo PolyForm Noncommercial 1.0.0 (ver `LICENSE-POKESURVIVOR.md`).
+
+Required Notice: Copyright 2026 JPTER78 (https://github.com/JPTER78/pokesurvivor)
+
 ## Pokémon
 Pokémon y sus nombres son propiedad de Nintendo, Creatures Inc., GAME FREAK y
 The Pokémon Company. Este es un fangame gratuito, sin ánimo de lucro y no afiliado.

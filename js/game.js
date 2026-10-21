@@ -1,4 +1,4 @@
-// Simulación de la partida (modo Atrapagemas 3v3).
+// Simulación de la partida (modo Atrapa Pokéballs 3v3).
 // No dibuja nada: recibe "inputs" por luchador y avanza el estado. Así, en el futuro,
 // la misma lógica puede correr en un servidor o en el host de una partida online.
 //
@@ -9,16 +9,18 @@ PB.Game = class {
   constructor(opts) {
     this.world = new PB.World(PB.buildMap());
     this.rules = PB.RULES;
-    this.time = 0;
+    this.time = 0; // tiempo de juego (empieza al terminar la cuenta atrás)
+    this.clock = 0; // tiempo real de la partida (efectos)
+    this.startT = opts.noCountdown ? 0 : this.rules.startCountdown;
     this.brawlers = [];
     this.projectiles = [];
     this.zones = [];
-    this.gems = [];
-    this.particles = [];
-    this.texts = [];
+    this.balls = [];
+    this.fx = []; // efectos visuales (no afectan al juego)
     this.events = []; // para sonido / interfaz: { type, ... }
     this.feed = []; // mensajes de K.O.
-    this.gemT = 2;
+    this.ballT = 3;
+    this.padGlow = 0;
     this.countdown = null; // { team, t }
     this.winner = null; // 'blue' | 'red' | 'draw'
     this.shake = 0;
@@ -32,28 +34,34 @@ PB.Game = class {
         name: isPlayer ? 'TÚ' : def.name,
         x: sp.x, y: sp.y, r: 22, vx: 0, vy: 0, kx: 0, ky: 0,
         hp: def.hp, maxHp: def.hp, ammo: this.rules.maxAmmo, shotCd: 0, superCharge: 0,
-        gems: 0, dead: false, respawnT: 0, lastCombat: -99, revealT: 0,
+        balls: 0, dead: false, respawnT: 0, lastCombat: -99, revealT: 0,
         facing: team === 'blue' ? -Math.PI / 2 : Math.PI / 2,
-        moving: false, animT: Math.random() * 3, action: null, hurtT: 0,
+        moving: false, animT: Math.random() * 3, action: null, hurtT: 0, flashT: 0,
         stunT: 0, dash: null, stealthT: 0, powerNext: false, shieldT: this.rules.spawnShield,
-        burst: null, kills: 0, deaths: 0, gemsTaken: 0, dmgDone: 0,
+        spawnT: 0, dustT: 0, burst: null, streak: 0,
+        kills: 0, deaths: 0, ballsTaken: 0, dmgDone: 0,
       });
     };
     opts.blue.forEach((id, i) => add(id, 'blue', i, i === 0 && opts.playerInBlue));
     opts.red.forEach((id, i) => add(id, 'red', i, false));
+    if (!this.startT) for (const b of this.brawlers) this.releaseFx(b);
   }
 
   get player() {
     return this.brawlers.find((b) => b.isPlayer);
   }
 
+  get started() {
+    return this.startT <= 0;
+  }
+
   enemiesOf(b) {
     return this.brawlers.filter((e) => e.team !== b.team && !e.dead);
   }
 
-  teamGems(team) {
+  teamBalls(team) {
     let n = 0;
-    for (const b of this.brawlers) if (b.team === team && !b.dead) n += b.gems;
+    for (const b of this.brawlers) if (b.team === team && !b.dead) n += b.balls;
     return n;
   }
 
@@ -76,7 +84,21 @@ PB.Game = class {
 
   // ---------------------------------------------------------------- bucle
   update(dt, inputs) {
+    this.clock += dt;
+    if (this.startT > 0) {
+      const before = Math.ceil(this.startT);
+      this.startT -= dt;
+      if (Math.ceil(this.startT) !== before) this.events.push({ type: 'count', n: Math.max(0, Math.ceil(this.startT)) });
+      if (this.startT <= 0) {
+        this.events.push({ type: 'go' });
+        for (const b of this.brawlers) this.releaseFx(b);
+      }
+      for (const b of this.brawlers) b.animT += dt;
+      this.updateFx(dt);
+      return;
+    }
     if (this.winner) {
+      for (const b of this.brawlers) b.animT += dt;
       this.updateFx(dt);
       return;
     }
@@ -84,7 +106,7 @@ PB.Game = class {
     for (const b of this.brawlers) this.updateBrawler(b, dt, inputs[b.idx] || {});
     this.updateProjectiles(dt);
     this.updateZones(dt);
-    this.updateGems(dt);
+    this.updateBalls(dt);
     this.updateFx(dt);
     this.checkWin(dt);
   }
@@ -99,9 +121,11 @@ PB.Game = class {
     b.animT += dt;
     b.shotCd -= dt;
     b.hurtT -= dt;
+    b.flashT -= dt;
     b.revealT -= dt;
     b.shieldT -= dt;
     b.stunT -= dt;
+    b.spawnT -= dt;
     if (b.stealthT > 0) b.stealthT -= dt;
     if (b.action) {
       b.action.t += dt;
@@ -110,7 +134,11 @@ PB.Game = class {
 
     if (b.ammo < R.maxAmmo) b.ammo = Math.min(R.maxAmmo, b.ammo + dt / b.def.reload);
     if (this.time - b.lastCombat > R.regenDelay && b.hp < b.maxHp) {
+      const before = b.hp;
       b.hp = Math.min(b.maxHp, b.hp + b.maxHp * R.regenRate * dt);
+      if (Math.floor(before / 400) !== Math.floor(b.hp / 400)) {
+        this.px(b.x + (Math.random() - 0.5) * 30, b.y - 20, '#7dff8f', { speed: 10, vy: -50, life: 0.6, size: 5 });
+      }
     }
 
     // movimiento
@@ -119,10 +147,16 @@ PB.Game = class {
       const d = b.dash;
       d.t -= dt;
       this.world.moveCircle(b, d.vx * dt, d.vy * dt);
+      d.ghostT = (d.ghostT || 0) - dt;
+      if (d.ghostT <= 0) {
+        d.ghostT = 0.035;
+        this.fx.push({ kind: 'ghost', dex: b.def.dex, x: b.x, y: b.y, facing: b.facing, t: 0, life: 0.25 });
+        this.vfx('bolt', 'electric', b.x + (Math.random() - 0.5) * 40, b.y - 20 + (Math.random() - 0.5) * 30, { angle: Math.random() * 6, scale: 1, life: 0.15 });
+      }
       for (const e of this.enemiesOf(b)) {
         if (!d.hit.has(e.idx) && Math.hypot(e.x - b.x, e.y - b.y) < d.r + e.r) {
           d.hit.add(e.idx);
-          this.damage(e, d.dmg, b, b.def.atkType, { stun: d.stun, knockback: 300, kx: d.vx, ky: d.vy });
+          this.damage(e, d.dmg, b, b.def.atkType, { stun: d.stun, knockback: 300, kx: d.vx, ky: d.vy, big: true });
         }
       }
       if (d.t <= 0) b.dash = null;
@@ -142,11 +176,25 @@ PB.Game = class {
     b.vx = (b.x - ox) / dt;
     b.vy = (b.y - oy) / dt;
 
+    // polvo al andar / arbusto que se mueve (delata a quien está dentro)
+    if (b.moving && b.stealthT <= 0) {
+      b.dustT -= dt;
+      if (b.dustT <= 0) {
+        b.dustT = 0.2;
+        if (this.inBush(b)) {
+          for (let i = 0; i < 3; i++) this.px(b.x + (Math.random() - 0.5) * 40, b.y - 20 - Math.random() * 20, Math.random() < 0.5 ? '#3fae48' : '#5cc964', { speed: 50, vy: -30, life: 0.45, size: 5 });
+        } else {
+          this.px(b.x - Math.cos(b.facing) * 14, b.y + 6, 'rgba(235,240,210,0.7)', { speed: 20, vy: -15, life: 0.35, size: 6, grow: 1.6 });
+        }
+      }
+    }
+
     // ráfaga pendiente (Pikachu)
     if (b.burst) {
       b.burst.t -= dt;
       if (b.burst.t <= 0) {
         this.spawnShot(b, b.burst.atk, b.burst.ang, false, b.burst.mul);
+        this.muzzle(b, b.burst.ang);
         b.burst.left--;
         b.burst.t = b.burst.atk.delay;
         if (b.burst.left <= 0) b.burst = null;
@@ -154,19 +202,22 @@ PB.Game = class {
     }
 
     // ataques
-    if (b.stunT <= 0 && !b.dash) {
+    if (b.stunT <= 0 && !b.dash && b.spawnT <= 0) {
       if (input.super && b.superCharge >= 1) this.doSuper(b, input.super);
       else if (input.attack && b.ammo >= 1 && b.shotCd <= 0 && !b.burst) this.doAttack(b, input.attack);
     }
 
-    // recoger gemas
-    for (const g of this.gems) {
-      if (g.taken || g.delay > 0) continue;
+    // recoger Pokéballs
+    for (const g of this.balls) {
+      if (g.taken || g.delay > 0 || g.z > 12) continue;
       if (Math.hypot(g.x - b.x, g.y - b.y) < b.r + 18) {
         g.taken = true;
-        b.gems++;
-        b.gemsTaken++;
-        this.events.push({ type: 'gem', b });
+        b.balls++;
+        b.ballsTaken++;
+        this.events.push({ type: 'ball', b });
+        this.ring(g.x, g.y - 10, 6, 34, '#ffffff', 0.25, 3);
+        for (let i = 0; i < 6; i++) this.px(g.x, g.y - 10, i % 2 ? '#ff5a3c' : '#ffffff', { speed: 120, life: 0.35, size: 4 });
+        this.text(b.x, b.y - 96, '+1', '#ffffff', 18);
       }
     }
   }
@@ -202,7 +253,8 @@ PB.Game = class {
     if (b.powerNext) { mul = b.def.super.bonus || 1; b.powerNext = false; }
     if (b.stealthT > 0) b.stealthT = 0; // atacar rompe la invisibilidad
     this.startAction(b, ang, 'Shoot', 0.35);
-    this.events.push({ type: 'shoot', b, fx: atk.fx });
+    this.events.push({ type: 'shoot', b, atkType: b.def.atkType });
+    this.muzzle(b, ang);
     if (atk.kind === 'burst') {
       this.spawnShot(b, atk, ang, false, mul);
       b.burst = { left: atk.count - 1, t: atk.delay, ang, atk, mul };
@@ -218,9 +270,13 @@ PB.Game = class {
     const { ang, dist } = this.aim(b, aimIn, s.range || s.radius || 400);
     b.superCharge = 0;
     this.events.push({ type: 'super', b });
+    const pal = PB.VFX.PAL[b.def.atkType];
+    this.ring(b.x, b.y - 10, 20, 90, pal[3], 0.35, 6);
+    this.flash(b.x, b.y - 20, 90, pal[3], 0.25);
     if (s.kind === 'spread') {
       this.startAction(b, ang, 'Attack', 0.45);
       this.spawnSpread(b, s, ang, true, 1);
+      this.shake = Math.max(this.shake, 5);
     } else if (s.kind === 'zone') {
       this.startAction(b, ang, 'Shoot', 0.4);
       this.spawnLob(b, s, ang, Math.min(dist, s.range), true, 1);
@@ -228,18 +284,19 @@ PB.Game = class {
       this.startAction(b, ang, 'Attack', s.time + 0.1);
       const v = s.range / s.time;
       b.dash = { t: s.time, vx: Math.cos(ang) * v, vy: Math.sin(ang) * v, dmg: s.dmg, stun: s.stun, r: s.r, hit: new Set() };
-      for (let i = 0; i < 12; i++) this.particle(b.x, b.y, '#ffe14d', 180, 0.4);
+      for (let i = 0; i < 14; i++) this.px(b.x, b.y - 10, i % 2 ? '#fff36a' : '#ffffff', { speed: 220, life: 0.4, size: 4 });
     } else if (s.kind === 'slam') {
       this.startAction(b, b.facing, 'Attack', 0.5);
-      this.explode(b, b.x, b.y, s.radius, s.dmg, b.def.atkType, { knockback: s.knockback, stun: s.stun, fx: 'rock', big: true });
+      this.explode(b, b.x, b.y, s.radius, s.dmg, b.def.atkType, { knockback: s.knockback, stun: s.stun, big: true });
       if (s.destroysWalls) this.breakWalls(b.x, b.y, s.radius);
-      this.shake = Math.max(this.shake, 14);
+      this.fx.push({ kind: 'crack', x: b.x, y: b.y, r: s.radius, t: 0, life: 1.2, seed: Math.random() * 100 });
+      this.shake = Math.max(this.shake, 16);
     } else if (s.kind === 'stealth') {
       this.startAction(b, b.facing, 'Attack', 0.4);
       b.stealthT = s.time;
       b.revealT = 0;
       b.powerNext = true;
-      for (let i = 0; i < 16; i++) this.particle(b.x, b.y - 10, '#9d7bff', 140, 0.6);
+      for (let i = 0; i < 18; i++) this.px(b.x + (Math.random() - 0.5) * 50, b.y - 20 + (Math.random() - 0.5) * 40, i % 2 ? '#5c48aa' : '#9e8aea', { speed: 40, vy: -40, life: 0.8, size: 7, grow: 1.5 });
     }
   }
 
@@ -257,34 +314,43 @@ PB.Game = class {
     this.projectiles.push({
       x: ox, y: oy, vx: Math.cos(ang) * atk.speed, vy: Math.sin(ang) * atk.speed, ang,
       r: atk.r || 12, dmg: atk.dmg * (mul || 1), team: b.team, owner: b, range: atk.range, traveled: 0,
-      pierce: !!atk.pierce, hit: new Set(), fx: atk.fx, atkType: b.def.atkType, charge: !isSuper,
+      pierce: !!atk.pierce, hit: new Set(), look: atk.look || {}, atkType: b.def.atkType, charge: !isSuper,
       destroysWalls: !!atk.destroysWalls, knockback: atk.knockback || 0, isSuper, shotId: shotId || this.nextShotId++,
+      powered: (mul || 1) > 1, t: 0, trailT: 0,
     });
   }
 
   spawnLob(b, atk, ang, dist, isSuper, mul) {
     this.projectiles.push({
       lob: true, sx: b.x, sy: b.y, tx: b.x + Math.cos(ang) * dist, ty: b.y + Math.sin(ang) * dist,
-      t: 0, T: atk.flight, x: b.x, y: b.y, z: 0, team: b.team, owner: b, fx: atk.fx, atkType: b.def.atkType,
-      atk, isSuper, mul: mul || 1, charge: !isSuper,
+      t: 0, T: atk.flight, x: b.x, y: b.y, z: 0, team: b.team, owner: b, look: atk.look || {}, atkType: b.def.atkType,
+      atk, isSuper, mul: mul || 1, charge: !isSuper, trailT: 0,
     });
   }
 
   updateProjectiles(dt) {
     const keep = [];
     for (const p of this.projectiles) {
+      p.t += dt;
+      this.trail(p, dt);
       if (p.lob) {
-        p.t += dt;
         const k = Math.min(1, p.t / p.T);
         p.x = p.sx + (p.tx - p.sx) * k;
         p.y = p.sy + (p.ty - p.sy) * k;
         p.z = Math.sin(k * Math.PI) * (60 + Math.hypot(p.tx - p.sx, p.ty - p.sy) * 0.18);
         if (k >= 1) {
           if (p.atk.kind === 'zone') {
-            this.zones.push({ x: p.x, y: p.y, r: p.atk.radius, t: p.atk.duration, team: p.team, owner: p, atk: p.atk, by: p.owner });
+            this.zones.push({ x: p.x, y: p.y, r: p.atk.radius, t: p.atk.duration, life: p.atk.duration, team: p.team, atk: p.atk, by: p.owner, tickT: 0 });
+            this.ring(p.x, p.y, 20, p.atk.radius, '#97e36c', 0.4, 5);
+            for (let i = 0; i < 16; i++) this.px(p.x, p.y, i % 2 ? '#45b23c' : '#97e36c', { speed: 260, life: 0.5, size: 5 });
             this.events.push({ type: 'zone' });
           } else {
-            this.explode(p.owner, p.x, p.y, p.atk.radius, p.atk.dmg * p.mul, p.atkType, { charge: p.charge, fx: p.fx });
+            this.explode(p.owner, p.x, p.y, p.atk.radius, p.atk.dmg * p.mul, p.atkType, { charge: p.charge });
+            // trozos de roca
+            for (let i = 0; i < 6; i++) {
+              const a = Math.random() * Math.PI * 2, s = 80 + Math.random() * 140;
+              this.vfx('rock', 'rock', p.x, p.y, { vx: Math.cos(a) * s, vy: Math.sin(a) * s, z: 10, vz: 220 + Math.random() * 200, scale: 0.6, life: 0.7, spin: 8 });
+            }
           }
           continue;
         }
@@ -295,16 +361,15 @@ PB.Game = class {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.traveled += step;
-      if (p.fx === 'fire' && Math.random() < 0.5) this.particle(p.x, p.y, '#ffb347', 30, 0.25, 3);
       if (p.traveled >= p.range) {
         this.puff(p);
         continue;
       }
       if (this.world.shotBlockedAt(p.x, p.y)) {
         if (p.destroysWalls && this.breakWalls(p.x, p.y, 40).length) {
-          // sigue su camino
+          this.shake = Math.max(this.shake, 6);
         } else {
-          this.puff(p);
+          this.puff(p, true);
           continue;
         }
       }
@@ -314,9 +379,9 @@ PB.Game = class {
         if (Math.hypot(e.x - p.x, e.y - 8 - p.y) < p.r + e.r) {
           p.hit.add(e.idx);
           this.damage(e, p.dmg, p.owner, p.atkType, {
-            charge: p.charge, knockback: p.knockback, kx: p.vx, ky: p.vy, shotId: p.shotId,
+            charge: p.charge, knockback: p.knockback, kx: p.vx, ky: p.vy, shotId: p.shotId, hx: p.x, hy: p.y, big: p.isSuper || p.powered,
           });
-          if (!p.pierce) { dead = true; this.puff(p); break; }
+          if (!p.pierce) { dead = true; break; }
         }
       }
       if (!dead) keep.push(p);
@@ -324,25 +389,64 @@ PB.Game = class {
     this.projectiles = keep;
   }
 
+  // Partículas que deja cada proyectil al volar
+  trail(p, dt) {
+    const tr = p.look && p.look.trail;
+    if (!tr) return;
+    p.trailT -= dt;
+    if (p.trailT > 0) return;
+    p.trailT = p.isSuper ? 0.02 : 0.035;
+    const y = p.lob ? p.y - p.z - 10 : p.y;
+    const pal = PB.VFX.PAL[p.atkType] || PB.VFX.PAL.normal;
+    const jitter = (s) => (Math.random() - 0.5) * s;
+    switch (tr) {
+      case 'ember':
+        this.px(p.x + jitter(10), y + jitter(10), pal[2 + Math.floor(Math.random() * 3)], { speed: 20, vy: -60, life: 0.35, size: 4 });
+        break;
+      case 'drip':
+        this.px(p.x + jitter(6), y + jitter(6), pal[3], { speed: 10, vy: 40, life: 0.3, size: 4 });
+        break;
+      case 'bubbles':
+        this.vfx('bubble', 'water', p.x + jitter(50), y + jitter(50), { scale: 0.7 + Math.random() * 0.6, life: 0.45, vy: -30, fade: true });
+        this.px(p.x + jitter(40), y + jitter(40), pal[4], { speed: 30, life: 0.3, size: 4 });
+        break;
+      case 'leaves':
+        if (Math.random() < 0.5) this.px(p.x + jitter(8), y + jitter(8), pal[3], { speed: 20, life: 0.3, size: 3 });
+        break;
+      case 'spark':
+        this.px(p.x + jitter(8), y + jitter(8), Math.random() < 0.5 ? pal[3] : '#ffffff', { speed: 90, life: 0.18, size: 3 });
+        break;
+      case 'dirt':
+        this.px(p.x + jitter(10), y + jitter(10), pal[1 + Math.floor(Math.random() * 2)], { speed: 20, vy: 30, life: 0.3, size: 4 });
+        break;
+      case 'wisp':
+        this.px(p.x + jitter(20), y + jitter(20), pal[2 + Math.floor(Math.random() * 2)], { speed: 15, vy: -25, life: 0.5, size: 6, grow: 0.5 });
+        break;
+    }
+  }
+
   updateZones(dt) {
     for (const z of this.zones) {
       z.t -= dt;
+      z.tickT -= dt;
+      const tick = z.tickT <= 0;
+      if (tick) z.tickT = 0.25;
       for (const b of this.brawlers) {
         if (b.dead || Math.hypot(b.x - z.x, b.y - z.y) > z.r) continue;
         if (b.team === z.team) {
-          if (b.hp < b.maxHp) b.hp = Math.min(b.maxHp, b.hp + z.atk.heal * dt);
-        } else {
-          z.acc = (z.acc || 0);
-          b._zoneAcc = (b._zoneAcc || 0) + z.atk.dps * dt;
-          if (b._zoneAcc >= 150) {
-            this.damage(b, b._zoneAcc, z.by, z.by.def.atkType, { quiet: false });
-            b._zoneAcc = 0;
+          if (b.hp < b.maxHp) {
+            b.hp = Math.min(b.maxHp, b.hp + z.atk.heal * dt);
+            if (tick) this.vfx('heart', 'fairy', b.x + (Math.random() - 0.5) * 30, b.y - 40, { vy: -50, life: 0.6, scale: 1, fade: true });
           }
+        } else if (tick) {
+          this.damage(b, z.atk.dps * 0.25, z.by, z.by.def.atkType, { quiet: true });
+          // drenado: partícula que va hacia el centro
+          this.px(b.x, b.y - 20, '#97e36c', { vx: (z.x - b.x) * 2, vy: (z.y - b.y) * 2, life: 0.45, size: 5 });
         }
       }
-      if (Math.random() < 0.4) {
+      if (Math.random() < 0.5) {
         const a = Math.random() * Math.PI * 2, d = Math.random() * z.r;
-        this.particle(z.x + Math.cos(a) * d, z.y + Math.sin(a) * d, '#7dff7a', 20, 0.6, 3, -40);
+        this.vfx('leaf', 'grass', z.x + Math.cos(a) * d, z.y + Math.sin(a) * d, { vy: -40, life: 0.6, scale: 0.8, spin: 6, fade: true });
       }
     }
     this.zones = this.zones.filter((z) => z.t > 0);
@@ -355,38 +459,63 @@ PB.Game = class {
         this.damage(e, dmg, owner, atkType, { ...opts, kx: e.x - x, ky: e.y - y });
       }
     }
-    const n = opts.big ? 40 : 14;
-    const col = opts.fx === 'rock' ? '#a58c5f' : '#ffffff';
-    for (let i = 0; i < n; i++) this.particle(x, y, col, radius * 2.2, 0.5, opts.big ? 6 : 4);
-    this.texts.push({ ring: true, x, y, r: radius, t: 0, life: 0.35 });
+    const pal = PB.VFX.PAL[atkType] || PB.VFX.PAL.normal;
+    const n = opts.big ? 36 : 14;
+    for (let i = 0; i < n; i++) this.px(x, y, pal[1 + (i % 4)], { speed: radius * 2.4, life: 0.5, size: opts.big ? 7 : 5, vz: 1 });
+    for (let i = 0; i < (opts.big ? 10 : 4); i++) {
+      this.px(x + (Math.random() - 0.5) * radius, y + (Math.random() - 0.5) * radius * 0.6, 'rgba(230,220,190,0.6)', { speed: 30, vy: -30, life: 0.7, size: 14, grow: 1.5 });
+    }
+    this.ring(x, y, radius * 0.3, radius, '#ffffff', 0.3, opts.big ? 8 : 5);
+    this.flash(x, y, radius * 0.9, pal[3], 0.18);
     this.events.push({ type: 'boom', big: !!opts.big });
+    this.shake = Math.max(this.shake, opts.big ? 14 : 5);
   }
 
   breakWalls(x, y, radius) {
     const broken = this.world.destroyAround(x, y, radius);
     for (const w of broken) {
-      for (let i = 0; i < 10; i++) this.particle(w.x, w.y, '#c79a5a', 220, 0.6, 6);
+      for (let i = 0; i < 12; i++) {
+        const a = Math.random() * Math.PI * 2, s = 60 + Math.random() * 220;
+        this.px(w.x, w.y, ['#c98a4b', '#8a5a34', '#dca062'][i % 3], { vx: Math.cos(a) * s, vy: Math.sin(a) * s, z: 20, vz: 200 + Math.random() * 250, life: 0.9, size: 7 });
+      }
+      this.px(w.x, w.y, 'rgba(220,200,170,0.6)', { speed: 20, life: 0.8, size: 40, grow: 1.5 });
     }
     if (broken.length) this.events.push({ type: 'wall' });
     return broken;
   }
 
-  puff(p) {
-    const col = { fire: '#ffa53a', water: '#9fd4ff', leaf: '#8be27a', electric: '#fff27a', ghost: '#b693ff' }[p.fx] || '#fff';
-    for (let i = 0; i < 5; i++) this.particle(p.x, p.y, col, 80, 0.3, 3);
+  muzzle(b, ang) {
+    const pal = PB.VFX.PAL[b.def.atkType] || PB.VFX.PAL.normal;
+    const x = b.x + Math.cos(ang) * 26, y = b.y + Math.sin(ang) * 26 - 8;
+    this.flash(x, y, 26, pal[4], 0.08);
+    for (let i = 0; i < 4; i++) {
+      const a = ang + (Math.random() - 0.5) * 0.9, s = 80 + Math.random() * 120;
+      this.px(x, y, pal[3], { vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.2, size: 4 });
+    }
+  }
+
+  puff(p, wall) {
+    const pal = PB.VFX.PAL[p.atkType] || PB.VFX.PAL.normal;
+    for (let i = 0; i < (wall ? 8 : 5); i++) this.px(p.x, p.y, pal[2 + (i % 3)], { speed: wall ? 140 : 80, life: 0.3, size: 4 });
+    if (wall) this.vfx('impact', p.atkType, p.x, p.y, { scale: 1, life: 0.14 });
   }
 
   damage(target, amount, source, atkType, opts) {
-    if (target.dead || target.shieldT > 0) return;
+    if (target.dead || target.shieldT > 0 || target.spawnT > 0) return;
     const eff = PB.effectiveness(atkType, target.def.types);
     const amt = Math.round(amount * eff);
     target.hp -= amt;
     target.lastCombat = this.time;
     target.hurtT = 0.2;
+    target.flashT = 0.1;
     target.revealT = Math.max(target.revealT, 0.5);
     if (source) {
       source.dmgDone += amt;
-      if (opts.charge) source.superCharge = Math.min(1, source.superCharge + 1 / source.def.superHits);
+      if (opts.charge) {
+        const before = source.superCharge;
+        source.superCharge = Math.min(1, source.superCharge + 1 / source.def.superHits);
+        if (before < 1 && source.superCharge >= 1) this.events.push({ type: 'superReady', b: source });
+      }
     }
     if (opts.knockback) {
       const l = Math.hypot(opts.kx || 0, opts.ky || 0) || 1;
@@ -394,11 +523,18 @@ PB.Game = class {
       target.ky += ((opts.ky || 0) / l) * opts.knockback;
     }
     if (opts.stun) target.stunT = Math.max(target.stunT, opts.stun);
+    // efecto de impacto
+    if (!opts.quiet) {
+      const hx = opts.hx != null ? opts.hx : target.x, hy = opts.hy != null ? opts.hy : target.y - 20;
+      const pal = PB.VFX.PAL[atkType] || PB.VFX.PAL.normal;
+      this.vfx('impact', atkType, hx, hy, { scale: opts.big ? 2.2 : 1.4, life: 0.16, frameRate: 14 });
+      for (let i = 0; i < (opts.big ? 10 : 5); i++) this.px(hx, hy, pal[2 + (i % 3)], { speed: opts.big ? 220 : 140, life: 0.3, size: 4 });
+    }
     const col = eff > 1 ? '#ffcf3a' : eff < 1 ? '#c9c9c9' : '#ffffff';
-    this.texts.push({ x: target.x + (Math.random() - 0.5) * 20, y: target.y - 60, text: String(amt), color: col, t: 0, life: 0.8, size: eff > 1 ? 26 : 20 });
+    this.text(target.x + (Math.random() - 0.5) * 24, target.y - 64, String(amt), col, eff > 1 ? 26 : opts.quiet ? 15 : 20);
     if (eff > 1 && opts.shotId && this._lastEffShot !== opts.shotId) {
       this._lastEffShot = opts.shotId;
-      this.texts.push({ x: target.x, y: target.y - 88, text: '¡Muy eficaz!', color: '#ffcf3a', t: 0, life: 0.9, size: 16 });
+      this.text(target.x, target.y - 92, '¡Muy eficaz!', '#ffcf3a', 16);
     }
     this.events.push({ type: 'hit', target, source });
     if (target.hp <= 0) this.kill(target, source);
@@ -408,20 +544,26 @@ PB.Game = class {
     b.dead = true;
     b.hp = 0;
     b.deaths++;
+    b.streak = 0;
     b.respawnT = this.rules.respawn;
     b.dash = null;
     b.burst = null;
     b.stealthT = 0;
-    if (killer && killer !== b) killer.kills++;
-    for (let i = 0; i < b.gems; i++) {
-      const a = Math.random() * Math.PI * 2, s = 120 + Math.random() * 160;
-      this.gems.push({ x: b.x, y: b.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, delay: 0.5, taken: false, bob: Math.random() * 6 });
+    if (killer && killer !== b) {
+      killer.kills++;
+      killer.streak++;
     }
-    b.gems = 0;
-    for (let i = 0; i < 24; i++) this.particle(b.x, b.y - 10, b.team === 'blue' ? '#5ab0ff' : '#ff5a5a', 260, 0.7, 5);
+    for (let i = 0; i < b.balls; i++) {
+      const a = Math.random() * Math.PI * 2, s = 90 + Math.random() * 140;
+      this.balls.push({ x: b.x, y: b.y, z: 20, vx: Math.cos(a) * s, vy: Math.sin(a) * s, vz: 300 + Math.random() * 200, delay: 0.5, taken: false, spin: Math.random() * 6 });
+    }
+    b.balls = 0;
+    // animación: se debilita y vuelve a su Pokéball con el rayo rojo
+    this.fx.push({ kind: 'faint', dex: b.def.dex, x: b.x, y: b.y, facing: b.facing, team: b.team, t: 0, life: 1.5 });
+    for (let i = 0; i < 16; i++) this.px(b.x, b.y - 16, i % 2 ? '#ffffff' : b.team === 'blue' ? '#5ab0ff' : '#ff5a5a', { speed: 240, life: 0.5, size: 5 });
     this.feed.push({ text: (killer ? killer.name : '?') + '  ➜  ' + b.name, team: killer ? killer.team : 'red', t: this.time });
     if (this.feed.length > 4) this.feed.shift();
-    this.events.push({ type: 'ko', b, killer });
+    this.events.push({ type: 'ko', b, killer, streak: killer ? killer.streak : 0 });
     this.shake = Math.max(this.shake, b.isPlayer ? 16 : 6);
   }
 
@@ -431,41 +573,62 @@ PB.Game = class {
       x: sp.x, y: sp.y, dead: false, hp: b.maxHp, ammo: this.rules.maxAmmo, shieldT: this.rules.spawnShield,
       kx: 0, ky: 0, stunT: 0, action: null, powerNext: false,
     });
+    this.releaseFx(b);
     this.events.push({ type: 'respawn', b });
   }
 
-  updateGems(dt) {
-    this.gemT -= dt;
-    if (this.gemT <= 0) {
-      this.gemT = this.rules.gemEvery;
-      const a = Math.random() * Math.PI * 2;
+  // Sale de la Pokéball: la bola se abre con un destello blanco
+  releaseFx(b) {
+    b.spawnT = 0.45;
+    this.fx.push({ kind: 'release', x: b.x, y: b.y, t: 0, life: 0.6 });
+  }
+
+  updateBalls(dt) {
+    this.ballT -= dt;
+    this.padGlow = Math.max(0, this.padGlow - dt);
+    if (this.ballT <= 0) {
+      this.ballT = this.rules.ballEvery;
+      const a = Math.random() * Math.PI * 2, s = 70 + Math.random() * 80;
       const m = this.world.mine;
-      this.gems.push({ x: m.x, y: m.y, vx: Math.cos(a) * 140, vy: Math.sin(a) * 140, delay: 0.3, taken: false, bob: Math.random() * 6 });
-      this.events.push({ type: 'gemspawn' });
+      this.balls.push({ x: m.x, y: m.y, z: 10, vx: Math.cos(a) * s, vy: Math.sin(a) * s, vz: 560, delay: 0.3, taken: false, spin: 0 });
+      this.padGlow = 0.6;
+      this.ring(m.x, m.y, 10, 70, '#ffffff', 0.4, 5);
+      for (let i = 0; i < 10; i++) this.px(m.x, m.y - 10, i % 2 ? '#fff6a8' : '#ffffff', { speed: 160, vy: -60, life: 0.5, size: 4 });
+      this.events.push({ type: 'ballspawn' });
     }
-    for (const g of this.gems) {
+    for (const g of this.balls) {
       g.delay -= dt;
-      g.bob += dt;
+      // altura con gravedad y rebotes
+      g.vz -= 1500 * dt;
+      g.z += g.vz * dt;
+      if (g.z <= 0) {
+        g.z = 0;
+        if (Math.abs(g.vz) > 140) { g.vz = -g.vz * 0.45; this.px(g.x, g.y, 'rgba(235,240,210,0.7)', { speed: 30, life: 0.25, size: 5 }); }
+        else g.vz = 0;
+      }
       if (g.vx || g.vy) {
         const e = { x: g.x, y: g.y, r: 10 };
         this.world.moveCircle(e, g.vx * dt, g.vy * dt);
         g.x = e.x;
         g.y = e.y;
-        const f = Math.exp(-4 * dt);
+        g.spin += (Math.hypot(g.vx, g.vy) / 14) * dt * (g.vx >= 0 ? 1 : -1);
+        const f = Math.exp((g.z > 0 ? -1 : -5) * dt);
         g.vx *= f;
         g.vy *= f;
         if (Math.hypot(g.vx, g.vy) < 5) g.vx = g.vy = 0;
+      } else {
+        g.spin *= Math.exp(-6 * dt);
       }
     }
-    this.gems = this.gems.filter((g) => !g.taken);
+    this.balls = this.balls.filter((g) => !g.taken);
   }
 
   checkWin(dt) {
     const R = this.rules;
-    const blue = this.teamGems('blue'), red = this.teamGems('red');
+    const blue = this.teamBalls('blue'), red = this.teamBalls('red');
     let leader = null;
-    if (blue >= R.gemsToWin && blue > red) leader = 'blue';
-    else if (red >= R.gemsToWin && red > blue) leader = 'red';
+    if (blue >= R.ballsToWin && blue > red) leader = 'blue';
+    else if (red >= R.ballsToWin && red > blue) leader = 'red';
     if (leader) {
       if (!this.countdown || this.countdown.team !== leader) {
         this.countdown = { team: leader, t: R.countdown };
@@ -490,25 +653,61 @@ PB.Game = class {
   }
 
   // ---------------------------------------------------------------- efectos
-  particle(x, y, color, speed, life, size, vz) {
-    const a = Math.random() * Math.PI * 2, s = Math.random() * speed;
-    this.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s + (vz || 0), color, t: 0, life: life * (0.6 + Math.random() * 0.6), size: size || 4 });
+  // Cuadrado de color (con altura opcional z/vz para trozos que saltan)
+  px(x, y, color, o) {
+    o = o || {};
+    let vx = o.vx, vy = o.vy;
+    if (vx == null) {
+      const a = Math.random() * Math.PI * 2, s = Math.random() * (o.speed || 0);
+      vx = Math.cos(a) * s;
+      vy = Math.sin(a) * s + (o.vy || 0);
+    }
+    const life = (o.life || 0.4) * (0.6 + Math.random() * 0.6);
+    this.fx.push({ kind: 'px', x, y, vx, vy, z: o.z || 0, vz: o.vz || 0, color, t: 0, life, size: o.size || 4, grow: o.grow || 0, drag: o.vz ? 1 : 0.9 });
+  }
+
+  // Sprite de efecto de PB.VFX
+  vfx(shape, pal, x, y, o) {
+    o = o || {};
+    this.fx.push({
+      kind: 'vfx', shape, pal, x, y, vx: o.vx || 0, vy: o.vy || 0, z: o.z || 0, vz: o.vz || 0,
+      angle: o.angle || 0, spin: o.spin || 0, scale: o.scale || 1, t: 0, life: o.life || 0.3, fade: o.fade, frameRate: o.frameRate || 10,
+    });
+  }
+
+  ring(x, y, r0, r1, color, life, width) {
+    this.fx.push({ kind: 'ring', x, y, r0, r1, color, t: 0, life, width: width || 4 });
+  }
+
+  flash(x, y, r, color, life) {
+    this.fx.push({ kind: 'flash', x, y, r, color, t: 0, life });
+  }
+
+  text(x, y, text, color, size) {
+    this.fx.push({ kind: 'text', x, y, text, color, size, t: 0, life: 0.85 });
   }
 
   updateFx(dt) {
-    for (const p of this.particles) {
-      p.t += dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vx *= 0.92;
-      p.vy *= 0.92;
+    for (const f of this.fx) {
+      f.t += dt;
+      if (f.kind === 'px' || f.kind === 'vfx') {
+        f.x += f.vx * dt;
+        f.y += f.vy * dt;
+        if (f.vz || f.z > 0) {
+          f.vz -= 1200 * dt;
+          f.z += f.vz * dt;
+          if (f.z < 0) { f.z = 0; f.vz = -f.vz * 0.35; f.vx *= 0.6; f.vy *= 0.6; if (Math.abs(f.vz) < 60) f.vz = 0; }
+        } else if (f.kind === 'px') {
+          const k = Math.pow(f.drag, dt * 60);
+          f.vx *= k;
+          f.vy *= k;
+        }
+        if (f.spin) f.angle += f.spin * dt;
+      } else if (f.kind === 'text') {
+        f.y -= 40 * dt;
+      }
     }
-    this.particles = this.particles.filter((p) => p.t < p.life);
-    for (const t of this.texts) {
-      t.t += dt;
-      if (!t.ring) t.y -= 40 * dt;
-    }
-    this.texts = this.texts.filter((t) => t.t < t.life);
+    this.fx = this.fx.filter((f) => f.t < f.life);
     this.shake = Math.max(0, this.shake - 40 * dt);
   }
 };

@@ -1,6 +1,6 @@
 # Pocket Brawl (nombre provisional)
 
-Fangame de combates 3v3 estilo Brawl Stars con Pokémon, en el navegador.
+Fangame de combates 3v3 estilo Brawl Stars con Pokémon, en el navegador. Modo actual: **Atrapa Pokéballs**.
 Hecho como PokéSurvivor: JavaScript puro + Canvas 2D, sin dependencias ni paso de compilación.
 
 **Fangame gratuito y sin ánimo de lucro.** No afiliado a Nintendo, Creatures, GAME FREAK ni
@@ -30,6 +30,8 @@ y entra en http://localhost:8123
 | `js/ai.js` | Bots. Generan el mismo tipo de input que un jugador. |
 | `js/world.js` | Colisiones, línea de visión y caminos (A*). |
 | `js/render.js` | Dibujado en Canvas. |
+| `js/vfx.js` | Efectos pixel art de los ataques (adaptado de PokéSurvivor). |
+| `js/pokeball.js` | Pokéballs pixel art y plataforma central. |
 | `js/input.js` | Teclado, ratón y joysticks táctiles. |
 | `js/audio.js` | Sonidos sintetizados (sin archivos). |
 | `js/main.js` | Menús y bucle principal. |
@@ -48,5 +50,7 @@ y entra en http://localhost:8123
 
 ## Licencias
 
+- Efectos (`js/vfx.js`): adaptados de [PokéSurvivor](https://github.com/JPTER78/pokesurvivor), PolyForm Noncommercial 1.0.0 (`LICENSE-POKESURVIVOR.md`).
+  Required Notice: Copyright 2026 JPTER78 (https://github.com/JPTER78/pokesurvivor)
 - Sprites: [PMD SpriteCollab](https://github.com/PMDCollab/SpriteCollab), CC BY-NC 4.0 (no comercial, con atribución).
 - Pokémon es propiedad de sus dueños. Nada de anuncios, pagos ni donaciones ligadas al juego.

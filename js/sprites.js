@@ -42,6 +42,30 @@ PB.Sprites = {
     return a.dur.length - 1;
   },
 
+  // Igual que draw() pero teñido de un color (destello al recibir daño, rayo rojo, etc.)
+  drawTint(ctx, dex, anim, angle, t, x, y, scale, length, color, amount) {
+    const entry = window.SPRITE_DATA && window.SPRITE_DATA[dex];
+    const name = entry && entry.anims[anim] ? anim : 'Idle';
+    const a = entry && entry.anims[name];
+    const img = a && this.imgs[dex + ':' + name];
+    if (!img) return;
+    const tmp = this._tmp || (this._tmp = document.createElement('canvas'));
+    tmp.width = a.w;
+    tmp.height = a.h;
+    const c = tmp.getContext('2d');
+    c.clearRect(0, 0, a.w, a.h);
+    c.globalCompositeOperation = 'source-over';
+    c.drawImage(img, this.frameIndex(a, t, length) * a.w, this.dirRow(angle) * a.h, a.w, a.h, 0, 0, a.w, a.h);
+    c.globalCompositeOperation = 'source-atop';
+    c.globalAlpha = amount == null ? 1 : amount;
+    c.fillStyle = color;
+    c.fillRect(0, 0, a.w, a.h);
+    c.globalAlpha = 1;
+    const w = a.w * scale, h = a.h * scale;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(tmp, Math.round(x - w / 2), Math.round(y - h / 2 - 10), w, h);
+  },
+
   draw(ctx, dex, anim, angle, t, x, y, scale, length) {
     const entry = window.SPRITE_DATA && window.SPRITE_DATA[dex];
     const a = entry && (entry.anims[anim] || entry.anims.Idle);

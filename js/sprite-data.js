@@ -70,6 +70,18 @@ window.SPRITE_DATA = {
      8
     ],
     "hit": -1
+   },
+   "Faint": {
+    "file": "assets/sprites/0001/Faint-Anim.png",
+    "w": 32,
+    "h": 24,
+    "dur": [
+     8,
+     12,
+     4,
+     10
+    ],
+    "hit": -1
    }
   },
   "portrait": "assets/sprites/0001/portrait.png"
@@ -145,6 +157,18 @@ window.SPRITE_DATA = {
     "dur": [
      2,
      8
+    ],
+    "hit": -1
+   },
+   "Faint": {
+    "file": "assets/sprites/0004/Faint-Anim.png",
+    "w": 32,
+    "h": 32,
+    "dur": [
+     8,
+     12,
+     4,
+     10
     ],
     "hit": -1
    }
@@ -228,6 +252,18 @@ window.SPRITE_DATA = {
      8
     ],
     "hit": -1
+   },
+   "Faint": {
+    "file": "assets/sprites/0007/Faint-Anim.png",
+    "w": 40,
+    "h": 32,
+    "dur": [
+     8,
+     12,
+     4,
+     10
+    ],
+    "hit": -1
    }
   },
   "portrait": "assets/sprites/0007/portrait.png"
@@ -305,6 +341,18 @@ window.SPRITE_DATA = {
     "dur": [
      2,
      8
+    ],
+    "hit": -1
+   },
+   "Faint": {
+    "file": "assets/sprites/0025/Faint-Anim.png",
+    "w": 40,
+    "h": 40,
+    "dur": [
+     8,
+     12,
+     4,
+     10
     ],
     "hit": -1
    }
