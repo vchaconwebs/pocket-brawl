@@ -295,7 +295,7 @@ PB.MODES = {
         if (R && v.x > R.x0 && v.x < R.x1 && v.y > R.y0 - 6 && v.y < R.y1 + 6) {
           const scorer = otherTeam(team);
           g.score[scorer]++;
-          if (v.lastTouch && v.lastTouch.team === scorer) v.lastTouch.stat++;
+          if (v.lastTouch && v.lastTouch.team === scorer) { v.lastTouch.stat++; g.gainXp(v.lastTouch, 20); }
           g.events.push({ type: 'goal', team: scorer, by: v.lastTouch });
           for (let i = 0; i < 30; i++) g.px(v.x, v.y, i % 2 ? '#fff36a' : scorer === 'blue' ? '#5aa8ff' : '#ff5f5f', { speed: 320, life: 0.8, size: 6 });
           g.shake = 14;
@@ -386,7 +386,7 @@ PB.MODES = {
       const z = g.zone;
       const inside = { blue: 0, red: 0 };
       for (const b of g.brawlers) {
-        if (!b.dead && dist(b, z) < z.r) { inside[b.team]++; b.stat += dt; }
+        if (!b.dead && dist(b, z) < z.r) { inside[b.team]++; b.stat += dt; g.gainXp(b, 0.6 * dt); }
       }
       const prev = z.owner;
       z.owner = inside.blue && !inside.red ? 'blue' : inside.red && !inside.blue ? 'red' : inside.blue && inside.red ? 'contested' : null;

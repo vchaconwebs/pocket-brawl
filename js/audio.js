@@ -86,6 +86,10 @@ PB.Audio = {
       case 'go': this.tone(1320, 0, 0.35, 'square', 0.22); this.tone(400, 1600, 0.25, 'sine', 0.15); break;
       case 'tick': this.tone(880, 0, 0.08, 'square', 0.15); break;
       case 'candy': [660, 880, 1320].forEach((f, i) => this.tone(f, 0, 0.09, 'square', 0.15, i * 0.05)); break;
+      case 'evolve': // arpegio que sube, como al evolucionar en los juegos
+        [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0, 0.11, 'square', 0.14, i * 0.08));
+        this.tone(400, 1800, 0.6, 'sine', 0.12, 0.1);
+        break;
       case 'gas': this.tone(200, 120, 0.8, 'sawtooth', 0.12); this.noise(0.8, 0.15, 500); break;
       case 'thump': this.tone(110, 60, 0.15, 'sine', 0.35); break;
       case 'kick': this.tone(320, 140, 0.1, 'square', 0.25); this.noise(0.08, 0.2, 2000); break;

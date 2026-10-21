@@ -31,7 +31,8 @@
     return a;
   };
 
-  function newGame(playerId) {
+  // Elige quién juega (sin crear todavía la partida)
+  function plan(playerId) {
     const ids = PB.BRAWLERS.map((b) => b.id);
     const M = PB.MODES[gameMode];
     const opts = { mode: gameMode, playerInBlue: !!playerId, noCountdown: !playerId };
@@ -48,7 +49,25 @@
       opts.blue = shuffle(ids.slice()).slice(0, 3);
       opts.red = shuffle(ids.slice()).slice(0, 3);
     }
+    return opts;
+  }
+
+  // Sprites que necesita una partida: todas las fases de cada Pokémon (y el shiny del jugador)
+  function spritesFor(opts, playerId) {
+    const list = [];
+    const all = [].concat(opts.ffa || [], opts.blue || [], opts.red || []);
+    all.forEach((id, i) => {
+      const shiny = !!playerId && i === 0 && PB.Save.skin(id) === 'shiny';
+      for (const dex of PB.brawlerById(id).line) list.push({ dex, shiny });
+    });
+    return list;
+  }
+
+  function newGame(playerId, opts) {
+    opts = opts || plan(playerId);
+    PB.Sprites.ensure(spritesFor(opts, playerId));
     game = new PB.Game(opts);
+    if (game.player) game.player.shiny = PB.Save.skin(playerId) === 'shiny';
     // niveles: el jugador usa el suyo; los bots, uno parecido para que sea justo
     const myLvl = playerId ? PB.Save.level(playerId) : 1;
     for (const b of game.brawlers) {
@@ -99,11 +118,25 @@
     for (const sc of document.querySelectorAll('.screen')) sc.classList.add('hidden');
   }
 
-  function startMatch() {
+  let starting = false;
+  async function startMatch() {
+    if (starting) return;
+    starting = true;
     goLandscape();
     PB.Audio.init();
     PB.Settings.apply();
-    newGame(PB.Save.get().selected);
+    // descarga los sprites de los 6 Pokémon (con sus evoluciones) antes de empezar
+    const id = PB.Save.get().selected;
+    const opts = plan(id);
+    const wait = PB.Sprites.ensure(spritesFor(opts, id));
+    const slow = setTimeout(() => {
+      $('#loading h1').textContent = 'Preparando a los Pokémon…';
+      showScreen('loading');
+    }, 120);
+    await wait;
+    clearTimeout(slow);
+    starting = false;
+    newGame(id, opts);
     mode = 'play';
     paused = false;
     input.enabled = true;
@@ -158,7 +191,7 @@
     const rows = list
       .map((b) => {
         const cls = M.ffa ? (b.isPlayer ? 'blue me' : 'red') : b.team + (b.isPlayer ? ' me' : '');
-        const name = (M.ffa && b.rank ? '#' + b.rank + ' ' : '') + b.name + (b.isPlayer ? ' (' + b.def.name + ')' : '');
+        const name = (M.ffa && b.rank ? '#' + b.rank + ' ' : '') + b.name + (b.isPlayer ? ' (' + PB.stageName(b.def, b.stage) + ')' : '');
         return `<tr class="${cls}"><td>${name}</td><td>${b.kills}</td><td>${b.deaths}</td><td>${statTxt(b)}</td><td>${Math.round(b.dmgDone)}</td></tr>`;
       })
       .join('');
@@ -213,9 +246,16 @@
         case 'ko':
           PB.Audio.play('ko');
           if (ev.b === me) {
-            const sub = ev.killer && ev.killer.def ? 'Te ha vencido ' + ev.killer.def.name : '';
+            const sub = ev.killer && ev.killer.def ? 'Te ha vencido ' + PB.stageName(ev.killer.def, ev.killer.stage) : '';
             renderer.announce(game.mode.ffa ? '¡Eliminado!' : '¡Debilitado!', '#ff6b6b', sub, 1.4);
-          } else if (ev.killer === me) renderer.announce(STREAK[Math.min(ev.streak, 4)] || '¡K.O.!', '#ffcf2e', ev.b.def.name + ' debilitado', 1.3);
+          } else if (ev.killer === me) renderer.announce(STREAK[Math.min(ev.streak, 4)] || '¡K.O.!', '#ffcf2e', PB.stageName(ev.b.def, ev.b.stage) + ' debilitado', 1.3);
+          break;
+        case 'evolve':
+          if (ev.b === me) {
+            PB.Audio.play('evolve');
+            PB.vibrate(60);
+            renderer.announce('¡' + ev.to + '!', '#ffe066', ev.from + ' ha evolucionado', 1.8);
+          } else if (near(ev.b)) PB.Audio.play('ready');
           break;
         case 'super': if (ev.b === me || near(ev.b)) PB.Audio.play('super'); break;
         case 'superReady': if (ev.b === me) { PB.Audio.play('ready'); PB.vibrate(30); } break;

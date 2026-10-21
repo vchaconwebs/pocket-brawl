@@ -10,7 +10,7 @@
   <meta name="description" content="Pocket Brawl: fangame gratuito de combates 3v3 en el navegador. Sin ánimo de lucro.">
   <title>Pocket Brawl</title>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=27">
+  <link rel="stylesheet" href="css/style.css?v=29">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -29,6 +29,7 @@
         <div class="lb-money">
           <span class="pill"><img id="ico-coin" alt=""><b id="coins">0</b></span>
           <span class="pill"><img id="ico-star" alt=""><b id="points">0</b></span>
+          <span class="pill" title="Monedas Arcoíris: para skins shiny"><img id="ico-rainbow" alt=""><b id="rainbow">0</b></span>
           <button class="icon-btn" id="btn-settings" title="Ajustes"><img class="pxi" data-icon="gear" alt=""></button>
         </div>
       </header>
@@ -81,7 +82,14 @@
   <div id="collection" class="screen hidden">
     <div class="panel wide">
       <div class="pn-head"><button class="back" data-back="lobby">←</button><h2>Pokémon <small id="col-count"></small></h2></div>
+      <div class="col-filters">
+        <input id="col-q" type="search" placeholder="Buscar Pokémon…" autocomplete="off">
+        <select id="col-type"></select>
+        <select id="col-gen"></select>
+        <div class="px-seg" id="col-own"><button data-own="all" class="sel">Todos</button><button data-own="mine">Míos</button><button data-own="locked">Me faltan</button></div>
+      </div>
       <div id="col-grid"></div>
+      <p class="sub hidden" id="col-empty">No hay ningún Pokémon con esos filtros.</p>
     </div>
   </div>
 
@@ -92,6 +100,7 @@
       <div class="dt">
         <div class="dt-left">
           <div id="dt-hero"><canvas id="dt-cv" width="220" height="200"></canvas></div>
+          <div id="dt-evo"></div>
           <div class="types" id="dt-types"></div>
           <small id="dt-role"></small>
           <p id="dt-desc"></p>
@@ -100,9 +109,20 @@
           <div id="dt-level"></div>
           <table id="dt-stats"></table>
           <div id="dt-moves"></div>
+          <div id="dt-skins"></div>
           <div id="dt-actions"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ELEGIR INICIALES (partida nueva) -->
+  <div id="starters" class="screen hidden">
+    <div class="panel wide">
+      <div class="pn-head"><h2>¡Elige tus 3 Pokémon iniciales!</h2></div>
+      <p class="sub">Uno de cada tipo. Todos evolucionan durante las partidas.</p>
+      <div id="sp-cols"></div>
+      <div class="sp-foot"><span id="sp-pick"></span><button class="big" id="sp-go" disabled>¡Empezar!</button></div>
     </div>
   </div>
 
@@ -273,24 +293,26 @@
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=27"></script>
-  <script src="js/data.js?v=27"></script>
-  <script src="js/sprites.js?v=27"></script>
-  <script src="js/vfx.js?v=27"></script>
-  <script src="js/pokeball.js?v=27"></script>
-  <script src="js/tiles.js?v=27"></script>
-  <script src="js/world.js?v=27"></script>
-  <script src="js/game.js?v=27"></script>
-  <script src="js/modes.js?v=27"></script>
-  <script src="js/ai.js?v=27"></script>
-  <script src="js/audio.js?v=27"></script>
-  <script src="js/render.js?v=27"></script>
-  <script src="js/input.js?v=27"></script>
-  <script src="js/settings.js?v=27"></script>
-  <script src="js/pixui.js?v=27"></script>
-  <script src="js/save.js?v=27"></script>
-  <script src="js/online.js?v=27"></script>
-  <script src="js/lobby.js?v=27"></script>
-  <script src="js/main.js?v=27"></script>
+  <script src="js/sprite-data.js?v=29"></script>
+  <script src="js/data.js?v=29"></script>
+  <script src="js/roster-data.js?v=29"></script>
+  <script src="js/sprites.js?v=29"></script>
+  <script src="js/vfx.js?v=29"></script>
+  <script src="js/roster.js?v=29"></script>
+  <script src="js/pokeball.js?v=29"></script>
+  <script src="js/tiles.js?v=29"></script>
+  <script src="js/world.js?v=29"></script>
+  <script src="js/game.js?v=29"></script>
+  <script src="js/modes.js?v=29"></script>
+  <script src="js/ai.js?v=29"></script>
+  <script src="js/audio.js?v=29"></script>
+  <script src="js/render.js?v=29"></script>
+  <script src="js/input.js?v=29"></script>
+  <script src="js/settings.js?v=29"></script>
+  <script src="js/pixui.js?v=29"></script>
+  <script src="js/save.js?v=29"></script>
+  <script src="js/online.js?v=29"></script>
+  <script src="js/lobby.js?v=29"></script>
+  <script src="js/main.js?v=29"></script>
 </body>
 </html>

@@ -1092,3 +1092,79 @@ h1.lose { color: #ff8a7a; }
   .cw-ball { width: 54px !important; height: 54px !important; }
   .cw-ball img { width: 36px !important; height: 36px !important; }
 }
+
+/* =====================================================================
+   ROSTER COMPLETO: filtros de la colección, línea evolutiva, skins e iniciales
+   ===================================================================== */
+.col-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
+.col-filters input, .col-filters select {
+  font: inherit; font-size: 16px; color: #fff; background: #10183a; border: 3px solid #141824;
+  box-shadow: inset 0 0 0 2px var(--frame, #e8b838); padding: 4px 8px; min-height: 36px; border-radius: 0;
+}
+.col-filters input { flex: 1 1 160px; min-width: 120px; }
+.col-filters input::placeholder { color: #8f9ac0; }
+.col-filters select { flex: 0 1 auto; max-width: 170px; }
+.col-filters .px-seg { display: flex; gap: 2px; }
+#col-grid .card { content-visibility: auto; contain-intrinsic-size: 120px 150px; }
+#col-grid .card img.pt { image-rendering: pixelated; }
+#col-grid .tdots { display: flex; gap: 3px; justify-content: center; }
+#col-grid .tdots i { width: 16px; height: 5px; display: block; box-shadow: 0 0 0 1px #141824; }
+#col-grid .shiny-tag { position: absolute; top: -2px; right: 2px; color: #ffe066; font-size: 18px; text-shadow: 1px 1px 0 #6a4a00; }
+#col-empty { margin: 20px 0; }
+
+/* línea evolutiva en la ficha */
+#dt-evo { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px; width: 100%; }
+#dt-evo .evo-arrow { color: #ffd23a; font-size: 12px; }
+#dt-evo .evo-st {
+  display: flex; flex-direction: column; align-items: center; gap: 0; padding: 2px 3px; min-width: 62px;
+  font: inherit; color: #fff; background: rgba(0, 0, 0, 0.25); border: 2px solid #141824; cursor: pointer;
+}
+#dt-evo .evo-st.sel { background: #ffd23a; color: #3a2500; }
+#dt-evo .evo-st img { width: 34px; height: 34px; image-rendering: pixelated; }
+#dt-evo .evo-st b { font-size: 12px; font-weight: normal; line-height: 1; }
+#dt-evo .evo-st small { font-size: 10px; color: inherit; opacity: 0.85; line-height: 1.1; }
+#dt-evo .evo-note { flex-basis: 100%; margin: 4px 0 0; font-size: 12px; color: #c8d4ff; }
+
+/* skins */
+#dt-skins { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+#dt-skins:empty { display: none; }
+#dt-skins .px-seg { display: flex; gap: 2px; }
+#dt-skins .money img { width: 16px; height: 16px; }
+
+/* elegir iniciales */
+#starters .panel { max-width: 980px; }
+#sp-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.sp-col h3 { margin: 0 0 6px; font-size: 20px; font-weight: normal; color: var(--tc); text-shadow: 2px 2px 0 #02040c; }
+.sp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.sp-mon {
+  display: flex; flex-direction: column; align-items: center; padding: 3px 2px; cursor: pointer;
+  font: inherit; color: #fff; background: rgba(0, 0, 0, 0.3); border: 3px solid #141824;
+}
+.sp-mon img { width: 48px; height: 48px; image-rendering: pixelated; }
+.sp-mon small { font-size: 12px; line-height: 1.1; }
+.sp-mon:hover { filter: brightness(1.15); }
+.sp-mon.sel { background: var(--tc); border-color: #fff; color: #10183a; }
+.sp-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+#sp-pick { font-size: 15px; color: #ffe066; }
+#sp-go:disabled { filter: grayscale(0.8) brightness(0.7); }
+
+@media (max-height: 500px) {
+  .col-filters input, .col-filters select { font-size: 14px; min-height: 30px; padding: 2px 6px; }
+  .sp-mon img { width: 34px; height: 34px; }
+  .sp-mon small { font-size: 10px; }
+  .sp-col h3 { font-size: 16px; }
+  #dt-evo .evo-st img { width: 26px; height: 26px; }
+}
+@media (max-width: 640px) {
+  #sp-cols { grid-template-columns: 1fr; }
+}
+
+/* la Pokéball decorativa tapaba el retrato en tarjetas pequeñas */
+#col-grid .card::after { content: none !important; }
+#col-own button { padding: 0 6px 0 10px !important; font-size: 14px !important; }
+@media (max-height: 500px) {
+  .col-filters { flex-wrap: nowrap; gap: 4px; margin-bottom: 6px; }
+  .col-filters input { flex: 1 1 90px; min-width: 70px; }
+  .col-filters select { max-width: 112px; font-size: 13px; }
+  #col-own button { font-size: 12px !important; padding: 0 4px 0 8px !important; }
+}

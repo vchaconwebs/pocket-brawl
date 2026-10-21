@@ -1,4 +1,4 @@
-"""Descarga los sprites de PMD SpriteCollab y genera js/sprite-data.js + CREDITS.md.
+"""Descarga los sprites de los Pokémon de los mapas (Snorlax, Voltorb) y genera js/sprite-data.js + CREDITS.md.
 
 Uso:  python tools/fetch_sprites.py
 Licencia de los sprites: CC BY-NC 4.0 (https://github.com/PMDCollab/SpriteCollab)
@@ -12,14 +12,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE = "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master"
 
 # dex -> nombre (deben coincidir con BRAWLERS en js/data.js)
-POKEMON = {
-    "0001": "Bulbasaur",
-    "0004": "Charmander",
-    "0007": "Squirtle",
-    "0025": "Pikachu",
-    "0074": "Geodude",
-    "0092": "Gastly",
-}
+POKEMON = {}  # los jugables los genera tools/build_roster.py
 ANIMS = ["Idle", "Walk", "Shoot", "Attack", "Hurt", "Faint"]
 
 # Pokémon que aparecen en los modos pero no son luchadores (dex -> (nombre, animaciones))
@@ -117,6 +110,12 @@ def main():
         "bajo licencia [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/).",
         "Algunos sprites base proceden de Pokémon Mundo Misterioso (CHUNSOFT).",
         "",
+        "Los sprites de los Pokémon jugables (normales y shiny) vienen ya optimizados de",
+        "[PokéSurvivor](https://github.com/JPTER78/pokesurvivor). La lista completa de artistas",
+        "está en [CREDITS-SPRITES.md](CREDITS-SPRITES.md).",
+        "",
+        "Pokémon de los mapas:",
+        "",
     ]
     for name, authors in credits.items():
         lines.append(f"- **{name}**: {', '.join(authors) or 'ver SpriteCollab'}")
@@ -127,6 +126,10 @@ def main():
         "(`js/vfx.js`), bajo PolyForm Noncommercial 1.0.0 (ver `LICENSE-POKESURVIVOR.md`).",
         "",
         "Required Notice: Copyright 2026 JPTER78 (https://github.com/JPTER78/pokesurvivor)",
+        "",
+        "## Datos de los Pokémon",
+        "Estadísticas de especie y metadatos de las hojas de sprites (`js/roster-data.js`) sacados de",
+        "PokéSurvivor (misma licencia y aviso que los efectos). Líneas evolutivas de [PokéAPI](https://pokeapi.co).",
         "",
         "## Fuente",
         "[Jersey 10](https://github.com/scfried/soft-type-jersey) (Sarah Cadigan-Fried), SIL Open Font License 1.1 (`assets/fonts/OFL.txt`).",

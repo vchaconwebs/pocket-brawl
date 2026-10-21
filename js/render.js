@@ -574,18 +574,20 @@ PB.Renderer = class {
     const appear = Math.min(1, k * 8);
     const r = z.r * (0.6 + 0.4 * appear);
     const a = 0.22 + Math.sin(t * 6) * 0.05;
-    ctx.fillStyle = z.team === team ? `rgba(90,220,120,${a})` : `rgba(170,230,60,${a})`;
+    const T = z.by && PB.VFX.PAL[z.by.def.atkType] ? z.by.def.atkType : 'grass';
+    const P = PB.VFX.PAL[T];
+    ctx.fillStyle = this.hexA(P[z.team === team ? 3 : 2], a);
     ctx.beginPath();
     ctx.arc(z.x, z.y, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(30,110,30,0.8)';
+    ctx.strokeStyle = this.hexA(P[1], 0.8);
     ctx.lineWidth = 4;
     ctx.setLineDash([14, 10]);
     ctx.lineDashOffset = -t * 30;
     ctx.stroke();
     ctx.setLineDash([]);
     // enredaderas
-    ctx.strokeStyle = 'rgba(40,140,40,0.75)';
+    ctx.strokeStyle = this.hexA(P[2], 0.75);
     ctx.lineWidth = 3;
     for (let i = 0; i < 6; i++) {
       const a0 = (i / 6) * Math.PI * 2 + t * 0.4;
@@ -598,7 +600,7 @@ PB.Renderer = class {
       }
       ctx.stroke();
     }
-    PB.VFX.draw(ctx, 'blob', 'grass', z.x, z.y - 6, { scale: 1.6, frame: Math.floor(t * 4) });
+    PB.VFX.draw(ctx, T === 'grass' || T === 'poison' ? 'blob' : PB.VFX.forType(T).proj, T, z.x, z.y - 6, { scale: 1.6, frame: Math.floor(t * 4) });
   }
 
   drawBrawler(b, game, team, ghostPass) {
@@ -633,14 +635,18 @@ PB.Renderer = class {
       // sale de la Pokéball: silueta blanca que crece
       const k = 1 - b.spawnT / 0.45;
       const sc = 2 * (0.25 + 0.75 * k);
-      PB.Sprites.drawTint(ctx, b.def.dex, 'Idle', b.facing, at, b.x, b.y + (1 - k) * 10, sc, 0, '#ffffff', 1 - k * 0.6);
+      PB.Sprites.drawTint(ctx, b.dex, 'Idle', b.facing, at, b.x, b.y + 4, sc, 0, '#ffffff', 1 - k * 0.6, b.shiny);
       return;
     }
     const prev = ctx.globalAlpha;
     if (b.stealthT > 0) ctx.globalAlpha = prev * 0.35;
     if (b.shieldT > 0) ctx.globalAlpha *= 0.75 + Math.sin(t * 20) * 0.25;
-    if (b.flashT > 0) PB.Sprites.drawTint(ctx, b.def.dex, anim, b.facing, at, b.x, b.y, 2, len, '#ffffff', 0.85);
-    else PB.Sprites.draw(ctx, b.def.dex, anim, b.facing, at, b.x, b.y, 2, len);
+    if (b.evoT > 0) {
+      // evolución: brilla en blanco y se va desvaneciendo el brillo
+      if (b.evoT > 0.5) this.glow(b.x, b.y - 24, 70 * (b.evoT - 0.3), `rgba(255,255,255,${b.evoT - 0.3})`);
+      PB.Sprites.drawTint(ctx, b.dex, 'Idle', b.facing, at, b.x, b.y + 4, 2, 0, '#ffffff', Math.min(1, b.evoT * 1.2), b.shiny);
+    } else if (b.flashT > 0) PB.Sprites.drawTint(ctx, b.dex, anim, b.facing, at, b.x, b.y + 4, 2, len, '#ffffff', 0.85, b.shiny);
+    else PB.Sprites.draw(ctx, b.dex, anim, b.facing, at, b.x, b.y + 4, 2, len, b.shiny);
     ctx.globalAlpha = prev;
 
     if (ghostPass) return;
@@ -671,8 +677,9 @@ PB.Renderer = class {
     const t = f.t;
     const by = f.y - 50;
     if (t < 0.7) {
-      const has = window.SPRITE_DATA[f.dex] && window.SPRITE_DATA[f.dex].anims.Faint;
-      PB.Sprites.draw(ctx, f.dex, has ? 'Faint' : 'Hurt', f.facing, t, f.x, f.y, 2, has ? 0.7 : 0);
+      const A = PB.Sprites.anims(f.dex, f.shiny);
+      const has = !!(A && A.Faint);
+      PB.Sprites.draw(ctx, f.dex, has ? 'Faint' : 'Hurt', f.facing, t, f.x, f.y + 4, 2, has ? 0.7 : 0, f.shiny);
       if (t > 0.45) PB.Pokeball.draw(ctx, f.x, by, 2, { variant: 'open', alpha: (t - 0.45) / 0.25 });
     } else if (t < 1.1) {
       const k = (t - 0.7) / 0.4;
@@ -684,7 +691,7 @@ PB.Renderer = class {
       ctx.lineTo(f.x, f.y - 16 * (1 - k));
       ctx.stroke();
       this.glow(f.x, f.y - 16, 50 * (1 - k) + 10, 'rgba(255,60,40,0.6)');
-      PB.Sprites.drawTint(ctx, f.dex, 'Hurt', f.facing, 0, f.x, f.y - k * 34, 2 * (1 - k * 0.9), 0, '#ff3a28', 0.9);
+      PB.Sprites.drawTint(ctx, f.dex, 'Hurt', f.facing, 0, f.x, f.y + 4 - k * 34, 2 * (1 - k * 0.9), 0, '#ff3a28', 0.9, f.shiny);
       PB.Pokeball.draw(ctx, f.x, by, 2, { variant: 'open' });
     } else {
       const k = (f.t - 1.1) / (f.life - 1.1);
@@ -712,7 +719,8 @@ PB.Renderer = class {
   drawGhost(f) {
     const k = f.t / f.life;
     this.ctx.globalAlpha = 0.5 * (1 - k);
-    PB.Sprites.drawTint(this.ctx, f.dex, 'Attack', f.facing, 0.1, f.x, f.y, 2, 0.3, '#fff36a', 0.7);
+    const P = PB.VFX.PAL[f.type] || PB.VFX.PAL.electric;
+    PB.Sprites.drawTint(this.ctx, f.dex, 'Attack', f.facing, 0.1, f.x, f.y + 4, 2, 0.3, P[3], 0.7, f.shiny);
     this.ctx.globalAlpha = 1;
   }
 
@@ -731,6 +739,20 @@ PB.Renderer = class {
     UI.bar(ctx, x - w / 2, y - 2, w, 14, hpk, col, { p: 2, seg: true, segCount: Math.min(12, Math.ceil(b.maxHp / 1000)) });
     if (PB.Settings.get('hpNumbers')) this.outlined(String(Math.ceil(b.hp)), x, y + 9, 11, '#ffffff');
     if (b.superCharge >= 1) UI.icon(ctx, 'bolt', x - w / 2 - 20, y - 6, 1.5);
+    // evolución: barra fina de EXP (dorada cuando ya está en su última fase)
+    const ey = isMe ? y + 23 : y + 13;
+    const ek = game.evoProgress ? game.evoProgress(b) : 0;
+    const maxed = b.stage >= PB.evoSteps(b.def).length;
+    ctx.fillStyle = '#141824';
+    ctx.fillRect(x - w / 2, ey, w, 6);
+    ctx.fillStyle = '#2a3350';
+    ctx.fillRect(x - w / 2 + 1, ey + 1, w - 2, 4);
+    ctx.fillStyle = maxed ? '#ffd23a' : '#7fd4ff';
+    ctx.fillRect(x - w / 2 + 1, ey + 1, Math.round((w - 2) * ek), 4);
+    if (!maxed && ek > 0.85 && Math.sin(game.clock * 12) > 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillRect(x - w / 2 + 1, ey + 1, Math.round((w - 2) * ek), 4);
+    }
     // munición (solo la tuya)
     if (isMe) {
       const sw = (w - 4) / 3;
@@ -897,7 +919,7 @@ PB.Renderer = class {
       const px = W - pw - 10;
       UI.panel(ctx, px, fy, pw, 30, { p: 2, fill: ours ? 'rgba(30,70,150,0.85)' : 'rgba(140,30,40,0.85)' });
       const por = (dex, x2) => {
-        const img = dex && PB.Sprites.portraits[dex];
+        const img = PB.Sprites.portrait(dex);
         if (img) { ctx.imageSmoothingEnabled = false; ctx.drawImage(img, x2, fy + 4, 22, 22); }
       };
       por(f.kdex, px + 6);

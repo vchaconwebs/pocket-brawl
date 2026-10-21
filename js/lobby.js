@@ -35,6 +35,18 @@ PB.Lobby = (() => {
     // marca central
     for (const [x, y] of [[6, 4], [7, 4], [5, 5], [5, 6], [5, 7], [6, 8], [7, 8], [8, 5], [8, 7]]) px(c, x, y, '#b07810');
   });
+  // Moneda Arcoíris (skins shiny): moneda con franjas de colores
+  const rainbowIcon = () => pixIcon('rainbow', 14, (c) => {
+    const bands = ['#ff4a4a', '#ff9a2a', '#ffe23a', '#5ad85a', '#4aa8ff', '#9a6aff'];
+    for (let y = 0; y < 14; y++) for (let x = 0; x < 14; x++) {
+      const d = Math.hypot(x - 6.5, y - 6.5);
+      if (d > 6.4) continue;
+      let col = d > 5.4 ? '#3a2a5a' : bands[Math.min(5, Math.floor(((x + y) / 26) * 6))];
+      if (d <= 5.4 && (x - 6.5) * -0.6 + (y - 6.5) * -0.8 > 3) col = '#ffffff';
+      px(c, x, y, col);
+    }
+    for (const [x, y] of [[6, 4], [7, 5], [6, 6], [7, 7], [6, 8], [7, 9]]) px(c, x, y, '#ffffff');
+  });
   // Puntos Pokémon: estrella morada
   const starIcon = () => pixIcon('star', 14, (c) => {
     const pts = [];
@@ -92,14 +104,17 @@ PB.Lobby = (() => {
       else c.drawImage(PB.Tiles.flag('blue', 0), 6, 0, 26, 42);
     });
   };
-  PB.Icons = { coin: coinIcon, star: starIcon, ball: ballIcon, candy: candyIcon, mode: modeIcon, cup: cupIcon };
+  PB.Icons = { coin: coinIcon, star: starIcon, ball: ballIcon, candy: candyIcon, mode: modeIcon, cup: cupIcon, rainbow: rainbowIcon };
 
   const money = (n, ico) => `<span class="money"><img src="${ico()}" alt="">${n}</span>`;
-  const portrait = (b) => window.SPRITE_DATA[b.dex] && window.SPRITE_DATA[b.dex].portrait;
-  const typeTags = (b) => b.types.map((ty) => `<i style="background:${PB.TYPE_INFO[ty].color}">${PB.TYPE_INFO[ty].name}</i>`).join('');
+  const portrait = (b) => PB.Sprites.portraitURL(b.dex);
+  const rarityOf = (b) => PB.RARITY[b.rarity] || PB.RARITY.common;
+  const typeTags = (b, types) => (types || b.types).map((ty) => `<i style="background:${PB.TYPE_INFO[ty].color}">${PB.TYPE_INFO[ty].name}</i>`).join('');
 
   // ------------------------------------------------------------------ pantallas
   function show(id) {
+    if (id === 'lobby' && PB.Save.needsStarters()) id = 'starters';
+    if (id === 'starters') renderStarters();
     current = id;
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('hidden', s.id !== id);
     if (id === 'lobby') refreshLobby();
@@ -109,7 +124,9 @@ PB.Lobby = (() => {
     const d = PB.Save.get();
     $('#coins').textContent = d.coins;
     $('#points').textContent = d.points;
+    $('#rainbow').textContent = d.rainbow || 0;
     const b = PB.brawlerById(d.selected);
+    if (!b) return;
     $('#hero-name').textContent = b.name;
     $('#hero-lvl').textContent = 'Nv. ' + PB.Save.level(b.id);
     const M = PB.MODES[api.getMode()];
@@ -144,34 +161,69 @@ PB.Lobby = (() => {
   }
 
   // ------------------------------------------------------------------ colección
+  const colFilter = { q: '', type: '', gen: '', own: 'all' };
+
   function showCollection() {
-    const d = PB.Save.get();
-    const grid = $('#col-grid');
-    grid.innerHTML = '';
-    const list = PB.BRAWLERS.slice().sort((a, b) => (PB.Save.owned(b.id) ? 1 : 0) - (PB.Save.owned(a.id) ? 1 : 0));
-    for (const b of list) {
-      const own = PB.Save.owned(b.id);
-      const r = PB.META.rarity[b.id];
-      const el = document.createElement('button');
-      el.className = 'card' + (own ? '' : ' locked') + (b.id === d.selected ? ' sel' : '');
-      el.style.setProperty('--rar', r.color);
-      el.innerHTML =
-        `<img class="pt" src="${portrait(b)}" alt="">` +
-        `<span class="nm">${b.name}</span>` +
-        (own
-          ? `<span class="lv">Nv. ${PB.Save.level(b.id)} · <img class="cup" src="${cupIcon()}" alt="">${PB.Save.copas(b.id)}</span>`
-          : `<span class="lock">🔒</span><span class="cost">${money(PB.Save.unlockCost(b.id), starIcon)}</span>`) +
-        `<span class="rar">${r.name}</span>`;
-      el.onclick = () => showDetail(b.id);
-      grid.appendChild(el);
+    // filtros: tipo y generación (se rellenan una vez)
+    const ts = $('#col-type');
+    if (!ts.options.length) {
+      ts.innerHTML = '<option value="">Todos los tipos</option>' +
+        Object.entries(PB.TYPE_INFO).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join('');
+      const gens = [...new Set(PB.BRAWLERS.map((b) => b.gen))].sort((x, y) => x - y);
+      $('#col-gen').innerHTML = '<option value="">Todas las gen.</option>' + gens.map((g) => `<option value="${g}">Generación ${g}</option>`).join('');
+      ts.onchange = () => { colFilter.type = ts.value; renderCollection(); };
+      $('#col-gen').onchange = () => { colFilter.gen = $('#col-gen').value; renderCollection(); };
+      $('#col-q').oninput = () => { colFilter.q = $('#col-q').value.trim().toLowerCase(); renderCollection(); };
+      document.querySelectorAll('#col-own button').forEach((bt) => (bt.onclick = () => {
+        colFilter.own = bt.dataset.own;
+        document.querySelectorAll('#col-own button').forEach((x) => x.classList.toggle('sel', x === bt));
+        renderCollection();
+      }));
     }
-    $('#col-count').textContent = Object.keys(d.owned).length + '/' + PB.BRAWLERS.length;
+    renderCollection();
     show('collection');
   }
 
+  function renderCollection() {
+    const d = PB.Save.get();
+    const grid = $('#col-grid');
+    const F = colFilter;
+    const names = (b) => b.line.map((dex) => PB.DEX[dex].name.toLowerCase()).join(' ');
+    const list = PB.BRAWLERS.filter((b) => {
+      const own = PB.Save.owned(b.id);
+      if (F.own === 'mine' && !own) return false;
+      if (F.own === 'locked' && own) return false;
+      if (F.gen && b.gen !== +F.gen) return false;
+      // el filtro de tipo mira toda la línea (Charmander sale en Volador por Charizard)
+      if (F.type && !b.line.some((dex) => PB.DEX[dex].types.includes(F.type))) return false;
+      if (F.q && !names(b).includes(F.q)) return false;
+      return true;
+    }).sort((x, y) => (PB.Save.owned(y.id) ? 1 : 0) - (PB.Save.owned(x.id) ? 1 : 0) || x.dex - y.dex);
+    grid.innerHTML = list.map((b) => {
+      const own = PB.Save.owned(b.id);
+      const r = rarityOf(b);
+      const shiny = own && PB.Save.skin(b.id) === 'shiny';
+      return `<button class="card${own ? '' : ' locked'}${b.id === d.selected ? ' sel' : ''}" data-id="${b.id}" style="--rar:${r.color}">` +
+        `<img class="pt" src="${portrait(b)}" alt="" loading="lazy">` +
+        (shiny ? '<span class="shiny-tag">✦</span>' : '') +
+        `<span class="nm">${b.name}</span>` +
+        `<span class="tdots">${b.types.map((ty) => `<i style="background:${PB.TYPE_INFO[ty].color}"></i>`).join('')}</span>` +
+        (own
+          ? `<span class="lv">Nv. ${PB.Save.level(b.id)} · <img class="cup" src="${cupIcon()}" alt="">${PB.Save.copas(b.id)}</span>`
+          : `<span class="lock">🔒</span><span class="cost">${money(PB.Save.unlockCost(b.id), starIcon)}</span>`) +
+        `<span class="rar">${r.name}</span></button>`;
+    }).join('');
+    grid.querySelectorAll('.card').forEach((el) => (el.onclick = () => showDetail(el.dataset.id)));
+    $('#col-empty').classList.toggle('hidden', list.length > 0);
+    $('#col-count').textContent = Object.keys(d.owned).length + '/' + PB.BRAWLERS.length;
+  }
+
   // ------------------------------------------------------------------ ficha
+  let dtStage = 0; // fase que se ve en la ficha
+
   function showDetail(id) {
     detailId = id;
+    dtStage = 0;
     renderDetail();
     show('detail');
   }
@@ -182,16 +234,26 @@ PB.Lobby = (() => {
     const d = PB.Save.get();
     const own = PB.Save.owned(id);
     const lvl = own ? PB.Save.level(id) : 1;
-    const r = PB.META.rarity[id];
-    const now = PB.statsAt(b, lvl);
-    const next = lvl < PB.META.maxLevel ? PB.statsAt(b, lvl + 1) : null;
+    const r = rarityOf(b);
+    const sm = PB.stageMul(b, dtStage);
+    const scaleStats = (st) => Object.assign({}, st, { hp: Math.round(st.hp * sm), dmg: Math.round(st.dmg * sm), superDmg: Math.round(st.superDmg * sm) });
+    const now = scaleStats(PB.statsAt(b, lvl));
+    const next = lvl < PB.META.maxLevel ? scaleStats(PB.statsAt(b, lvl + 1)) : null;
     const plus = (k) => (next && own && next[k] !== now[k] ? ` <em>+${next[k] - now[k]}</em>` : '');
-    $('#dt-name').textContent = b.name;
-    $('#dt-role').textContent = b.role;
+    $('#dt-name').textContent = PB.stageName(b, dtStage);
+    $('#dt-role').textContent = b.role + ' · Generación ' + b.gen;
     $('#dt-rar').textContent = r.name;
     $('#dt-rar').style.background = r.color;
-    $('#dt-types').innerHTML = typeTags(b);
+    $('#dt-types').innerHTML = typeTags(b, PB.stageTypes(b, dtStage));
     $('#dt-desc').textContent = b.desc;
+    // línea evolutiva: se puede tocar cada fase para verla
+    const steps = PB.evoSteps(b);
+    $('#dt-evo').innerHTML = b.line.map((dex, i) =>
+      (i ? '<span class="evo-arrow">▶</span>' : '') +
+      `<button class="evo-st${i === dtStage ? ' sel' : ''}" data-st="${i}"><img src="${PB.Sprites.portraitURL(dex)}" alt=""><b>${PB.DEX[dex].name}</b>` +
+      `<small>${i ? '+' + Math.round((PB.stageMul(b, i) - 1) * 100) + ' % · ' + steps[i - 1] + ' EXP' : 'Empieza así'}</small></button>`).join('') +
+      '<p class="evo-note">Evoluciona en mitad de la partida al ganar EXP: haciendo daño, debilitando y con los objetivos del modo.</p>';
+    document.querySelectorAll('#dt-evo .evo-st').forEach((e) => (e.onclick = () => { dtStage = +e.dataset.st; PB.Audio.play('tick'); renderDetail(); }));
     let bar = '';
     for (let i = 1; i <= PB.META.maxLevel; i++) bar += `<i class="${i <= lvl && own ? 'on' : ''}"></i>`;
     $('#dt-level').innerHTML = `<b>Nivel ${own ? lvl : '-'}</b><span class="lvbar">${bar}</span>`;
@@ -207,6 +269,22 @@ PB.Lobby = (() => {
     $('#dt-moves').innerHTML =
       `<div class="move"><b>Ataque · ${b.attack.name}</b><span>${moveText(b.attack, false)}</span></div>` +
       `<div class="move super"><b>Súper · ${b.super.name}</b><span>${moveText(b.super, true)}</span></div>`;
+    // skins: normal y shiny (se compra con Monedas Arcoíris)
+    const sk = $('#dt-skins');
+    if (PB.Save.shinyAvailable(id)) {
+      const has = PB.Save.hasShiny(id), cur = PB.Save.skin(id);
+      sk.innerHTML = `<b>Skin</b><div class="px-seg">` +
+        `<button data-sk="normal" class="${cur === 'normal' ? 'sel' : ''}">Normal</button>` +
+        `<button data-sk="shiny" class="${cur === 'shiny' ? 'sel' : ''}">✦ Shiny${has ? '' : ' · ' + money(PB.META.shinyCost, rainbowIcon)}</button></div>`;
+      sk.querySelectorAll('[data-sk]').forEach((e) => (e.onclick = async () => {
+        if (e.dataset.sk === 'normal') { PB.Save.setSkin(id, 'normal'); PB.Audio.play('tick'); return renderDetail(); }
+        if (PB.Save.hasShiny(id)) { PB.Save.setSkin(id, 'shiny'); PB.Audio.play('ball'); return renderDetail(); }
+        if (!own) return modal('Primero tienes que conseguir a este Pokémon.');
+        if ((d.rainbow || 0) < PB.META.shinyCost) return modal(`Te faltan ${PB.META.shinyCost - (d.rainbow || 0)} Monedas Arcoíris. Salen en las Super Ball y sobre todo en las Ultra Ball.`);
+        if (!(await modal(`¿Comprar la skin shiny de ${b.name} por ${PB.META.shinyCost} Monedas Arcoíris?`, true))) return;
+        if (PB.Save.buyShiny(id)) { PB.Audio.play('win'); renderDetail(); flashIn('#dt-hero'); }
+      }));
+    } else sk.innerHTML = '';
     const acts = $('#dt-actions');
     acts.innerHTML = '';
     const btn = (label, cls, enabled, fn) => {
@@ -237,15 +315,36 @@ PB.Lobby = (() => {
 
   function moveText(m, isSuper) {
     switch (m.kind) {
-      case 'spread': return (m.count > 1 ? `${m.count} proyectiles en abanico` : 'Un proyectil') + (m.pierce ? ' que atraviesan' : '') + (m.destroysWalls ? ', rompe muros' : '') + (m.knockback ? ' y empuja' : '') + '.';
+      case 'spread': return (m.count > 1 ? `${m.count} proyectiles en abanico` : 'Un proyectil') + (m.pierce ? ' que atraviesan' : '') + (m.destroysWalls ? ', rompe muros' : '') + (m.knockback ? ' y empuja' : '') + (m.stun ? ' y congela un momento' : '') + '.';
       case 'burst': return `Ráfaga de ${m.count} disparos rápidos.`;
       case 'lob': return 'Lanza por encima de los muros y explota al caer.';
-      case 'zone': return 'Crea una zona que daña a los rivales y cura a tu equipo.';
+      case 'zone': return m.heal ? 'Crea una zona que daña a los rivales y cura a tu equipo.' : 'Deja un charco venenoso que hace mucho daño a los rivales.';
       case 'dash': return 'Embestida rápida que daña y aturde.';
-      case 'slam': return 'Golpe al suelo alrededor: daña, empuja y rompe muros.';
+      case 'slam': return m.destroysWalls ? 'Golpe al suelo alrededor: daña, empuja y rompe muros.' : 'Onda alrededor que daña y lanza lejos a los rivales.';
       case 'stealth': return 'Te vuelves invisible y tu siguiente ataque hace más daño.';
     }
     return isSuper ? 'Ataque especial.' : '';
+  }
+
+  // ------------------------------------------------------------------ elegir iniciales
+  const spPick = { grass: null, fire: null, water: null };
+  function renderStarters() {
+    const cols = [['grass', 'Planta'], ['fire', 'Fuego'], ['water', 'Agua']];
+    $('#sp-cols').innerHTML = cols.map(([ty, nm]) =>
+      `<div class="sp-col" style="--tc:${PB.TYPE_INFO[ty].color}"><h3>${nm}</h3><div class="sp-grid">` +
+      PB.STARTER_DEX[ty].map((dex) => {
+        const b = PB.BRAWLERS.find((x) => x.dex === dex);
+        return b ? `<button class="sp-mon${spPick[ty] === b.id ? ' sel' : ''}" data-ty="${ty}" data-id="${b.id}" title="${b.name}"><img src="${portrait(b)}" alt=""><small>${b.name}</small></button>` : '';
+      }).join('') + '</div></div>').join('');
+    document.querySelectorAll('.sp-mon').forEach((e) => (e.onclick = () => {
+      spPick[e.dataset.ty] = e.dataset.id;
+      PB.Audio.init();
+      PB.Audio.play('ball');
+      renderStarters();
+    }));
+    const picked = Object.values(spPick).filter(Boolean);
+    $('#sp-pick').textContent = picked.length + '/3 elegidos' + (picked.length ? ': ' + picked.map((id) => PB.brawlerById(id).name).join(', ') : '');
+    $('#sp-go').disabled = picked.length < 3;
   }
 
   function flashIn(sel) {
@@ -435,7 +534,7 @@ PB.Lobby = (() => {
   }
 
   // ------------------------------------------------------------------ clan
-  const clanIcon = (c) => window.SPRITE_DATA[c.icon] ? window.SPRITE_DATA[c.icon].portrait : portrait(PB.BRAWLERS[0]);
+  const clanIcon = (c) => PB.Sprites.portraitURL(c.icon) || portrait(PB.BRAWLERS[0]);
   let chatTimer = null;
 
   async function showClan() {
@@ -498,7 +597,7 @@ PB.Lobby = (() => {
       `<label>Nombre<input id="cc-name" maxlength="20" placeholder="Nombre del clan"></label>` +
       `<label>Descripción<input id="cc-desc" maxlength="80" placeholder="¿Cómo es tu clan?"></label>` +
       `<label>Tipo<select id="cc-type"><option value="public">🌐 Público (cualquiera puede entrar)</option><option value="invite">🔒 Solo invitación</option></select></label>` +
-      `<label>Escudo<div class="icons" id="cc-icons">${icons.map((d, i) => `<button data-ic="${d}" class="${i ? '' : 'sel'}"><img src="${window.SPRITE_DATA[d].portrait}" alt=""></button>`).join('')}</div></label>` +
+      `<label>Escudo<div class="icons" id="cc-icons">${icons.map((d, i) => `<button data-ic="${d}" class="${i ? '' : 'sel'}"><img src="${PB.Sprites.portraitURL(d)}" alt=""></button>`).join('')}</div></label>` +
       `<div class="row left"><button class="act gray" id="cc-back">← Volver</button><button class="act gold" id="cc-ok">Crear · ${money(PB.META.clanCost, coinIcon)}</button></div>` +
       `<p class="sub">Tienes ${PB.Save.get().coins} monedas. Máximo ${PB.META.clanMax} miembros por clan.</p></div>`;
     let icon = icons[0];
@@ -629,6 +728,7 @@ PB.Lobby = (() => {
     const items = [];
     if (res.coins) items.push({ icon: coinIcon(), title: '+' + res.coins, sub: 'monedas' });
     if (res.points) items.push({ icon: starIcon(), title: '+' + res.points, sub: 'Puntos Pokémon' });
+    if (res.rainbow) items.push({ icon: rainbowIcon(), title: '+' + res.rainbow, sub: 'Monedas Arcoíris' });
     for (const id of res.pokemon) {
       const b = PB.brawlerById(id);
       items.push({ icon: portrait(b), title: '¡' + b.name + '!', sub: 'Nuevo Pokémon', cls: 'new', pokemon: true });
@@ -784,7 +884,8 @@ PB.Lobby = (() => {
   }
 
   // ------------------------------------------------------------------ animación de los canvas
-  function drawHero(cv, dex, scale, glow) {
+  function drawHero(cv, dex, scale, glow, shiny) {
+    if (!PB.Sprites.ready(dex, shiny)) PB.Sprites.ensure([{ dex, shiny }]);
     const c = cv.getContext('2d');
     const w = cv.width, h = cv.height;
     c.clearRect(0, 0, w, h);
@@ -801,16 +902,17 @@ PB.Lobby = (() => {
       c.ellipse(w / 2, h * 0.8, w * 0.32, h * 0.09, 0, 0, Math.PI * 2);
       c.stroke();
     }
-    PB.Sprites.draw(c, dex, 'Idle', Math.PI / 2, t, w / 2, h * 0.8 - 10 * scale + 10, scale, 0);
+    PB.Sprites.draw(c, dex, 'Idle', Math.PI / 2, t, w / 2, h * 0.8 + scale * 2, scale, 0, shiny);
   }
 
   function tick(dt) {
     t += dt;
     if (current === 'lobby') {
       const b = PB.brawlerById(PB.Save.get().selected);
-      drawHero($('#hero-cv'), b.dex, 5, true);
+      if (b) drawHero($('#hero-cv'), b.dex, 5, true, PB.Save.skin(b.id) === 'shiny');
     } else if (current === 'detail' && detailId) {
-      drawHero($('#dt-cv'), PB.brawlerById(detailId).dex, 4, PB.Save.owned(detailId));
+      const b = PB.brawlerById(detailId);
+      drawHero($('#dt-cv'), b.line[dtStage] || b.dex, 4, PB.Save.owned(detailId), PB.Save.skin(detailId) === 'shiny');
     } else if (current === 'chestopen' && chest) {
       drawChest(dt);
     }
@@ -918,6 +1020,13 @@ PB.Lobby = (() => {
     PB.Save.load();
     $('#ico-coin').src = coinIcon();
     $('#ico-star').src = starIcon();
+    $('#ico-rainbow').src = rainbowIcon();
+    $('#sp-go').onclick = () => {
+      const ids = [spPick.grass, spPick.fire, spPick.water];
+      if (ids.some((x) => !x) || !PB.Save.chooseStarters(ids)) return;
+      PB.Audio.play('win');
+      show('lobby');
+    };
     $('#lb-hero').onclick = showCollection;
     $('#btn-pokemon').onclick = showCollection;
     $('#btn-missions').onclick = () => showMissions();

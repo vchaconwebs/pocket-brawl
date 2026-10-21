@@ -34,6 +34,8 @@ PB.Game = class {
       this.brawlers.push({
         idx: this.brawlers.length, def, team, isPlayer: !!isPlayer,
         name: isPlayer ? 'TÚ' : def.name,
+        // evolución: fase actual (0 = primera), su número de Pokédex y sus tipos
+        stage: 0, xp: 0, dex: def.line[0], types: PB.stageTypes(def, 0), shiny: false, evoT: 0,
         x: sp.x, y: sp.y, r: 22, vx: 0, vy: 0, kx: 0, ky: 0,
         hp: def.hp, maxHp: def.hp, ammo: this.rules.maxAmmo, shotCd: 0, superCharge: 0,
         balls: 0, power: 0, stat: 0, dead: false, out: false, respawnT: 0, lastCombat: -99, revealT: 0,
@@ -55,9 +57,52 @@ PB.Game = class {
     if (!this.startT) for (const b of this.brawlers) this.releaseFx(b);
   }
 
-  // Multiplicador de daño por Caramelos Raros
+  // Multiplicador de daño: Caramelos Raros, nivel y fase de evolución
   powerMul(b) {
-    return b ? (1 + 0.1 * (b.power || 0)) * (b.lvlMul || 1) : 1;
+    return b ? (1 + 0.1 * (b.power || 0)) * (b.lvlMul || 1) * PB.stageMul(b.def, b.stage || 0) : 1;
+  }
+
+  // ---------------------------------------------------------------- evolución
+  // EXP de evolución: por daño, K.O., objetivos y un poco solo por el tiempo.
+  // Si algún rival va más evolucionado que tú, ganas EXP más rápido (para que nadie se escape).
+  gainXp(b, amount) {
+    if (!b || b.dead || amount <= 0) return;
+    const steps = PB.evoSteps(b.def);
+    if (b.stage >= steps.length) return;
+    let k = 1;
+    for (const e of this.brawlers) if (e.team !== b.team && e.stage > b.stage) { k = PB.EVO.catchUp; break; }
+    b.xp += amount * k;
+    if (b.xp >= steps[b.stage]) this.evolve(b);
+  }
+
+  // progreso hacia la siguiente fase (0..1); 1 si ya está en la última
+  evoProgress(b) {
+    const steps = PB.evoSteps(b.def);
+    if (b.stage >= steps.length) return 1;
+    const from = b.stage ? steps[b.stage - 1] : 0;
+    return Math.max(0, Math.min(1, (b.xp - from) / (steps[b.stage] - from)));
+  }
+
+  evolve(b) {
+    const before = PB.stageMul(b.def, b.stage);
+    const oldName = PB.stageName(b.def, b.stage);
+    b.stage++;
+    const after = PB.stageMul(b.def, b.stage);
+    b.dex = b.def.line[b.stage];
+    b.types = PB.stageTypes(b.def, b.stage);
+    if (!b.isPlayer) b.name = PB.stageName(b.def, b.stage);
+    // más vida máxima y se cura una parte
+    b.maxHp = Math.round((b.maxHp * after) / before);
+    b.hp = Math.min(b.maxHp, (b.hp * after) / before + b.maxHp * 0.25);
+    b.evoT = 1;
+    b.shieldT = Math.max(b.shieldT, 0.6);
+    const pal = PB.VFX.PAL[b.def.atkType] || PB.VFX.PAL.normal;
+    this.ring(b.x, b.y - 20, 10, 110, '#ffffff', 0.5, 6);
+    this.ring(b.x, b.y - 20, 10, 80, pal[3], 0.4, 5);
+    this.flash(b.x, b.y - 24, 120, '#ffffff', 0.35);
+    for (let i = 0; i < 22; i++) this.px(b.x, b.y - 24, i % 2 ? '#ffffff' : pal[3], { speed: 260, vy: -60, life: 0.6, size: 5 });
+    this.text(b.x, b.y - 110, '¡Evoluciona!', '#ffe066', 18);
+    this.events.push({ type: 'evolve', b, from: oldName, to: PB.stageName(b.def, b.stage) });
   }
 
   get player() {
@@ -142,6 +187,8 @@ PB.Game = class {
     b.shieldT -= dt;
     b.stunT -= dt;
     b.spawnT -= dt;
+    if (b.evoT > 0) b.evoT -= dt;
+    this.gainXp(b, PB.EVO.passive * dt);
     if (b.stealthT > 0) b.stealthT -= dt;
     if (b.action) {
       b.action.t += dt;
@@ -166,8 +213,9 @@ PB.Game = class {
       d.ghostT = (d.ghostT || 0) - dt;
       if (d.ghostT <= 0) {
         d.ghostT = 0.035;
-        this.fx.push({ kind: 'ghost', dex: b.def.dex, x: b.x, y: b.y, facing: b.facing, t: 0, life: 0.25 });
-        this.vfx('bolt', 'electric', b.x + (Math.random() - 0.5) * 40, b.y - 20 + (Math.random() - 0.5) * 30, { angle: Math.random() * 6, scale: 1, life: 0.15 });
+        this.fx.push({ kind: 'ghost', dex: b.dex, shiny: b.shiny, x: b.x, y: b.y, facing: b.facing, t: 0, life: 0.25, type: b.def.atkType });
+        const T = b.def.atkType;
+        this.vfx(T === 'electric' ? 'bolt' : PB.VFX.forType(T).proj, T, b.x + (Math.random() - 0.5) * 40, b.y - 20 + (Math.random() - 0.5) * 30, { angle: Math.random() * 6, scale: 1, life: 0.15 });
       }
       for (const e of this.enemiesOf(b)) {
         if (!d.hit.has(e.idx) && Math.hypot(e.x - b.x, e.y - b.y) < d.r + e.r) {
@@ -242,6 +290,7 @@ PB.Game = class {
           // Caramelo Raro: +10 % de vida y daño
           b.power++;
           b.stat++;
+          this.gainXp(b, 8);
           const extra = b.def.hp * 0.1;
           b.maxHp += extra;
           b.hp = Math.min(b.maxHp, b.hp + extra + 400);
@@ -253,6 +302,7 @@ PB.Game = class {
           b.balls++;
           b.ballsTaken++;
           b.stat++;
+          this.gainXp(b, 3);
           this.events.push({ type: 'ball', b });
           this.ring(g.x, g.y - 10, 6, 34, '#ffffff', 0.25, 3);
           for (let i = 0; i < 6; i++) this.px(g.x, g.y - 10, i % 2 ? '#ff5a3c' : '#ffffff', { speed: 120, life: 0.35, size: 4 });
@@ -346,7 +396,7 @@ PB.Game = class {
       this.startAction(b, ang, 'Attack', s.time + 0.1);
       const v = s.range / s.time;
       b.dash = { t: s.time, vx: Math.cos(ang) * v, vy: Math.sin(ang) * v, dmg: s.dmg, stun: s.stun, r: s.r, hit: new Set() };
-      for (let i = 0; i < 14; i++) this.px(b.x, b.y - 10, i % 2 ? '#fff36a' : '#ffffff', { speed: 220, life: 0.4, size: 4 });
+      for (let i = 0; i < 14; i++) this.px(b.x, b.y - 10, i % 2 ? pal[3] : '#ffffff', { speed: 220, life: 0.4, size: 4 });
     } else if (s.kind === 'slam') {
       this.startAction(b, b.facing, 'Attack', 0.5);
       this.explode(b, b.x, b.y, s.radius, s.dmg, b.def.atkType, { knockback: s.knockback, stun: s.stun, big: true });
@@ -377,7 +427,7 @@ PB.Game = class {
       x: ox, y: oy, vx: Math.cos(ang) * atk.speed, vy: Math.sin(ang) * atk.speed, ang,
       r: atk.r || 12, dmg: atk.dmg * (mul || 1), team: b.team, owner: b, range: atk.range, traveled: 0,
       pierce: !!atk.pierce, hit: new Set(), look: atk.look || {}, atkType: b.def.atkType, charge: !isSuper,
-      destroysWalls: !!atk.destroysWalls, knockback: atk.knockback || 0, isSuper, shotId: shotId || this.nextShotId++,
+      destroysWalls: !!atk.destroysWalls, knockback: atk.knockback || 0, stun: atk.stun || 0, isSuper, shotId: shotId || this.nextShotId++,
       powered: (mul || 1) > 1, t: 0, trailT: 0,
     });
   }
@@ -452,7 +502,7 @@ PB.Game = class {
         if (Math.hypot(e.x - p.x, e.y - 8 - p.y) < p.r + e.r) {
           p.hit.add(e.idx);
           this.damage(e, p.dmg, p.owner, p.atkType, {
-            charge: p.charge, knockback: p.knockback, kx: p.vx, ky: p.vy, shotId: p.shotId, hx: p.x, hy: p.y, big: p.isSuper || p.powered,
+            charge: p.charge, knockback: p.knockback, stun: p.stun, kx: p.vx, ky: p.vy, shotId: p.shotId, hx: p.x, hy: p.y, big: p.isSuper || p.powered,
           });
           if (!p.pierce) { dead = true; break; }
         }
@@ -507,19 +557,20 @@ PB.Game = class {
       for (const b of this.brawlers) {
         if (b.dead || Math.hypot(b.x - z.x, b.y - z.y) > z.r) continue;
         if (b.team === z.team) {
-          if (b.hp < b.maxHp) {
+          if (z.atk.heal > 0 && b.hp < b.maxHp) {
             b.hp = Math.min(b.maxHp, b.hp + z.atk.heal * dt);
             if (tick) this.vfx('heart', 'fairy', b.x + (Math.random() - 0.5) * 30, b.y - 40, { vy: -50, life: 0.6, scale: 1, fade: true });
           }
         } else if (tick) {
           this.damage(b, z.atk.dps * 0.25, z.by, z.by.def.atkType, { quiet: true });
           // drenado: partícula que va hacia el centro
-          this.px(b.x, b.y - 20, '#97e36c', { vx: (z.x - b.x) * 2, vy: (z.y - b.y) * 2, life: 0.45, size: 5 });
+          this.px(b.x, b.y - 20, (PB.VFX.PAL[z.by.def.atkType] || PB.VFX.PAL.grass)[3], { vx: (z.x - b.x) * 2, vy: (z.y - b.y) * 2, life: 0.45, size: 5 });
         }
       }
       if (Math.random() < 0.5) {
         const a = Math.random() * Math.PI * 2, d = Math.random() * z.r;
-        this.vfx('leaf', 'grass', z.x + Math.cos(a) * d, z.y + Math.sin(a) * d, { vy: -40, life: 0.6, scale: 0.8, spin: 6, fade: true });
+        const T = z.by.def.atkType;
+        this.vfx(T === 'grass' ? 'leaf' : T === 'poison' ? 'bubble' : PB.VFX.forType(T).proj, T, z.x + Math.cos(a) * d, z.y + Math.sin(a) * d, { vy: -40, life: 0.6, scale: 0.8, spin: 6, fade: true });
       }
     }
     this.zones = this.zones.filter((z) => z.t > 0);
@@ -604,6 +655,7 @@ PB.Game = class {
     if (source) {
       source.dmgDone += amt;
       source.stat += amt;
+      this.gainXp(source, amt * PB.EVO.perDamage * 0.5);
       if (charge) source.superCharge = Math.min(1, source.superCharge + 0.6 / source.def.superHits);
     }
     const pal = PB.VFX.PAL[source ? source.def.atkType : 'normal'] || PB.VFX.PAL.normal;
@@ -631,7 +683,7 @@ PB.Game = class {
 
   damage(target, amount, source, atkType, opts) {
     if (target.dead || target.shieldT > 0 || target.spawnT > 0) return;
-    const eff = atkType ? PB.effectiveness(atkType, target.def.types) : 1;
+    const eff = atkType ? PB.effectiveness(atkType, target.types || target.def.types) : 1;
     const amt = Math.round(amount * eff * this.powerMul(source));
     target.hp -= amt;
     target.lastCombat = this.time;
@@ -640,6 +692,7 @@ PB.Game = class {
     target.revealT = Math.max(target.revealT, 0.5);
     if (source) {
       source.dmgDone += amt;
+      if (source.team !== target.team) this.gainXp(source, Math.min(amt, target.hp + amt) * PB.EVO.perDamage);
       if (opts.charge) {
         const before = source.superCharge;
         source.superCharge = Math.min(1, source.superCharge + 1 / source.def.superHits);
@@ -681,6 +734,7 @@ PB.Game = class {
     if (killer && killer !== b) {
       killer.kills++;
       killer.streak++;
+      this.gainXp(killer, PB.EVO.perKO + PB.EVO.perKOStage * (b.stage || 0));
     }
     for (let i = 0; i < b.balls; i++) {
       const a = Math.random() * Math.PI * 2, s = 90 + Math.random() * 140;
@@ -689,9 +743,9 @@ PB.Game = class {
     b.balls = 0;
     if (this.mode.onKill) this.mode.onKill(this, b, killer);
     // animación: se debilita y vuelve a su Pokéball con el rayo rojo
-    this.fx.push({ kind: 'faint', dex: b.def.dex, x: b.x, y: b.y, facing: b.facing, team: b.team, t: 0, life: 1.5 });
+    this.fx.push({ kind: 'faint', dex: b.dex, shiny: b.shiny, x: b.x, y: b.y, facing: b.facing, team: b.team, t: 0, life: 1.5 });
     for (let i = 0; i < 16; i++) this.px(b.x, b.y - 16, i % 2 ? '#ffffff' : b.team === 'blue' ? '#5ab0ff' : '#ff5a5a', { speed: 240, life: 0.5, size: 5 });
-    this.feed.push({ killer: killer ? killer.name : '?', kdex: killer && killer.def ? killer.def.dex : null, victim: b.name, vdex: b.def.dex, team: killer ? killer.team : 'red', t: this.time });
+    this.feed.push({ killer: killer ? killer.name : '?', kdex: killer && killer.def ? killer.dex : null, victim: b.name, vdex: b.dex, team: killer ? killer.team : 'red', t: this.time });
     if (this.feed.length > 4) this.feed.shift();
     this.events.push({ type: 'ko', b, killer, streak: killer ? killer.streak : 0 });
     this.shake = Math.max(this.shake, b.isPlayer ? 16 : 6);

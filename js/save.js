@@ -2,19 +2,10 @@
 // misiones diarias y semanales, logros y estadísticas. Se guarda en el navegador (localStorage).
 // Cuando haya cuentas online, esto se guardará en el servidor (ver js/online.js).
 PB.META = {
-  // Pokémon con los que se empieza (los tres iniciales)
-  starters: ['charmander', 'squirtle', 'bulbasaur'],
-  // rareza y precio en Puntos Pokémon para desbloquear
-  rarity: {
-    charmander: { name: 'Inicial', color: '#9ad08a', cost: 0 },
-    squirtle: { name: 'Inicial', color: '#9ad08a', cost: 0 },
-    bulbasaur: { name: 'Inicial', color: '#9ad08a', cost: 0 },
-    pikachu: { name: 'Raro', color: '#5aa8ff', cost: 300 },
-    geodude: { name: 'Raro', color: '#5aa8ff', cost: 300 },
-    gastly: { name: 'Épico', color: '#c07aff', cost: 600 },
-  },
+  // al empezar se eligen 3 iniciales: uno de planta, uno de fuego y uno de agua (de cualquier generación)
+  // la rareza y el precio de cada Pokémon están en js/roster.js (PB.RARITY)
   maxLevel: 10,
-  levelBonus: 0.05, // +5 % de vida y daño por nivel
+  levelBonus: 0.02, // +2 % de vida y daño por nivel (lo importante es evolucionar en la partida)
   // monedas para pasar del nivel N al N+1 (índice = nivel actual)
   levelCost: [0, 20, 35, 75, 140, 290, 480, 800, 1250, 1875],
   tokensPerChest: 100,
@@ -25,6 +16,8 @@ PB.META = {
     ultra: { name: 'Ultra Ball', rolls: 10, pokemon: 0.04, color: '#f8c030' },
   },
   clanCost: 300, // monedas para crear un clan
+  // skins shiny: se compran con Monedas Arcoíris (provisional, se ajusta con la economía)
+  shinyCost: 100,
   clanMax: 30,
 };
 
@@ -157,7 +150,7 @@ PB.Save = (() => {
     { stat: 'zone', name: 'Guardián', desc: 'Pasa {n} s en la zona de Territorio', tiers: [60, 600, 3000, 10000] },
     { stat: 'winsZone', name: 'Conquistador', desc: 'Gana {n} partidas de Territorio', tiers: [1, 10, 50, 200] },
     { stat: 'chests', name: 'Abrecofres', desc: 'Abre {n} cofres', tiers: [1, 10, 50, 200] },
-    { stat: 'unlocked', name: 'Pokédex', desc: 'Consigue {n} Pokémon', tiers: [4, 5, 6] },
+    { stat: 'unlocked', name: 'Pokédex', desc: 'Consigue {n} Pokémon', tiers: [5, 15, 40, 80, 150, 300] },
     { stat: 'maxLevel', name: 'Entrenamiento', desc: 'Sube un Pokémon a nivel {n}', tiers: [2, 5, 7, 10] },
     { stat: 'streak', name: 'Racha', desc: 'Gana {n} partidas seguidas', tiers: [3, 5, 10] },
   ];
@@ -190,7 +183,7 @@ PB.Save = (() => {
     const d = get();
     if (stat === 'copas') return totalCopas();
     if (stat === 'unlocked') return Object.keys(d.owned).length;
-    if (stat === 'maxLevel') return Math.max(...Object.values(d.owned));
+    if (stat === 'maxLevel') return Math.max(0, ...Object.values(d.owned));
     if (stat === 'streak') return d.stats.bestStreak || 0;
     return d.stats[stat] || 0;
   }
@@ -211,17 +204,18 @@ PB.Save = (() => {
 
   // ---------------------------------------------------------------- guardado
   function fresh() {
-    const owned = {};
-    for (const id of PB.META.starters) owned[id] = 1;
     return {
       name: 'Entrenador' + Math.floor(1000 + Math.random() * 9000),
       tag: '#' + Math.random().toString(36).slice(2, 8).toUpperCase(),
       coins: 50,
       points: 0,
       tokens: 0,
-      owned, // id -> nivel
+      rainbow: 0, // Monedas Arcoíris (solo para skins shiny)
+      owned: {}, // id -> nivel (vacío hasta elegir los iniciales)
+      shinies: {}, // id -> true si tiene la skin shiny
+      skins: {}, // id -> 'shiny' si la lleva puesta
       copas: {}, // id -> copas
-      selected: 'charmander',
+      selected: null,
       chests: ['great'], // regalo de bienvenida
       daily: null,
       weekly: null,
@@ -237,7 +231,9 @@ PB.Save = (() => {
     } catch (e) {
       data = fresh();
     }
-    if (!data.owned[data.selected]) data.selected = Object.keys(data.owned)[0];
+    // partidas guardadas de antes: los Pokémon que ya no existen se quitan
+    for (const id of Object.keys(data.owned)) if (!PB.brawlerById(id)) delete data.owned[id];
+    if (!data.owned[data.selected]) data.selected = Object.keys(data.owned)[0] || null;
     delete data.missions; // formato antiguo
     checkResets();
     persist();
@@ -254,6 +250,7 @@ PB.Save = (() => {
     const d = get();
     if (r.kind === 'coins') d.coins += r.amount;
     else if (r.kind === 'points') d.points += r.amount;
+    else if (r.kind === 'rainbow') d.rainbow += r.amount;
     else d.chests.push(r.kind);
   }
 
@@ -289,7 +286,42 @@ PB.Save = (() => {
     persist();
     return true;
   }
-  const unlockCost = (id) => (PB.META.rarity[id] ? PB.META.rarity[id].cost : 500);
+  const unlockCost = (id) => {
+    const b = PB.brawlerById(id);
+    return b && PB.RARITY[b.rarity] ? PB.RARITY[b.rarity].cost : 500;
+  };
+  // ¿hay que elegir los iniciales? (partida nueva)
+  const needsStarters = () => !Object.keys(get().owned).length;
+  function chooseStarters(ids) {
+    const d = get();
+    if (!needsStarters() || ids.length !== 3) return false;
+    for (const id of ids) d.owned[id] = 1;
+    d.selected = ids[0];
+    persist();
+    return true;
+  }
+  // skins shiny (todas las fases tienen que tener sprite shiny)
+  const shinyAvailable = (id) => {
+    const b = PB.brawlerById(id);
+    return !!b && b.line.every((dex) => PB.Sprites.hasShiny(dex));
+  };
+  const hasShiny = (id) => !!get().shinies[id];
+  const skin = (id) => (id && get().skins[id] === 'shiny' && hasShiny(id) ? 'shiny' : 'normal');
+  function buyShiny(id) {
+    const d = get();
+    if (!owned(id) || hasShiny(id) || !shinyAvailable(id) || d.rainbow < PB.META.shinyCost) return false;
+    d.rainbow -= PB.META.shinyCost;
+    d.shinies[id] = true;
+    d.skins[id] = 'shiny';
+    persist();
+    return true;
+  }
+  function setSkin(id, sk) {
+    if (sk === 'shiny' && !hasShiny(id)) return false;
+    get().skins[id] = sk;
+    persist();
+    return true;
+  }
   function unlock(id) {
     if (owned(id)) return false;
     const c = unlockCost(id);
@@ -316,17 +348,27 @@ PB.Save = (() => {
     for (let i = 0; i < C.rolls; i++) {
       const locked = PB.BRAWLERS.map((b) => b.id).filter((id) => !d.owned[id] && !res.pokemon.includes(id));
       if (locked.length && Math.random() < C.pokemon) {
-        // los raros salen más que los épicos
-        const weighted = locked.flatMap((id) => (unlockCost(id) > 400 ? [id] : [id, id, id]));
-        res.pokemon.push(weighted[Math.floor(Math.random() * weighted.length)]);
+        // los comunes salen más que los raros, y los raros más que los épicos
+        const W = { common: 3, starter: 2, rare: 2, epic: 1 };
+        let total = 0;
+        for (const id of locked) total += W[PB.brawlerById(id).rarity] || 1;
+        let r = Math.random() * total;
+        let pick = locked[0];
+        for (const id of locked) { r -= W[PB.brawlerById(id).rarity] || 1; if (r <= 0) { pick = id; break; } }
+        res.pokemon.push(pick);
         continue;
       }
       if (Math.random() < 0.55) res.coins += 20 + Math.floor(Math.random() * 26);
       else res.points += 15 + Math.floor(Math.random() * 26);
     }
     if (!res.coins && !res.points && !res.pokemon.length) res.coins = 20;
+    // Monedas Arcoíris: a veces en Super Ball y casi siempre en Ultra Ball (provisional)
+    res.rainbow = 0;
+    if (kind === 'great' && Math.random() < 0.2) res.rainbow = 3 + Math.floor(Math.random() * 4);
+    if (kind === 'ultra' && Math.random() < 0.7) res.rainbow = 8 + Math.floor(Math.random() * 8);
     d.coins += res.coins;
     d.points += res.points;
+    d.rainbow = (d.rainbow || 0) + res.rainbow;
     for (const id of res.pokemon) d.owned[id] = 1;
     d.stats.chests = (d.stats.chests || 0) + 1;
     persist();
@@ -421,6 +463,7 @@ PB.Save = (() => {
 
   return {
     load, get, persist, setName, owned, level, copas, totalCopas, select, upgradeCost, upgrade, unlockCost, unlock, spendCoins,
+    needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin,
     openChest, nextChest, applyMatch, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
   };
 })();

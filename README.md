@@ -18,10 +18,16 @@ The Pokémon Company. Ver [CREDITS.md](CREDITS.md).
 
 ## Progreso (lobby)
 
-- Se empieza con los tres iniciales (Charmander, Squirtle, Bulbasaur).
-- **Monedas**: suben de nivel a los Pokémon (Nv. 1 a 10, +5 % de vida y daño por nivel).
-- **Puntos Pokémon**: desbloquean Pokémon nuevos (Raro 300, Épico 600).
-- **Cofres** (Poké Ball, Super Ball, Ultra Ball): dan monedas, Puntos Pokémon y, a veces, un Pokémon.
+- **308 Pokémon** (todas las familias que evolucionan, sin legendarios). Cada uno empieza la partida en su
+  primera fase y **evoluciona durante la partida** al ganar EXP (daño, K.O., objetivos y un poco por el tiempo).
+  Si un rival va más evolucionado, ganas EXP más rápido. Cada fase da +12 % (o +22 % si solo tiene una evolución).
+- Los ataques los decide el **tipo** (todos los de fuego tienen Ascuas y Lanzallamas...) y el **papel** sale de sus
+  estadísticas (tanque, asesino, francotirador, luchador o lanzador). Los 6 primeros tienen ataques hechos a mano.
+- Al empezar se eligen **3 iniciales**: uno de planta, uno de fuego y uno de agua (de cualquier generación).
+- **Monedas**: suben de nivel a los Pokémon (Nv. 1 a 10, +2 % de vida y daño por nivel).
+- **Puntos Pokémon**: desbloquean Pokémon nuevos (Común 150, Inicial y Raro 300, Épico 600; provisional).
+- **Monedas Arcoíris**: solo sirven para comprar la **skin shiny** de cada Pokémon.
+- **Cofres** (Poké Ball, Super Ball, Ultra Ball): dan monedas, Puntos Pokémon, Monedas Arcoíris y, a veces, un Pokémon.
 - **Fichas**: se ganan en cada partida; con 100 fichas, una Poké Ball.
 - **Copas**: cada Pokémon tiene las suyas; se ganan al ganar y se pierden al perder. El total es la suma.
 - **Misiones** diarias (cambian a las 00:00) y semanales (cambian el lunes, más difíciles y con mejores premios).
@@ -49,7 +55,9 @@ y entra en http://localhost:8123
 
 | Archivo | Qué hace |
 |---|---|
-| `js/data.js` | Mapa, tabla de tipos, luchadores y reglas. **Aquí se equilibra el juego.** |
+| `js/data.js` | Mapas, tabla de tipos, los 6 Pokémon hechos a mano y reglas. |
+| `js/roster.js` | Genera los 308 luchadores (ataques por tipo, papel por stats) y la evolución. **Aquí se equilibra el juego.** |
+| `js/roster-data.js` | Generado: familias, stats de especie y datos de las hojas de sprites. |
 | `js/game.js` | Simulación de la partida (no dibuja). Preparada para usarse en un servidor en el futuro. |
 | `js/modes.js` | Reglas de cada modo y lo que hacen los bots en cada uno. |
 | `js/save.js` | Progreso: monedas, puntos, niveles, cofres, fichas y misiones. **Aquí se ajusta la economía.** |
@@ -66,12 +74,17 @@ y entra en http://localhost:8123
 | `js/input.js` | Teclado, ratón y joysticks táctiles. |
 | `js/audio.js` | Sonidos sintetizados (sin archivos). |
 | `js/main.js` | Menús y bucle principal. |
-| `tools/fetch_sprites.py` | Descarga sprites de SpriteCollab y genera `js/sprite-data.js` y `CREDITS.md`. |
+| `tools/build_roster.py` | Coge de PokéSurvivor los sprites (normal y shiny) de todas las familias completas y genera `js/roster-data.js` y `CREDITS-SPRITES.md`. |
+| `tools/fetch_sprites.py` | Sprites de los Pokémon de los mapas (Snorlax, Voltorb) y `CREDITS.md`. |
 
 ### Añadir un Pokémon
 
-1. Añade su número de Pokédex y nombre a `POKEMON` en `tools/fetch_sprites.py` y ejecútalo: `python tools/fetch_sprites.py`
-2. Añade su entrada en `PB.BRAWLERS` (`js/data.js`) con el mismo `dex`.
+Todos los que tienen sprites completos ya están. Si PokéSurvivor añade más, vuelve a generar el roster:
+
+    git clone --depth 1 https://github.com/JPTER78/pokesurvivor.git ../pokesurvivor
+    python tools/build_roster.py ../pokesurvivor
+
+Para darle ataques propios a uno, añádelo a `PB.HANDMADE` en `js/data.js` con el mismo `id`.
 
 ## Publicar gratis (GitHub Pages, como PokéSurvivor)
 

@@ -1,26 +1,95 @@
 // Carga y dibujo de los sprites de PMD SpriteCollab (8 direcciones por hoja).
+// Dos fuentes:
+//  - PB.SPRITE_META (js/roster-data.js): todos los Pokémon jugables, normal y shiny,
+//    hojas en assets/pokemon/{dex}/. Se descargan solo cuando hacen falta (ensure).
+//  - window.SPRITE_DATA (js/sprite-data.js): los Pokémon de los mapas (Snorlax, Voltorb),
+//    se cargan al empezar (load).
 PB.Sprites = {
   imgs: {},
-  portraits: {},
+  ports: {},
+  waiting: {},
 
   load(onDone) {
     const jobs = [];
     for (const [dex, entry] of Object.entries(window.SPRITE_DATA || {})) {
-      for (const [name, a] of Object.entries(entry.anims)) {
-        jobs.push([dex + ':' + name, a.file, this.imgs]);
-      }
-      if (entry.portrait) jobs.push([dex, entry.portrait, this.portraits]);
+      for (const [name, a] of Object.entries(entry.anims)) jobs.push(['L' + dex + ':' + name, a.file]);
+      if (entry.portrait) this.ports[dex] = this.image(entry.portrait);
     }
-    let left = jobs.length;
-    if (!left) return onDone();
-    for (const [key, src, store] of jobs) {
+    Promise.all(jobs.map(([key, src]) => this.fetchImg(key, src))).then(() => onDone());
+  },
+
+  image(src) {
+    const img = new Image();
+    img.src = src;
+    return img;
+  },
+
+  // Descarga una imagen una sola vez; la promesa se resuelve aunque falle
+  fetchImg(key, src) {
+    if (this.imgs[key]) return Promise.resolve(this.imgs[key]);
+    if (this.waiting[key]) return this.waiting[key];
+    return (this.waiting[key] = new Promise((res) => {
       const img = new Image();
-      img.onload = img.onerror = () => {
-        if (img.naturalWidth) store[key] = img;
-        if (--left === 0) onDone();
-      };
+      img.onload = () => { this.imgs[key] = img; res(img); };
+      img.onerror = () => res(null);
       img.src = src;
+    }));
+  },
+
+  // Datos de las animaciones de un Pokémon jugable (con la geometría shiny si difiere)
+  anims(dex, shiny) {
+    const m = PB.SPRITE_META[dex];
+    if (!m) return null;
+    if (!shiny || !m.sh || !m.sa) return m.a;
+    return Object.assign({}, m.a, m.sa);
+  },
+  hasShiny(dex) {
+    const m = PB.SPRITE_META[dex];
+    return !!(m && m.sh);
+  },
+  useShiny(dex, anim, shiny) {
+    const m = PB.SPRITE_META[dex];
+    return !!(shiny && m && m.sh && !(m.sm && m.sm.includes(anim)));
+  },
+  src(dex, anim, shiny) {
+    return `assets/pokemon/${dex}/${this.useShiny(dex, anim, shiny) ? 's/' : ''}${anim}.png`;
+  },
+  key(dex, anim, shiny) {
+    return dex + (this.useShiny(dex, anim, shiny) ? 's' : '') + ':' + anim;
+  },
+
+  // Descarga todas las animaciones de estos Pokémon. list = [dex | { dex, shiny }]
+  ensure(list) {
+    const jobs = [];
+    for (const it of list) {
+      const dex = typeof it === 'object' ? it.dex : it;
+      const shiny = typeof it === 'object' && it.shiny;
+      const a = this.anims(dex, shiny);
+      if (!a) continue;
+      for (const name of Object.keys(a)) jobs.push(this.fetchImg(this.key(dex, name, shiny), this.src(dex, name, shiny)));
     }
+    return Promise.all(jobs);
+  },
+  ready(dex, shiny) {
+    return !!this.imgs[this.key(dex, 'Idle', shiny)];
+  },
+
+  portraitURL(dex) {
+    const n = +dex;
+    if (PB.DEX[n]) return PB.DEX[n].p ? `assets/pokemon/${n}/p.png` : `assets/pokemon/${n}/Idle.png`;
+    const e = window.SPRITE_DATA && window.SPRITE_DATA[dex];
+    return e ? e.portrait : '';
+  },
+  // Retrato como imagen para dibujar en el canvas (se descarga la primera vez que se pide)
+  portrait(dex) {
+    if (dex == null) return null;
+    if (!this.ports[dex]) {
+      const url = this.portraitURL(dex);
+      if (!url) return null;
+      this.ports[dex] = this.image(url);
+    }
+    const img = this.ports[dex];
+    return img.complete && img.naturalWidth ? img : null;
   },
 
   // Ángulo (y hacia abajo) -> fila de la hoja: Down, DownRight, Right, UpRight, Up, UpLeft, Left, DownLeft
@@ -29,63 +98,71 @@ PB.Sprites = {
     return [2, 1, 0, 7, 6, 5, 4, 3][i];
   },
 
-  // Algunas animaciones (dormir, girar) solo tienen una fila
-  rowOf(img, a, angle) {
-    return img.naturalHeight / a.h >= 8 ? this.dirRow(angle) : 0;
-  },
-
   // t en segundos. Si length se indica, la animación se comprime a esa duración (no hace bucle).
-  frameIndex(a, t, length) {
-    const total = a.dur.reduce((s, d) => s + d, 0);
+  frameIndex(dur, t, length) {
+    const total = dur.reduce((s, d) => s + d, 0);
     let tick;
     if (length) tick = Math.min(total - 0.001, (t / length) * total);
     else tick = (t * 60) % total;
-    for (let i = 0; i < a.dur.length; i++) {
-      tick -= a.dur[i];
+    for (let i = 0; i < dur.length; i++) {
+      tick -= dur[i];
       if (tick < 0) return i;
     }
-    return a.dur.length - 1;
+    return dur.length - 1;
+  },
+
+  // Fotograma que toca: { img, sx, sy, w, h, ax, ay } o null si aún no se ha descargado
+  frame(dex, anim, angle, t, length, shiny) {
+    const m = PB.SPRITE_META[dex];
+    if (m) {
+      const A = this.anims(dex, shiny);
+      let name = A[anim] ? anim : 'Idle';
+      let img = this.imgs[this.key(dex, name, shiny)];
+      if (!img && name !== 'Idle') { name = 'Idle'; img = this.imgs[this.key(dex, name, shiny)]; }
+      if (!img) return null;
+      const a = A[name];
+      const n = Math.min(a.n, a.d.length);
+      const f = Math.min(n - 1, this.frameIndex(a.d.slice(0, n), t, length));
+      const row = a.r >= 8 ? this.dirRow(angle) : 0;
+      return { img, sx: f * a.w, sy: row * a.h, w: a.w, h: a.h, ax: a.ax, ay: a.ay };
+    }
+    // Pokémon de los mapas (formato antiguo, centrado)
+    const entry = window.SPRITE_DATA && window.SPRITE_DATA[dex];
+    if (!entry) return null;
+    const name = entry.anims[anim] ? anim : 'Idle';
+    const a = entry.anims[name];
+    const img = a && this.imgs['L' + dex + ':' + name];
+    if (!img) return null;
+    const row = img.naturalHeight / a.h >= 8 ? this.dirRow(angle) : 0;
+    // el ancla se pone en el centro y 10 px más abajo para que encaje con el dibujo de antes
+    return { img, sx: this.frameIndex(a.dur, t, length) * a.w, sy: row * a.h, w: a.w, h: a.h, ax: a.w / 2, ay: a.h / 2 + 5 };
+  },
+
+  // (x, y) = punto del suelo bajo el Pokémon
+  draw(ctx, dex, anim, angle, t, x, y, scale, length, shiny) {
+    const fr = this.frame(dex, anim, angle, t, length, shiny);
+    if (!fr) return;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(fr.img, fr.sx, fr.sy, fr.w, fr.h, Math.round(x - fr.ax * scale), Math.round(y - fr.ay * scale), fr.w * scale, fr.h * scale);
   },
 
   // Igual que draw() pero teñido de un color (destello al recibir daño, rayo rojo, etc.)
-  drawTint(ctx, dex, anim, angle, t, x, y, scale, length, color, amount) {
-    const entry = window.SPRITE_DATA && window.SPRITE_DATA[dex];
-    const name = entry && entry.anims[anim] ? anim : 'Idle';
-    const a = entry && entry.anims[name];
-    const img = a && this.imgs[dex + ':' + name];
-    if (!img) return;
+  drawTint(ctx, dex, anim, angle, t, x, y, scale, length, color, amount, shiny) {
+    const fr = this.frame(dex, anim, angle, t, length, shiny);
+    if (!fr) return;
     const tmp = this._tmp || (this._tmp = document.createElement('canvas'));
-    tmp.width = a.w;
-    tmp.height = a.h;
+    tmp.width = fr.w;
+    tmp.height = fr.h;
     const c = tmp.getContext('2d');
-    c.clearRect(0, 0, a.w, a.h);
+    c.clearRect(0, 0, fr.w, fr.h);
     c.globalCompositeOperation = 'source-over';
-    c.drawImage(img, this.frameIndex(a, t, length) * a.w, this.rowOf(img, a, angle) * a.h, a.w, a.h, 0, 0, a.w, a.h);
+    c.drawImage(fr.img, fr.sx, fr.sy, fr.w, fr.h, 0, 0, fr.w, fr.h);
     c.globalCompositeOperation = 'source-atop';
     c.globalAlpha = amount == null ? 1 : amount;
     c.fillStyle = color;
-    c.fillRect(0, 0, a.w, a.h);
+    c.fillRect(0, 0, fr.w, fr.h);
     c.globalAlpha = 1;
-    const w = a.w * scale, h = a.h * scale;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(tmp, Math.round(x - w / 2), Math.round(y - h / 2 - 10), w, h);
-  },
-
-  draw(ctx, dex, anim, angle, t, x, y, scale, length) {
-    const entry = window.SPRITE_DATA && window.SPRITE_DATA[dex];
-    const a = entry && (entry.anims[anim] || entry.anims.Idle);
-    const img = a && (this.imgs[dex + ':' + anim] || this.imgs[dex + ':Idle']);
-    if (!img) {
-      ctx.fillStyle = '#ccc';
-      ctx.beginPath();
-      ctx.arc(x, y - 16, 20, 0, Math.PI * 2);
-      ctx.fill();
-      return;
-    }
-    const f = this.frameIndex(a, t, length);
-    const row = this.rowOf(img, a, angle);
-    const w = a.w * scale;
-    const h = a.h * scale;
-    ctx.drawImage(img, f * a.w, row * a.h, a.w, a.h, Math.round(x - w / 2), Math.round(y - h / 2 - 10), w, h);
+    ctx.drawImage(tmp, Math.round(x - fr.ax * scale), Math.round(y - fr.ay * scale), fr.w * scale, fr.h * scale);
   },
 };
