@@ -32,6 +32,7 @@ y entra en http://localhost:8123
 | `js/render.js` | Dibujado en Canvas. |
 | `js/vfx.js` | Efectos pixel art de los ataques (adaptado de PokéSurvivor). |
 | `js/pokeball.js` | Pokéballs pixel art y plataforma central. |
+| `js/tiles.js` | Mapa en pixel art: hierba, caminos, agua, rocas, árboles y hierba alta. |
 | `js/input.js` | Teclado, ratón y joysticks táctiles. |
 | `js/audio.js` | Sonidos sintetizados (sin archivos). |
 | `js/main.js` | Menús y bucle principal. |
@@ -52,5 +53,6 @@ y entra en http://localhost:8123
 
 - Efectos (`js/vfx.js`): adaptados de [PokéSurvivor](https://github.com/JPTER78/pokesurvivor), PolyForm Noncommercial 1.0.0 (`LICENSE-POKESURVIVOR.md`).
   Required Notice: Copyright 2026 JPTER78 (https://github.com/JPTER78/pokesurvivor)
+- Fuente: [Pixelify Sans](https://github.com/eifetx/Pixelify-Sans), SIL OFL 1.1 (`assets/fonts/OFL.txt`).
 - Sprites: [PMD SpriteCollab](https://github.com/PMDCollab/SpriteCollab), CC BY-NC 4.0 (no comercial, con atribución).
 - Pokémon es propiedad de sus dueños. Nada de anuncios, pagos ni donaciones ligadas al juego.

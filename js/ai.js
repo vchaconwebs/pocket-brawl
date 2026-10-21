@@ -43,7 +43,7 @@ PB.Bot = class {
 
     const home = W.spawns[b.team][1];
     const safe = { x: home.x + (W.mine.x - home.x) * 0.3, y: home.y + (W.mine.y - home.y) * 0.3 };
-    const closeRange = atk.range < 350;
+    const closeRange = atk.range < 250;
 
     let goal = null;
     let fight = false;

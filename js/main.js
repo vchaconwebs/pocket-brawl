@@ -254,12 +254,17 @@
   // acceso para depurar desde la consola: PB.debug.game
   PB.debug = { get game() { return game; }, input, renderer };
 
-  PB.Sprites.load(() => {
+  // Esperar a la fuente pixel (si tarda más de 2 s, se sigue igualmente)
+  const fontReady = document.fonts && document.fonts.load
+    ? Promise.race([document.fonts.load('16px "Pixelify Sans"'), new Promise((r) => setTimeout(r, 2000))]).catch(() => {})
+    : Promise.resolve();
+
+  PB.Sprites.load(() => fontReady.then(() => {
     $('#loading').classList.add('hidden');
     toMenu();
     requestAnimationFrame((t) => {
       last = t;
       frame(t);
     });
-  });
+  }));
 })();

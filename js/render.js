@@ -23,9 +23,9 @@ PB.Renderer = class {
     // cuánto mundo se ve: ~1050x720 en PC, menos en móvil horizontal para que no se vea todo diminuto
     const portrait = this.ch > this.cw;
     const touch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-    let vw = 1050, vh = 720;
+    let vw = 1100, vh = 760;
     if (portrait) { vw = 520; vh = 1000; }
-    else if (touch) { vw = 820; vh = 480; }
+    else if (touch) { vw = 900; vh = 580; }
     this.cam.scale = Math.min(this.cw / vw, this.ch / vh);
   }
 
@@ -38,57 +38,24 @@ PB.Renderer = class {
     this.banner = { text, color: color || '#ffffff', sub: sub || '', t: 0, life: life || 1.4 };
   }
 
-  // Suelo y agua pre-dibujados en un canvas aparte (se rehace si se rompe un muro).
+  // Suelo pintado en pixel art (PB.Tiles) y escalado ×4 una sola vez por mapa.
+  // Rocas, árboles y hierba alta se dibujan aparte porque cambian (se rompen, se mueven).
   buildFloor(world) {
-    const T = PB.TILE;
+    const art = PB.Tiles.floor(world);
     const cv = document.createElement('canvas');
     cv.width = world.pixelW;
     cv.height = world.pixelH;
     const c = cv.getContext('2d');
-    for (let r = 0; r < world.h; r++) {
-      for (let col = 0; col < world.w; col++) {
-        const x = col * T, y = r * T;
-        c.fillStyle = (r + col) % 2 ? '#7cc95a' : '#86d163';
-        c.fillRect(x, y, T, T);
-        c.fillStyle = 'rgba(40,110,40,0.25)';
-        const seed = (r * 31 + col * 17) % 7;
-        for (let i = 0; i < 3; i++) c.fillRect(x + ((seed * 9 + i * 19) % 56) + 4, y + ((seed * 13 + i * 23) % 52) + 6, 3, 6);
-        if (seed === 3) {
-          c.fillStyle = '#ffe36a';
-          c.fillRect(x + 20, y + 30, 4, 4);
-          c.fillStyle = '#ffffff';
-          c.fillRect(x + 44, y + 14, 4, 4);
-        }
-        if (world.tile(col, r) === '~') {
-          c.fillStyle = '#2f86c4';
-          c.fillRect(x, y, T, T);
-          c.fillStyle = '#3aa3e0';
-          c.fillRect(x + 4, y + 4, T - 8, T - 8);
-          c.fillStyle = '#5fbdf0';
-          c.fillRect(x + 8, y + 8, T - 16, T - 20);
-        }
-      }
-    }
-    // bases de cada equipo
-    for (const [sp, col] of [[world.spawns.blue, '60,140,255'], [world.spawns.red, '255,70,70']]) {
-      for (const s of sp) {
-        c.fillStyle = `rgba(${col},0.25)`;
-        c.beginPath();
-        c.arc(s.x, s.y, 34, 0, Math.PI * 2);
-        c.fill();
-        c.strokeStyle = `rgba(${col},0.6)`;
-        c.lineWidth = 4;
-        c.stroke();
-      }
-    }
+    c.imageSmoothingEnabled = false;
+    c.drawImage(art, 0, 0, cv.width, cv.height);
     PB.Pokeball.drawPad(c, world.mine.x, world.mine.y, 46);
     this.floor = cv;
-    this.floorFor = world.version;
+    this.floorFor = world;
   }
 
   draw(game, view) {
     const ctx = this.ctx, T = PB.TILE, W = game.world;
-    if (this.floorFor !== W.version || !this.floor) this.buildFloor(W);
+    if (this.floorFor !== W || !this.floor) this.buildFloor(W);
     const focus = view.focus;
     const team = view.team;
     const t = game.clock;
@@ -97,7 +64,7 @@ PB.Renderer = class {
     const lift = view.touch && this.ch > this.cw ? 150 : 0;
     if (focus) {
       this.cam.x += (focus.x - this.cam.x) * 0.15;
-      this.cam.y += (focus.y + (lift || -40) - this.cam.y) * 0.15;
+      this.cam.y += (focus.y + (lift || -60) - this.cam.y) * 0.15;
     }
     const halfW = this.cw / 2 / this.cam.scale, halfH = this.ch / 2 / this.cam.scale;
     this.cam.x = W.pixelW < halfW * 2 ? W.pixelW / 2 : Math.max(halfW - 60, Math.min(W.pixelW - halfW + 60, this.cam.x));
@@ -117,20 +84,23 @@ PB.Renderer = class {
     const r0 = Math.max(-1, Math.floor(vy0 / T)), r1 = Math.min(W.h, Math.ceil(vy1 / T));
     const inView = (x, y, m) => x > vx0 - m && x < vx1 + m && y > vy0 - m && y < vy1 + m;
 
+    // bosque de fuera del mapa
+    for (let r = r0 - 1; r <= r1; r++) for (let c = c0 - 1; c <= c1; c++) {
+      if (c >= 0 && r >= 0 && c < W.w && r < W.h) continue;
+      PB.Tiles.draw(ctx, PB.Tiles.outsideFloor(c, r), c * T, r * T);
+    }
     ctx.drawImage(this.floor, 0, 0);
-    ctx.fillStyle = '#1f4a2c';
-    ctx.fillRect(-400, -400, W.pixelW + 800, 400);
-    ctx.fillRect(-400, W.pixelH, W.pixelW + 800, 400);
-    ctx.fillRect(-400, 0, 400, W.pixelH);
-    ctx.fillRect(W.pixelW, 0, 400, W.pixelH);
 
     // brillo del agua
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
     for (let r = r0; r < r1; r++) for (let c = c0; c < c1; c++) {
       if (W.tile(c, r) !== '~') continue;
-      const o = Math.sin(t * 2 + c + r) * 6;
-      ctx.fillRect(c * T + 14 + o, r * T + 22, 14, 3);
-      ctx.fillRect(c * T + 34 - o, r * T + 42, 12, 3);
+      const ph = (t * 0.8 + PB.Tiles.H(c, r, 5) * 10) % 3;
+      if (ph < 1) {
+        const gx = c * T + 16 + Math.floor(PB.Tiles.H(c, r, 6) * 8) * 4, gy = r * T + 20 + Math.floor(PB.Tiles.H(c, r, 7) * 6) * 4;
+        const w = ph < 0.5 ? 12 : 4;
+        ctx.fillRect(gx - w / 2 + 8, gy, w, 4);
+      }
     }
 
     // botón de la plataforma central que se ilumina al soltar una Pokéball
@@ -153,8 +123,10 @@ PB.Renderer = class {
 
     // objetos ordenados por Y
     const items = [];
-    for (let r = r0; r < r1; r++) for (let c = c0; c < c1; c++) {
-      if (W.tile(c, r) === '#') items.push({ k: 'wall', y: r * T + T, c, r });
+    for (let r = r0 - 1; r <= r1 + 1; r++) for (let c = c0 - 1; c <= c1; c++) {
+      const tt = W.tile(c, r);
+      if (tt === '#' || tt === 'T') items.push({ k: 'wall', y: r * T + T, c, r, tt });
+      else if (tt === 'X' && PB.Tiles.H(c, r, 9) < 0.85) items.push({ k: 'wall', y: r * T + T, c, r, tt: 'B' });
     }
     for (const b of game.brawlers) {
       if (b.dead || !game.visibleTo(b, team)) continue;
@@ -166,7 +138,7 @@ PB.Renderer = class {
     }
     items.sort((a, b) => a.y - b.y);
     for (const it of items) {
-      if (it.k === 'wall') this.drawWall(it.c, it.r);
+      if (it.k === 'wall') this.drawWall(it.c, it.r, it.tt);
       else if (it.k === 'ball') this.drawBall(it.g);
       else if (it.k === 'b') this.drawBrawler(it.b, game, team);
       else if (it.k === 'faint') this.drawFaint(it.f);
@@ -182,7 +154,11 @@ PB.Renderer = class {
       if (W.tile(c, r) !== 'b') continue;
       const cx = c * T + T / 2, cy = r * T + T / 2;
       const near = focus && !focus.dead && Math.hypot(focus.x - cx, focus.y - cy) < 110;
-      this.drawBush(c, r, near ? 0.45 : 1, t);
+      let rustle = false;
+      for (const b of game.brawlers) {
+        if (!b.dead && b.moving && Math.abs(b.x - cx) < 40 && Math.abs(b.y - cy) < 40) rustle = true;
+      }
+      this.drawBush(c, r, near ? 0.5 : 1, t, rustle);
     }
     // aliados dentro de arbustos se ven en semitransparente
     for (const b of game.brawlers) {
@@ -254,7 +230,7 @@ PB.Renderer = class {
       const k = f.t / f.life;
       const pop = k < 0.15 ? 0.6 + (k / 0.15) * 0.7 : 1.3 - Math.min(0.3, (k - 0.15) * 1.5);
       ctx.globalAlpha = 1 - k * k;
-      ctx.font = `${Math.round(f.size * pop)}px "Lilita One", system-ui, sans-serif`;
+      ctx.font = `${Math.round(f.size * pop)}px "Pixelify Sans", system-ui, sans-serif`;
       ctx.lineWidth = 5;
       ctx.lineJoin = 'round';
       ctx.strokeStyle = '#000';
@@ -286,39 +262,28 @@ PB.Renderer = class {
     return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
   }
 
-  drawWall(c, r) {
-    const ctx = this.ctx, T = PB.TILE, x = c * T, y = r * T, h = 20;
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(x + 4, y + T - 4, T, 10);
-    ctx.fillStyle = '#8a5a34';
-    ctx.fillRect(x, y + T - h, T, h);
-    ctx.fillStyle = '#c98a4b';
-    ctx.fillRect(x, y - h, T, T);
-    ctx.fillStyle = '#dca062';
-    ctx.fillRect(x + 4, y - h + 4, T - 8, T - 8);
-    ctx.fillStyle = 'rgba(120,70,30,0.5)';
-    ctx.fillRect(x + 4, y - h + T / 2 - 2, T - 8, 3);
-    ctx.fillRect(x + T / 2 - 1, y - h + 4, 3, T / 2 - 4);
+  // Rocas, árboles del mapa y árboles del bosque de fuera (tt = 'B')
+  drawWall(c, r, tt) {
+    const ctx = this.ctx, T = PB.TILE, x = c * T, y = r * T;
+    const v = Math.floor(PB.Tiles.H(c, r, 3) * 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath();
+    ctx.ellipse(x + T / 2 + 4, y + T - 6, tt === '#' ? 30 : 34, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (tt === '#') PB.Tiles.draw(ctx, PB.Tiles.rock(v), x, y + T - 80);
+    else {
+      const jx = tt === 'B' ? (PB.Tiles.H(c, r, 4) - 0.5) * 24 : 0;
+      PB.Tiles.draw(ctx, PB.Tiles.tree(v), x - 8 + jx, y + T - 128);
+    }
   }
 
-  drawBush(c, r, alpha, t) {
-    const ctx = this.ctx, T = PB.TILE, x = c * T, y = r * T;
-    const sway = Math.sin(t * 1.5 + c * 0.7 + r) * 1.5;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = '#2f8f3a';
-    ctx.fillRect(x, y - 10, T, T + 4);
-    ctx.fillStyle = '#3fae48';
-    for (const [ox, oy, rr] of [[16, 6, 18], [46, 4, 18], [30, 24, 20], [12, 40, 16], [50, 40, 16]]) {
-      ctx.beginPath();
-      ctx.arc(x + ox + sway * (oy < 20 ? 1 : 0.4), y + oy - 6, rr, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#5cc964';
-    ctx.beginPath();
-    ctx.arc(x + 22 + sway, y - 6, 6, 0, Math.PI * 2);
-    ctx.arc(x + 44 + sway * 0.5, y + 14, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
+  // Hierba alta: la de los Pokémon salvajes. Se mece y se sacude si alguien pasa por dentro.
+  drawBush(c, r, alpha, t, rustle) {
+    const T = PB.TILE;
+    const frame = rustle ? (Math.floor(t * 10) % 2 ? 2 : 1) : Math.floor(t * 1.2 + PB.Tiles.H(c, r, 8) * 2) % 2;
+    this.ctx.globalAlpha = alpha;
+    PB.Tiles.draw(this.ctx, PB.Tiles.tallGrass(frame), c * T, r * T - 24);
+    this.ctx.globalAlpha = 1;
   }
 
   drawBall(g) {
@@ -519,7 +484,7 @@ PB.Renderer = class {
     const mine = b.team === team;
     const isMe = b === focus && b.isPlayer;
     ctx.textAlign = 'center';
-    ctx.font = '13px "Lilita One", system-ui, sans-serif';
+    ctx.font = '13px "Pixelify Sans", system-ui, sans-serif';
     ctx.lineWidth = 4;
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#000';
@@ -534,7 +499,7 @@ PB.Renderer = class {
     ctx.fillRect(x - w / 2, y, w * hpk, 9);
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
     ctx.fillRect(x - w / 2, y, w * hpk, 3);
-    ctx.font = 'bold 10px system-ui, sans-serif';
+    ctx.font = '700 11px "Pixelify Sans", system-ui, sans-serif';
     ctx.lineWidth = 3;
     ctx.strokeText(Math.ceil(b.hp), x, y + 9);
     ctx.fillStyle = '#fff';
@@ -555,7 +520,7 @@ PB.Renderer = class {
       const bx = x - ((n - 1) * 13) / 2;
       for (let i = 0; i < n; i++) PB.Pokeball.draw(ctx, bx + i * 13, y - 34, 1, {});
       if (b.balls > 5 || b.balls > 1) {
-        ctx.font = '15px "Lilita One", system-ui, sans-serif';
+        ctx.font = '15px "Pixelify Sans", system-ui, sans-serif';
         ctx.lineWidth = 4;
         ctx.strokeText('×' + b.balls, x + (n * 13) / 2 + 14, y - 28);
         ctx.fillStyle = '#fff';
@@ -655,7 +620,7 @@ PB.Renderer = class {
   outlined(text, x, y, size, color, align) {
     const ctx = this.ctx;
     ctx.textAlign = align || 'center';
-    ctx.font = `${size}px "Lilita One", system-ui, sans-serif`;
+    ctx.font = `${size}px "Pixelify Sans", system-ui, sans-serif`;
     ctx.lineJoin = 'round';
     ctx.lineWidth = Math.max(3, size / 7);
     ctx.strokeStyle = '#0c1020';
@@ -712,7 +677,7 @@ PB.Renderer = class {
     }
 
     // registro de K.O.
-    ctx.font = '14px "Lilita One", system-ui, sans-serif';
+    ctx.font = '14px "Pixelify Sans", system-ui, sans-serif';
     game.feed.forEach((f, i) => {
       const age = game.time - f.t;
       if (age > 5) return;
@@ -781,11 +746,11 @@ PB.Renderer = class {
     ctx.stroke();
     PB.VFX.draw(ctx, 'bolt', 'electric', x, y - 6, { scale: 1.3, angle: -Math.PI / 2.4, alpha: ready ? 1 : 0.5 });
     ctx.textAlign = 'center';
-    ctx.font = '13px "Lilita One", system-ui, sans-serif';
+    ctx.font = '13px "Pixelify Sans", system-ui, sans-serif';
     ctx.fillStyle = ready ? '#3a2500' : '#ffd23a';
     ctx.fillText('SÚPER', x, y + 18);
     if (label) {
-      ctx.font = '11px system-ui, sans-serif';
+      ctx.font = '11px "Pixelify Sans", system-ui, sans-serif';
       ctx.fillText(label, x, y + r + 14);
     }
   }

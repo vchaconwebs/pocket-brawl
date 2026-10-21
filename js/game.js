@@ -474,11 +474,13 @@ PB.Game = class {
   breakWalls(x, y, radius) {
     const broken = this.world.destroyAround(x, y, radius);
     for (const w of broken) {
+      const cols = w.kind === 'T' ? ['#2f8a3e', '#48a850', '#6a4428'] : ['#5c6672', '#9ca8b4', '#7c8894'];
       for (let i = 0; i < 12; i++) {
         const a = Math.random() * Math.PI * 2, s = 60 + Math.random() * 220;
-        this.px(w.x, w.y, ['#c98a4b', '#8a5a34', '#dca062'][i % 3], { vx: Math.cos(a) * s, vy: Math.sin(a) * s, z: 20, vz: 200 + Math.random() * 250, life: 0.9, size: 7 });
+        this.px(w.x, w.y, cols[i % 3], { vx: Math.cos(a) * s, vy: Math.sin(a) * s, z: 20, vz: 200 + Math.random() * 250, life: 0.9, size: 7 });
       }
-      this.px(w.x, w.y, 'rgba(220,200,170,0.6)', { speed: 20, life: 0.8, size: 40, grow: 1.5 });
+      if (w.kind === 'T') for (let i = 0; i < 5; i++) this.vfx('leaf', 'grass', w.x, w.y - 40, { vx: (Math.random() - 0.5) * 160, vy: -40 - Math.random() * 60, life: 0.9, spin: 6, scale: 1, fade: true });
+      this.px(w.x, w.y, 'rgba(220,220,210,0.6)', { speed: 20, life: 0.8, size: 40, grow: 1.5 });
     }
     if (broken.length) this.events.push({ type: 'wall' });
     return broken;

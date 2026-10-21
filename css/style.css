@@ -1,3 +1,9 @@
+@font-face {
+  font-family: 'Pixelify Sans';
+  src: url('../assets/fonts/PixelifySans.ttf') format('truetype');
+  font-weight: 400 700;
+  font-display: block;
+}
 * { box-sizing: border-box; }
 html, body {
   margin: 0;
@@ -5,7 +11,7 @@ html, body {
   overflow: hidden;
   background: #1b2a4a;
   color: #fff;
-  font-family: 'Lilita One', system-ui, sans-serif;
+  font-family: 'Pixelify Sans', system-ui, sans-serif;
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -47,7 +53,7 @@ h1 span { color: #ffcf2e; margin-left: 10px; }
 h1.win { color: #ffcf2e; }
 h1.lose { color: #ff6b6b; }
 
-.mode { margin: 0 0 14px; color: #bcd0ff; font-family: system-ui, sans-serif; font-size: 14px; }
+.mode { margin: 0 0 14px; color: #bcd0ff; font-family: 'Pixelify Sans', system-ui, sans-serif; font-size: 14px; }
 
 #roster {
   display: grid;
@@ -82,7 +88,7 @@ h1.lose { color: #ff6b6b; }
 .types { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; }
 .types i {
   font-style: normal;
-  font-family: system-ui, sans-serif;
+  font-family: 'Pixelify Sans', system-ui, sans-serif;
   font-weight: 700;
   font-size: 10px;
   color: #fff;
@@ -97,9 +103,9 @@ h1.lose { color: #ff6b6b; }
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.25);
   text-align: left;
-  font-family: system-ui, sans-serif;
+  font-family: 'Pixelify Sans', system-ui, sans-serif;
 }
-#info h3 { margin: 0 0 4px; font-family: 'Lilita One', system-ui, sans-serif; font-weight: 400; font-size: 22px; }
+#info h3 { margin: 0 0 4px; font-family: 'Pixelify Sans', system-ui, sans-serif; font-weight: 400; font-size: 22px; }
 #info h3 small { font-size: 14px; color: #ffcf2e; margin-left: 6px; }
 #info p { margin: 4px 0; font-size: 14px; color: #dfe7ff; }
 .stats { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: #fff; margin: 6px 0; }
@@ -118,10 +124,10 @@ button { font: inherit; cursor: pointer; }
 #back { font-size: 18px; background: linear-gradient(#9fb6ef, #6f8bd6); color: #0c1838; }
 .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
 
-.legal { margin: 14px 0 0; font-family: system-ui, sans-serif; font-size: 11px; color: #9fb0d8; line-height: 1.5; }
+.legal { margin: 14px 0 0; font-family: 'Pixelify Sans', system-ui, sans-serif; font-size: 11px; color: #9fb0d8; line-height: 1.5; }
 .legal a { color: #cfdcff; }
 
-#scores { width: 100%; border-collapse: collapse; margin-top: 12px; font-family: system-ui, sans-serif; font-size: 14px; }
+#scores { width: 100%; border-collapse: collapse; margin-top: 12px; font-family: 'Pixelify Sans', system-ui, sans-serif; font-size: 14px; }
 #scores th { font-weight: 600; color: #9fb0d8; padding: 4px; }
 #scores td { padding: 6px 4px; }
 #scores td:first-child { text-align: left; }
@@ -143,7 +149,7 @@ button { font: inherit; cursor: pointer; }
   padding: 8px 14px;
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.55);
-  font-family: system-ui, sans-serif;
+  font-family: 'Pixelify Sans', system-ui, sans-serif;
   font-size: 12px;
   line-height: 1.5;
   text-align: center;
@@ -214,7 +220,7 @@ button { font: inherit; cursor: pointer; }
 }
 
 /* Selector de dificultad */
-#difficulty { display: flex; gap: 8px; justify-content: center; align-items: center; margin: 0 0 14px; font-family: system-ui, sans-serif; font-size: 13px; color: #bcd0ff; }
+#difficulty { display: flex; gap: 8px; justify-content: center; align-items: center; margin: 0 0 14px; font-family: 'Pixelify Sans', system-ui, sans-serif; font-size: 13px; color: #bcd0ff; }
 .diff {
   color: #dfe7ff;
   font-size: 15px;

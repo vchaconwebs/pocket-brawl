@@ -34,12 +34,12 @@ PB.World = class {
 
   solidAt(c, r) {
     const t = this.tile(c, r);
-    return t === '#' || t === 'X' || t === '~';
+    return t === '#' || t === 'T' || t === 'X' || t === '~';
   }
 
   blocksShotAt(c, r) {
     const t = this.tile(c, r);
-    return t === '#' || t === 'X';
+    return t === '#' || t === 'T' || t === 'X';
   }
 
   isBushAt(x, y) {
@@ -58,11 +58,12 @@ PB.World = class {
     const r0 = Math.floor((y - radius) / T), r1 = Math.floor((y + radius) / T);
     for (let r = r0; r <= r1; r++) {
       for (let c = c0; c <= c1; c++) {
-        if (this.tile(c, r) !== '#') continue;
+        const t = this.tile(c, r);
+        if (t !== '#' && t !== 'T') continue;
         const cx = c * T + T / 2, cy = r * T + T / 2;
         if (Math.hypot(cx - x, cy - y) <= radius + T * 0.35) {
           this.tiles[r][c] = '.';
-          broken.push({ x: cx, y: cy });
+          broken.push({ x: cx, y: cy, kind: t });
         }
       }
     }
