@@ -77,6 +77,14 @@ PB.Audio = {
       case 'count': this.tone(660, 0, 0.15, 'square', 0.2); break;
       case 'go': this.tone(1320, 0, 0.35, 'square', 0.22); this.tone(400, 1600, 0.25, 'sine', 0.15); break;
       case 'tick': this.tone(880, 0, 0.08, 'square', 0.15); break;
+      case 'candy': [660, 880, 1320].forEach((f, i) => this.tone(f, 0, 0.09, 'square', 0.15, i * 0.05)); break;
+      case 'gas': this.tone(200, 120, 0.8, 'sawtooth', 0.12); this.noise(0.8, 0.15, 500); break;
+      case 'thump': this.tone(110, 60, 0.15, 'sine', 0.35); break;
+      case 'kick': this.tone(320, 140, 0.1, 'square', 0.25); this.noise(0.08, 0.2, 2000); break;
+      case 'goal':
+        [523, 659, 784, 1046, 1318].forEach((f, i) => this.tone(f, 0, 0.18, 'square', 0.2, i * 0.08));
+        this.noise(0.8, 0.12, 3000);
+        break;
       case 'win':
         [523, 659, 784, 1046].forEach((f, i) => this.tone(f, 0, 0.25, 'square', 0.2, i * 0.13));
         break;

@@ -48,12 +48,12 @@ PB.Renderer = class {
     const c = cv.getContext('2d');
     c.imageSmoothingEnabled = false;
     c.drawImage(art, 0, 0, cv.width, cv.height);
-    PB.Pokeball.drawPad(c, world.mine.x, world.mine.y, 46);
     this.floor = cv;
     this.floorFor = world;
   }
 
   draw(game, view) {
+    this.game = game;
     const ctx = this.ctx, T = PB.TILE, W = game.world;
     if (this.floorFor !== W || !this.floor) this.buildFloor(W);
     const focus = view.focus;
@@ -104,13 +104,18 @@ PB.Renderer = class {
     }
 
     // botón de la plataforma central que se ilumina al soltar una Pokéball
-    const m = W.mine;
-    const glow = 0.35 + Math.sin(t * 3) * 0.15 + game.padGlow;
-    ctx.fillStyle = `rgba(255,250,200,${Math.min(1, glow)})`;
-    ctx.beginPath();
-    ctx.arc(m.x, m.y, 11, 0, Math.PI * 2);
-    ctx.fill();
-    if (game.padGlow > 0) this.glow(m.x, m.y, 70 * game.padGlow + 20, 'rgba(255,255,220,0.8)');
+    if (W.hasMine) {
+      const m = W.mine;
+      const glow = 0.25 + Math.sin(t * 3) * 0.15 + game.padGlow;
+      ctx.fillStyle = `rgba(255,250,200,${Math.min(1, glow)})`;
+      ctx.fillRect(m.x - 8, m.y - 8, 16, 16);
+      ctx.fillRect(m.x - 4, m.y - 12, 8, 24);
+      ctx.fillRect(m.x - 12, m.y - 4, 24, 8);
+      if (game.padGlow > 0) this.glow(m.x, m.y, 70 * game.padGlow + 20, 'rgba(255,255,220,0.8)');
+    }
+
+    // zona de Territorio
+    if (game.zone) this.drawHotZone(game.zone, t, team);
 
     // grietas del suelo (Magnitud)
     for (const f of game.fx) if (f.kind === 'crack') this.drawCrack(f);
@@ -125,7 +130,7 @@ PB.Renderer = class {
     const items = [];
     for (let r = r0 - 1; r <= r1 + 1; r++) for (let c = c0 - 1; c <= c1; c++) {
       const tt = W.tile(c, r);
-      if (tt === '#' || tt === 'T') items.push({ k: 'wall', y: r * T + T, c, r, tt });
+      if (tt === '#' || tt === 'T' || tt === 'C') items.push({ k: 'wall', y: r * T + T, c, r, tt });
       else if (tt === 'X' && PB.Tiles.H(c, r, 9) < 0.85) items.push({ k: 'wall', y: r * T + T, c, r, tt: 'B' });
     }
     for (const b of game.brawlers) {
@@ -133,6 +138,8 @@ PB.Renderer = class {
       items.push({ k: 'b', y: b.y, b });
     }
     for (const g of game.balls) if (inView(g.x, g.y, 40)) items.push({ k: 'ball', y: g.y, g });
+    for (const st of game.structures) items.push({ k: 'struct', y: st.y, st });
+    if (game.voltorb) items.push({ k: 'voltorb', y: game.voltorb.y + 1, v: game.voltorb });
     for (const f of game.fx) {
       if (f.kind === 'faint' || f.kind === 'release' || f.kind === 'ghost') items.push({ k: f.kind, y: f.y, f });
     }
@@ -144,6 +151,8 @@ PB.Renderer = class {
       else if (it.k === 'faint') this.drawFaint(it.f);
       else if (it.k === 'release') this.drawRelease(it.f);
       else if (it.k === 'ghost') this.drawGhost(it.f);
+      else if (it.k === 'struct') this.drawSnorlax(it.st, game, team);
+      else if (it.k === 'voltorb') this.drawVoltorb(it.v, game);
     }
 
     // proyectiles
@@ -167,6 +176,9 @@ PB.Renderer = class {
       this.drawBrawler(b, game, team, true);
       ctx.globalAlpha = 1;
     }
+
+    // niebla venenosa (Niebla Tóxica)
+    if (game.gas) this.drawGas(game.gas, t, W);
 
     // efectos
     for (const f of game.fx) {
@@ -271,7 +283,17 @@ PB.Renderer = class {
     ctx.ellipse(x + T / 2 + 4, y + T - 6, tt === '#' ? 30 : 34, 11, 0, 0, Math.PI * 2);
     ctx.fill();
     if (tt === '#') PB.Tiles.draw(ctx, PB.Tiles.rock(v), x, y + T - 80);
-    else {
+    else if (tt === 'C') {
+      const W = this.game.world, hp = W.crateHp.get(r * W.w + c) || 0;
+      const hit = this.game.fx.some((f) => f.kind === 'crateHit' && f.c === c && f.r === r);
+      PB.Tiles.draw(ctx, PB.Tiles.crate(0), x + (hit ? (Math.random() - 0.5) * 6 : 0), y + T - 80);
+      if (hp < 3000) {
+        ctx.fillStyle = '#111';
+        ctx.fillRect(x + 6, y - 26, T - 12, 8);
+        ctx.fillStyle = '#ffd23a';
+        ctx.fillRect(x + 8, y - 24, ((T - 16) * hp) / 3000, 4);
+      }
+    } else {
       const jx = tt === 'B' ? (PB.Tiles.H(c, r, 4) - 0.5) * 24 : 0;
       PB.Tiles.draw(ctx, PB.Tiles.tree(v), x - 8 + jx, y + T - 128);
     }
@@ -286,8 +308,124 @@ PB.Renderer = class {
     this.ctx.globalAlpha = 1;
   }
 
+  // Snorlax dormido (Despierta a Snorlax)
+  drawSnorlax(st, game, team) {
+    const ctx = this.ctx, t = game.clock;
+    const mine = st.team === team;
+    const col = mine ? '#3d8bff' : '#ff4d4d';
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(st.x, st.y + 14, 62, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(st.x, st.y + 14, 66, 22, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    if (st.hp <= 0) {
+      PB.Sprites.draw(ctx, '0143', 'Hurt', Math.PI / 2, t, st.x, st.y + 6, 3, 0);
+    } else if (st.flashT > 0) {
+      PB.Sprites.drawTint(ctx, '0143', 'Sleep', 0, t, st.x, st.y + 10, 3.2, 0, '#ffffff', 0.85);
+    } else {
+      const breathe = 3.2 + Math.sin(t * 2) * 0.06;
+      PB.Sprites.draw(ctx, '0143', 'Sleep', 0, t, st.x, st.y + 10, breathe, 0);
+    }
+    // "Z z z" del sueño
+    if (st.hp > 0) {
+      for (let i = 0; i < 3; i++) {
+        const k = (t * 0.5 + i / 3) % 1;
+        ctx.globalAlpha = 1 - k;
+        this.outlined('Z', st.x + 30 + k * 26, st.y - 40 - k * 50, Math.round(12 + k * 10), '#ffffff');
+        ctx.globalAlpha = 1;
+      }
+    }
+    // barra de vida grande
+    const w = 110, y = st.y - 92;
+    ctx.fillStyle = '#111';
+    ctx.fillRect(st.x - w / 2 - 3, y - 3, w + 6, 16);
+    ctx.fillStyle = col;
+    ctx.fillRect(st.x - w / 2, y, (w * st.hp) / st.maxHp, 10);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(st.x - w / 2, y, (w * st.hp) / st.maxHp, 3);
+    this.outlined(String(Math.ceil(st.hp)), st.x, y + 10, 12, '#ffffff');
+  }
+
+  // Voltorb (Voltorbol)
+  drawVoltorb(v, game) {
+    const ctx = this.ctx, t = game.clock;
+    const sh = Math.max(0.4, 1 - v.z / 200);
+    ctx.fillStyle = `rgba(0,0,0,${0.3 * sh})`;
+    ctx.beginPath();
+    ctx.ellipse(v.x, v.y + 4, 18 * sh, 7 * sh, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const moving = v.carrier || Math.hypot(v.vx, v.vy) > 20;
+    const ang = v.carrier ? v.carrier.facing : Math.atan2(v.vy, v.vx);
+    const danger = v.holdT > 6;
+    if (danger && Math.floor(t * (v.holdT > 8.5 ? 16 : 8)) % 2) {
+      PB.Sprites.drawTint(ctx, '0100', moving ? 'Walk' : 'Idle', ang, v.spin, v.x, v.y - v.z + 2, 2, 0, '#ff3020', 0.7);
+      this.glow(v.x, v.y - v.z - 8, 40, 'rgba(255,60,30,0.5)');
+    } else {
+      PB.Sprites.draw(ctx, '0100', moving ? 'Walk' : 'Idle', ang, v.spin, v.x, v.y - v.z + 2, 2, 0);
+    }
+    if (!v.carrier) this.glow(v.x, v.y - v.z - 8, 26, 'rgba(255,255,160,0.25)');
+  }
+
+  // Zona de Territorio
+  drawHotZone(z, t, team) {
+    const ctx = this.ctx;
+    const col = z.owner === 'contested' ? '255,210,40' : z.owner ? (z.owner === team ? '70,150,255' : '255,80,80') : '255,255,255';
+    ctx.fillStyle = `rgba(${col},${0.16 + Math.sin(t * 4) * 0.04})`;
+    ctx.beginPath();
+    ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(${col},0.9)`;
+    ctx.lineWidth = 6;
+    ctx.setLineDash([16, 12]);
+    ctx.lineDashOffset = -t * 20;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // bandera pixel en el centro
+    ctx.fillStyle = '#4a3420';
+    ctx.fillRect(z.x - 2, z.y - 56, 4, 56);
+    ctx.fillStyle = `rgb(${col})`;
+    const wave = Math.floor(t * 4) % 2 ? 2 : 0;
+    ctx.fillRect(z.x + 2, z.y - 56 + wave, 28, 16);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(z.x + 2, z.y - 44 + wave, 28, 4);
+  }
+
+  // Niebla venenosa: todo lo que queda fuera del círculo seguro
+  drawGas(gas, t, W) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-600, -600, W.pixelW + 1200, W.pixelH + 1200);
+    ctx.arc(gas.x, gas.y, Math.max(1, gas.r), 0, Math.PI * 2, true);
+    ctx.fillStyle = `rgba(110,40,150,${0.38 + Math.sin(t * 2) * 0.04})`;
+    ctx.fill('evenodd');
+    ctx.strokeStyle = 'rgba(190,110,240,0.8)';
+    ctx.lineWidth = 8;
+    ctx.setLineDash([20, 14]);
+    ctx.lineDashOffset = t * 25;
+    ctx.beginPath();
+    ctx.arc(gas.x, gas.y, Math.max(1, gas.r), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   drawBall(g) {
     const ctx = this.ctx;
+    if (g.kind === 'candy') {
+      const sh = Math.max(0.4, 1 - g.z / 200);
+      ctx.fillStyle = `rgba(0,0,0,${0.3 * sh})`;
+      ctx.beginPath();
+      ctx.ellipse(g.x, g.y + 2, 12 * sh, 4 * sh, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const y = g.y - 14 - g.z + (g.z > 0 ? 0 : Math.sin(this.ctxTime(g) * 4) * 2);
+      if (g.z <= 0) this.glow(g.x, y, 24, 'rgba(120,180,255,0.4)');
+      ctx.drawImage(PB.Tiles.candy(), g.x - 18, y - 12, 36, 24);
+      return;
+    }
     const sh = Math.max(0.4, 1 - g.z / 200);
     ctx.fillStyle = `rgba(0,0,0,${0.3 * sh})`;
     ctx.beginPath();
@@ -514,6 +652,18 @@ PB.Renderer = class {
         ctx.fillRect(x - w / 2 + i * (seg + 2), y + 13, seg * f, 6);
       }
     }
+    // Caramelos Raros (Niebla Tóxica)
+    if (b.power > 0) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(PB.Tiles.candy(), x - w / 2 - 34, y - 6, 24, 16);
+      ctx.font = '13px "Pixelify Sans", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#000';
+      ctx.strokeText(b.power, x - w / 2 - 10, y + 8);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(b.power, x - w / 2 - 10, y + 8);
+    }
     // Pokéballs que lleva encima
     if (b.balls > 0) {
       const n = Math.min(b.balls, 5);
@@ -571,6 +721,16 @@ PB.Renderer = class {
     ctx.strokeStyle = color + Math.min(1, alpha * 2.2) + ')';
     ctx.lineWidth = 2;
     const ang = aim.ang;
+    if (!aim.isSuper && this.game && this.game.voltorb && this.game.voltorb.carrier === b) {
+      // con el Voltorb: indicador de chut
+      ctx.fillStyle = 'rgba(255,240,120,' + (aim.strong ? 0.4 : 0.2) + ')';
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(ang);
+      ctx.fillRect(0, -10, 460, 20);
+      ctx.restore();
+      return;
+    }
     if (a.kind === 'spread' || a.kind === 'burst') {
       const half = Math.max(a.spread || 0, 0.12) / 2 + 0.05;
       if ((a.count || 1) > 1) {
@@ -633,8 +793,8 @@ PB.Renderer = class {
     const ctx = this.ctx, W = this.cw, H = this.ch;
     const team = view.team;
     const foe = team === 'blue' ? 'red' : 'blue';
-    const mine = game.teamBalls(team), theirs = game.teamBalls(foe);
     const me = view.player;
+    void foe;
 
     // viñeta roja con poca vida
     if (me && !me.dead && me.hp / me.maxHp < 0.35) {
@@ -646,35 +806,8 @@ PB.Renderer = class {
       ctx.fillRect(0, 0, W, H);
     }
 
-    // marcador: 10 huecos de Pokéball por equipo
-    const R = game.rules.ballsToWin;
-    const px = W < 600 ? 1 : 1.2;
-    const slot = 15 * px + 2;
-    const panelW = slot * R + 70;
-    const cx = W / 2;
-    const rowY = (i) => 22 + i * 24;
-    ctx.fillStyle = 'rgba(10,15,40,0.55)';
-    this.roundRect(cx - panelW / 2, 6, panelW, 58, 14);
-    ctx.fill();
-    for (const [i, tm, n, col] of [[0, team, mine, '#5aa8ff'], [1, foe, theirs, '#ff5f5f']]) {
-      const y = rowY(i);
-      this.outlined(String(n), cx - panelW / 2 + 22, y + 8, 22, col);
-      for (let s = 0; s < R; s++) {
-        const x = cx - panelW / 2 + 46 + s * slot + slot / 2;
-        if (s < n) PB.Pokeball.draw(ctx, x, y + 1, px, {});
-        else PB.Pokeball.drawSlot(ctx, x, y + 1, px);
-      }
-      void tm;
-    }
-    const left = Math.max(0, game.rules.matchTime - game.time);
-    this.outlined(Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0'), cx, 82, 15, '#ffffff');
-
-    if (game.countdown) {
-      const ours = game.countdown.team === team;
-      const pulse = 1 + Math.max(0, (game.countdown.t % 1) - 0.7) * 0.8;
-      this.outlined(String(Math.ceil(game.countdown.t)), cx, 130, Math.round(44 * pulse), ours ? '#5aa8ff' : '#ff5f5f');
-      this.outlined(ours ? '¡Aguantad las Pokéballs!' : '¡Quitadles las Pokéballs!', cx, 154, 16, '#ffffff');
-    }
+    // marcador del modo
+    this.drawModeHud(game, view);
 
     // registro de K.O.
     ctx.font = '14px "Pixelify Sans", system-ui, sans-serif';
@@ -724,6 +857,95 @@ PB.Renderer = class {
       }
       if (view.touch) this.drawTouch(view, me, game);
       else this.drawDesktopSuper(me, game);
+    }
+  }
+
+  // Panel de arriba según el modo
+  drawModeHud(game, view) {
+    const ctx = this.ctx, W = this.cw;
+    const team = view.team;
+    const foe = team === 'blue' ? 'red' : 'blue';
+    const cx = W / 2;
+    const id = game.mode.id;
+    const panel = (w, h) => {
+      ctx.fillStyle = 'rgba(10,15,40,0.55)';
+      this.roundRect(cx - w / 2, 6, w, h, 14);
+      ctx.fill();
+    };
+    const clock = (y) => {
+      const left = Math.max(0, game.rules.matchTime - game.time);
+      this.outlined(Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0'), cx, y, 15, '#ffffff');
+    };
+    // barra doble (Snorlax, Territorio)
+    const bars = (label, mineK, theirsK, txtMine, txtTheirs) => {
+      const w = Math.min(380, W - 140);
+      panel(w + 30, 62);
+      this.outlined(label, cx, 24, 13, '#ffffff');
+      const bw = w / 2 - 10;
+      for (const [k, x, col, txt, flip] of [[mineK, cx - 6 - bw, '#3d8bff', txtMine, true], [theirsK, cx + 6, '#ff4d4d', txtTheirs, false]]) {
+        ctx.fillStyle = '#111';
+        ctx.fillRect(x - 2, 32, bw + 4, 18);
+        ctx.fillStyle = col;
+        const fw = bw * Math.max(0, Math.min(1, k));
+        ctx.fillRect(flip ? x + bw - fw : x, 34, fw, 14);
+        this.outlined(txt, x + bw / 2, 47, 14, '#ffffff');
+      }
+    };
+
+    if (id === 'gems') {
+      const mine = game.teamBalls(team), theirs = game.teamBalls(foe);
+      const R = game.rules.ballsToWin;
+      const px = W < 600 ? 1 : 1.2;
+      const slot = 15 * px + 2;
+      const panelW = slot * R + 70;
+      panel(panelW, 58);
+      [[0, mine, '#5aa8ff'], [1, theirs, '#ff5f5f']].forEach(([i, n, col]) => {
+        const y = 22 + i * 24;
+        this.outlined(String(n), cx - panelW / 2 + 22, y + 8, 22, col);
+        for (let s2 = 0; s2 < R; s2++) {
+          const x = cx - panelW / 2 + 46 + s2 * slot + slot / 2;
+          if (s2 < n) PB.Pokeball.draw(ctx, x, y + 1, px, {});
+          else PB.Pokeball.drawSlot(ctx, x, y + 1, px);
+        }
+      });
+      clock(82);
+      if (game.countdown) {
+        const ours = game.countdown.team === team;
+        const pulse = 1 + Math.max(0, (game.countdown.t % 1) - 0.7) * 0.8;
+        this.outlined(String(Math.ceil(game.countdown.t)), cx, 130, Math.round(44 * pulse), ours ? '#5aa8ff' : '#ff5f5f');
+        this.outlined(ours ? '¡Aguantad las Pokéballs!' : '¡Quitadles las Pokéballs!', cx, 154, 16, '#ffffff');
+      }
+    } else if (id === 'showdown') {
+      const alive = game.brawlers.filter((b) => !b.dead).length;
+      panel(220, 44);
+      PB.Pokeball.draw(ctx, cx - 76, 28, 1.3, {});
+      this.outlined('Quedan ' + alive, cx + 6, 36, 20, '#ffffff');
+      const me = view.player;
+      if (me) {
+        PB.Tiles.draw(ctx, PB.Tiles.candy(), 14, 60);
+        this.outlined('×' + me.power, 74, 84, 20, '#9ad4ff', 'left');
+        if (!me.dead && Math.hypot(me.x - game.gas.x, me.y - game.gas.y) > game.gas.r) {
+          this.outlined('¡Sal de la niebla!', cx, 84, 20, Math.floor(game.clock * 4) % 2 ? '#d58cff' : '#ffffff');
+        }
+      }
+    } else if (id === 'heist') {
+      const m = game.structures.find((s2) => s2.team === team), t2 = game.structures.find((s2) => s2.team !== team);
+      bars('Snorlax', m.hp / m.maxHp, t2.hp / t2.maxHp, Math.ceil((100 * m.hp) / m.maxHp) + '%', Math.ceil((100 * t2.hp) / t2.maxHp) + '%');
+      clock(84);
+    } else if (id === 'ball') {
+      panel(200, 50);
+      this.outlined(String(game.score[team]), cx - 50, 42, 34, '#5aa8ff');
+      this.outlined('-', cx, 40, 26, '#ffffff');
+      this.outlined(String(game.score[foe]), cx + 50, 42, 34, '#ff5f5f');
+      clock(74);
+      const v = game.voltorb, me = view.player;
+      if (me && v.carrier === me) {
+        const left = Math.max(0, 10 - v.holdT);
+        this.outlined('¡Chuta! Voltorb explota en ' + left.toFixed(1) + ' s', cx, 104, 16, left < 4 ? '#ff6b4a' : '#fff36a');
+      }
+    } else if (id === 'zone') {
+      bars('Territorio', game.progress[team] / 100, game.progress[foe] / 100, Math.floor(game.progress[team]) + '%', Math.floor(game.progress[foe]) + '%');
+      clock(84);
     }
   }
 

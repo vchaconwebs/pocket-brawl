@@ -28,12 +28,112 @@ PB.MAP_TOP = [
   '..........G..........', // fila central (debe ser simétrica)
 ];
 
-PB.buildMap = function () {
-  const top = PB.MAP_TOP;
+// Mapas de cada modo. Los de equipos son la mitad de arriba y se giran 180º.
+//   K  Snorlax (Despierta a Snorlax)   O  portería (Voltorbol)   V  saque del Voltorb
+//   Z  centro de la zona (Territorio)  C  caja con Caramelo Raro  S  salida libre (Niebla Tóxica)
+PB.MAPS = {
+  gems: { top: PB.MAP_TOP },
+  heist: {
+    top: [
+      'TTbb....T...T....bbTT',
+      'Tbb.......R.......bbT',
+      'bb........P........bb',
+      '...##.....K.....##...',
+      '...#......P......#...',
+      '.....bb...P...bb.....',
+      '~~...bb..PPP..bb...~~',
+      '~~.......P.P.......~~',
+      '....##...P.P...##....',
+      '..b......P.P......b..',
+      '..bb....TPPPT....bb..',
+      '..bb.....bPb.....bb..',
+      'T.....##.bPb.##.....T',
+      'T.........P.........T',
+      '...bb.....P.....bb...',
+      '..bbb..##.P.##..bbb..',
+      '..........P..........',
+    ],
+  },
+  ball: {
+    top: [
+      'TTTT####OOOOO####TTTT',
+      'bb.................bb',
+      'bb...##.......##...bb',
+      '.....#....R....#.....',
+      '.....................',
+      '..bb.....###.....bb..',
+      '..bb.............bb..',
+      '~~.......bbb.......~~',
+      '~~.......bbb.......~~',
+      '....##.........##....',
+      '....#...........#....',
+      '.........###.........',
+      '..bbb...........bbb..',
+      '..bbb...........bbb..',
+      '.....................',
+      '.....##.......##.....',
+      '..........V..........',
+    ],
+  },
+  zone: {
+    top: [
+      'TTbb....#...#....bbTT',
+      'Tbb.......R.......bbT',
+      'bb........P........bb',
+      '....##....P....##....',
+      '....#.....P.....#....',
+      '......bbb.P.bbb......',
+      '~~....bbbPPPbbb....~~',
+      '~~.......P.P.......~~',
+      '..b..##..P.P..##..b..',
+      '..b......P.P......b..',
+      '..bb.....PPP.....bb..',
+      '..bb..#...P...#..bb..',
+      'T.....#...P...#.....T',
+      'T..bb.....P.....bb..T',
+      '...bb...........bb...',
+      '.....##.......##.....',
+      '..........Z..........',
+    ],
+  },
+  // Niebla Tóxica: cuarto superior izquierdo (la última fila y columna son los ejes)
+  showdown: {
+    quad: [
+      'TTbb.....bb..',
+      'TS...C....b..',
+      'b..##...T....',
+      'b..#...bb..C.',
+      '..C....bb....',
+      '.....T....##.',
+      '.bb..........',
+      '.bb.S..C..b..',
+      '....##...bb..',
+      '.C...#...b...',
+      '..........~~.',
+      'bb...T....~~.',
+      '.....S.......',
+    ],
+  },
+};
+
+// Mapa de equipos a partir de la mitad de arriba (girada 180º para el equipo azul)
+PB.buildMap = function (top) {
+  top = top || PB.MAP_TOP;
   const rows = top.slice();
+  const swap = { R: 'A', K: 'k', O: 'o' };
   for (let i = top.length - 2; i >= 0; i--) {
-    rows.push(top[i].split('').reverse().join('').replace(/R/g, 'A'));
+    rows.push(top[i].split('').reverse().map((ch) => swap[ch] || ch).join(''));
   }
+  return PB.checkMap(rows);
+};
+
+// Mapa de todos contra todos a partir de un cuarto (espejo horizontal y vertical)
+PB.buildQuadMap = function (quad) {
+  const half = quad.map((r) => r + r.slice(0, -1).split('').reverse().join(''));
+  return PB.checkMap(half.concat(half.slice(0, -1).reverse()));
+};
+
+PB.checkMap = function (rows) {
   const w = rows[0].length;
   rows.forEach((r, i) => {
     if (r.length !== w) throw new Error('Fila ' + i + ' del mapa mide ' + r.length + ', no ' + w);

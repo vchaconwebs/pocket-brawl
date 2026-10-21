@@ -8,16 +8,20 @@
   let game = null;
   let bots = [];
   let mode = 'menu'; // 'menu' (partida de fondo entre bots) | 'play' | 'end'
-  let selected = 'charmander';
-  try {
-    const saved = localStorage.getItem('pb.brawler');
-    if (PB.brawlerById(saved)) selected = saved;
-  } catch (e) {}
-  let difficulty = 'normal';
-  try {
-    const d = localStorage.getItem('pb.difficulty');
-    if (PB.DIFFICULTY[d]) difficulty = d;
-  } catch (e) {}
+  const load = (key, ok, def) => {
+    try {
+      const v = localStorage.getItem(key);
+      return ok(v) ? v : def;
+    } catch (e) {
+      return def;
+    }
+  };
+  const save = (key, v) => {
+    try { localStorage.setItem(key, v); } catch (e) {}
+  };
+  let selected = load('pb.brawler', (v) => PB.brawlerById(v), 'charmander');
+  let difficulty = load('pb.difficulty', (v) => PB.DIFFICULTY[v], 'normal');
+  let gameMode = load('pb.mode', (v) => PB.MODES[v], 'gems');
   let endTimer = 0;
   let spectate = 0;
 
@@ -31,15 +35,22 @@
 
   function newGame(playerId) {
     const ids = PB.BRAWLERS.map((b) => b.id);
-    let blue, red;
-    if (playerId) {
-      blue = [playerId, ...shuffle(ids.filter((i) => i !== playerId)).slice(0, 2)];
-      red = shuffle(ids.slice()).slice(0, 3);
+    const M = PB.MODES[gameMode];
+    const opts = { mode: gameMode, playerInBlue: !!playerId, noCountdown: !playerId };
+    if (M.ffa) {
+      const n = M.players || 10;
+      const list = [];
+      for (let i = 0; i < n; i++) list.push(ids[Math.floor(Math.random() * ids.length)]);
+      if (playerId) list[0] = playerId;
+      opts.ffa = list;
+    } else if (playerId) {
+      opts.blue = [playerId, ...shuffle(ids.filter((i) => i !== playerId)).slice(0, 2)];
+      opts.red = shuffle(ids.slice()).slice(0, 3);
     } else {
-      blue = shuffle(ids.slice()).slice(0, 3);
-      red = shuffle(ids.slice()).slice(0, 3);
+      opts.blue = shuffle(ids.slice()).slice(0, 3);
+      opts.red = shuffle(ids.slice()).slice(0, 3);
     }
-    game = new PB.Game({ blue, red, playerInBlue: !!playerId, noCountdown: !playerId });
+    game = new PB.Game(opts);
     const diff = PB.DIFFICULTY[difficulty];
     bots = game.brawlers
       .filter((b) => !b.isPlayer)
@@ -47,10 +58,54 @@
     const f = game.player || game.brawlers[0];
     renderer.cam.x = f.x;
     renderer.cam.y = f.y;
+    spectate = 0;
   }
 
   // ------------------------------------------------------------ menú
+  // Iconos de los modos (pixel art pintado al vuelo)
+  const modeIcon = (id) => {
+    if (id === 'heist') return window.SPRITE_DATA['0143'].portrait;
+    if (id === 'ball') return window.SPRITE_DATA['0100'].portrait;
+    const cv = document.createElement('canvas');
+    cv.width = 40;
+    cv.height = 40;
+    const c = cv.getContext('2d');
+    c.imageSmoothingEnabled = false;
+    c.fillStyle = { gems: '#3a7a3a', showdown: '#5a2a78', zone: '#2a4a8a' }[id] || '#333';
+    c.fillRect(0, 0, 40, 40);
+    if (id === 'gems') PB.Pokeball.draw(c, 20, 20, 2, {});
+    else if (id === 'showdown') c.drawImage(PB.Tiles.candy(), 2, 8, 36, 24);
+    else {
+      c.fillStyle = '#4a3420';
+      c.fillRect(12, 6, 3, 30);
+      c.fillStyle = '#ffd23a';
+      c.fillRect(15, 6, 16, 10);
+      c.fillStyle = '#e8a010';
+      c.fillRect(15, 13, 16, 3);
+    }
+    return cv.toDataURL();
+  };
+
   function buildMenu() {
+    // modos
+    const mz = $('#modes');
+    mz.innerHTML = '';
+    for (const id of PB.MODE_ORDER) {
+      const M = PB.MODES[id];
+      const el = document.createElement('button');
+      el.className = 'mode-btn' + (id === gameMode ? ' sel' : '');
+      el.innerHTML = `<img src="${modeIcon(id)}" alt=""><span>${M.name}</span>`;
+      el.onclick = () => {
+        gameMode = id;
+        save('pb.mode', id);
+        newGame(null);
+        buildMenu();
+      };
+      mz.appendChild(el);
+    }
+    $('#mode-desc').textContent = PB.MODES[gameMode].desc;
+
+    // luchadores
     const grid = $('#roster');
     grid.innerHTML = '';
     for (const b of PB.BRAWLERS) {
@@ -63,7 +118,7 @@
         `<span class="types">${b.types.map((t) => `<i style="background:${PB.TYPE_INFO[t].color}">${PB.TYPE_INFO[t].name}</i>`).join('')}</span>`;
       el.onclick = () => {
         selected = b.id;
-        try { localStorage.setItem('pb.brawler', selected); } catch (e) {}
+        save('pb.brawler', selected);
         buildMenu();
       };
       grid.appendChild(el);
@@ -74,6 +129,8 @@
       `<p>${b.desc}</p>` +
       `<div class="stats"><span>❤ ${b.hp}</span><span>⚡ Vel. ${b.speed}</span><span>🔄 Recarga ${b.reload}s</span></div>` +
       `<p class="moves"><b>Ataque:</b> ${b.attack.name} &nbsp; <b>Súper:</b> ${b.super.name}</p>`;
+
+    // dificultad
     const dz = $('#difficulty');
     dz.innerHTML = '<span>Bots:</span>';
     for (const [id, d] of Object.entries(PB.DIFFICULTY)) {
@@ -82,7 +139,7 @@
       el.textContent = d.name;
       el.onclick = () => {
         difficulty = id;
-        try { localStorage.setItem('pb.difficulty', id); } catch (e) {}
+        save('pb.difficulty', id);
         buildMenu();
       };
       dz.appendChild(el);
@@ -110,15 +167,18 @@
     } catch (e) {}
   }
 
+  const help = () => $('#help');
+
   function startMatch() {
     goLandscape();
     PB.Audio.init();
     newGame(selected);
     mode = 'play';
     input.enabled = true;
+    endTimer = 0;
     showScreen(null);
-    $('#help').classList.remove('hidden');
-    setTimeout(() => $('#help').classList.add('hidden'), 6000);
+    help().classList.remove('hidden');
+    setTimeout(() => help().classList.add('hidden'), 6000);
   }
 
   function toMenu() {
@@ -127,30 +187,32 @@
     newGame(null);
     buildMenu();
     showScreen('menu');
-    $('#help').classList.add('hidden');
+    help().classList.add('hidden');
   }
 
   function showEnd() {
     mode = 'end';
     input.enabled = false;
     const me = game.player;
-    const r = game.winner;
-    const won = r === 'blue', draw = r === 'draw';
-    $('#result').textContent = draw ? 'EMPATE' : won ? '¡VICTORIA!' : 'DERROTA';
-    $('#result').className = draw ? '' : won ? 'win' : 'lose';
-    const rows = game.brawlers
-      .slice()
-      .sort((a, b) => (a.team === b.team ? b.kills - a.kills : a.team === 'blue' ? -1 : 1))
-      .map((b) =>
-        `<tr class="${b.team}${b.isPlayer ? ' me' : ''}"><td>${b.name}${b.isPlayer ? ' (' + b.def.name + ')' : ''}</td>` +
-        `<td>${b.kills}</td><td>${b.deaths}</td><td>${b.ballsTaken}</td><td>${Math.round(b.dmgDone)}</td></tr>`
-      )
+    const M = game.mode;
+    const res = M.result(game, me);
+    $('#result').textContent = res.title;
+    $('#result').className = res.cls;
+    const statTxt = (b) => (M.id === 'zone' ? Math.round(b.stat) + ' s' : Math.round(b.stat));
+    let list = game.brawlers.slice();
+    if (M.ffa) list.sort((a, b) => (a.rank || 99) - (b.rank || 99) || b.kills - a.kills);
+    else list.sort((a, b) => (a.team === b.team ? b.kills - a.kills : a.team === me.team ? -1 : 1));
+    const rows = list
+      .map((b) => {
+        const cls = M.ffa ? (b.isPlayer ? 'blue me' : 'red') : b.team + (b.isPlayer ? ' me' : '');
+        const name = (M.ffa && b.rank ? '#' + b.rank + ' ' : '') + b.name + (b.isPlayer ? ' (' + b.def.name + ')' : '');
+        return `<tr class="${cls}"><td>${name}</td><td>${b.kills}</td><td>${b.deaths}</td><td>${statTxt(b)}</td><td>${Math.round(b.dmgDone)}</td></tr>`;
+      })
       .join('');
-    $('#scores').innerHTML = `<tr><th></th><th>K.O.</th><th>Muertes</th><th>Ballas</th><th>Daño</th></tr>${rows}`;
+    $('#scores').innerHTML = `<tr><th></th><th>K.O.</th><th>Caídas</th><th>${M.statName}</th><th>Daño</th></tr>${rows}`;
     showScreen('end');
-    $('#help').classList.add('hidden');
-    PB.Audio.play(won ? 'win' : 'lose');
-    void me;
+    help().classList.add('hidden');
+    PB.Audio.play(res.cls === 'win' ? 'win' : 'lose');
   }
 
   $('#play').onclick = startMatch;
@@ -171,6 +233,8 @@
 
   function handleEvents() {
     const me = game.player;
+    const myTeam = me ? me.team : 'blue';
+    const tc = (t) => (t === myTeam ? '#5aa8ff' : '#ff5f5f');
     for (const ev of game.events) {
       if (mode !== 'play') continue;
       switch (ev.type) {
@@ -179,11 +243,14 @@
         case 'shoot': if (ev.b === me || near(ev.b)) PB.Audio.play('shoot', { type: ev.atkType, me: ev.b === me }); break;
         case 'hit': if (ev.target === me || ev.source === me) PB.Audio.play('hit', { me: ev.target === me }); break;
         case 'ball': if (ev.b === me) PB.Audio.play('ball'); break;
+        case 'candy': if (ev.b === me) PB.Audio.play('candy'); break;
         case 'ballspawn': PB.Audio.play('ballspawn'); break;
         case 'ko':
           PB.Audio.play('ko');
-          if (ev.b === me) renderer.announce('¡Debilitado!', '#ff6b6b', ev.killer ? 'Te ha vencido ' + ev.killer.def.name : '', 1.4);
-          else if (ev.killer === me) renderer.announce(STREAK[Math.min(ev.streak, 4)] || '¡K.O.!', '#ffcf2e', ev.b.def.name + ' debilitado', 1.3);
+          if (ev.b === me) {
+            const sub = ev.killer && ev.killer.def ? 'Te ha vencido ' + ev.killer.def.name : '';
+            renderer.announce(game.mode.ffa ? '¡Eliminado!' : '¡Debilitado!', '#ff6b6b', sub, 1.4);
+          } else if (ev.killer === me) renderer.announce(STREAK[Math.min(ev.streak, 4)] || '¡K.O.!', '#ffcf2e', ev.b.def.name + ' debilitado', 1.3);
           break;
         case 'super': if (ev.b === me || near(ev.b)) PB.Audio.play('super'); break;
         case 'superReady': if (ev.b === me) { PB.Audio.play('ready'); if (navigator.vibrate) navigator.vibrate(30); } break;
@@ -191,14 +258,26 @@
         case 'wall': PB.Audio.play('wall'); break;
         case 'respawn': if (ev.b === me) PB.Audio.play('release'); break;
         case 'countdown':
-          renderer.announce(ev.team === 'blue' ? '¡Tenéis 10 Pokéballs!' : '¡Tienen 10 Pokéballs!', ev.team === 'blue' ? '#5aa8ff' : '#ff5f5f', ev.team === 'blue' ? 'Aguantad 15 segundos' : 'Quitádselas antes de que acabe la cuenta', 1.8);
+          renderer.announce(ev.team === myTeam ? '¡Tenéis 10 Pokéballs!' : '¡Tienen 10 Pokéballs!', tc(ev.team), ev.team === myTeam ? 'Aguantad 15 segundos' : 'Quitádselas antes de que acabe la cuenta', 1.8);
           break;
         case 'tick': PB.Audio.play('tick'); break;
-        case 'end': endTimer = 1.8; break;
+        case 'gas': PB.Audio.play('gas'); renderer.announce('¡La niebla avanza!', '#d58cff', 'Quédate dentro del círculo', 1.8); break;
+        case 'structHit': if (ev.st.team === myTeam) PB.Audio.play('thump'); break;
+        case 'snorlaxDown': renderer.announce(ev.team === myTeam ? '¡Han despertado a vuestro Snorlax!' : '¡Snorlax despierta!', tc(otherOf(ev.team)), '', 1.8); break;
+        case 'kick': if (ev.b === me || near(ev.b)) PB.Audio.play('kick'); break;
+        case 'pickBall': if (ev.b === me) PB.Audio.play('ball'); break;
+        case 'voltorbBoom': renderer.announce('¡BOOM!', '#ff6b4a', 'El Voltorb ha explotado', 1.2); break;
+        case 'goal':
+          PB.Audio.play('goal');
+          renderer.announce('¡GOOOL!', tc(ev.team), (ev.by ? ev.by.name : '') + ' · ' + game.score[myTeam] + ' - ' + game.score[otherOf(myTeam)], 2);
+          break;
+        case 'zoneTaken': if (ev.team === myTeam) PB.Audio.play('ready'); break;
+        case 'end': endTimer = game.mode.ffa && game.winner === 'out' ? 1.2 : 1.8; break;
       }
     }
     game.events.length = 0;
   }
+  const otherOf = (t) => (t === 'blue' ? 'red' : 'blue');
 
   function near(b) {
     const c = renderer.cam;
@@ -233,7 +312,7 @@
 
     // a quién sigue la cámara
     let focus = me;
-    if (!me) {
+    if (!me || mode === 'menu') {
       spectate += dt;
       const alive = game.brawlers.filter((b) => !b.dead);
       focus = alive[Math.floor(spectate / 8) % Math.max(1, alive.length)] || game.brawlers[0];
@@ -242,7 +321,7 @@
     }
     renderer.draw(game, {
       focus,
-      team: 'blue',
+      team: me ? me.team : focus ? focus.team : 'blue',
       player: mode === 'play' ? me : null,
       aim: mode === 'play' ? read.aim : null,
       touch: input.touch,

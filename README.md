@@ -1,6 +1,16 @@
 # Pocket Brawl (nombre provisional)
 
-Fangame de combates 3v3 estilo Brawl Stars con Pokémon, en el navegador. Modo actual: **Atrapa Pokéballs**.
+Fangame de combates estilo Brawl Stars con Pokémon, en el navegador.
+
+## Modos
+
+| Modo | Reglas |
+|---|---|
+| **Atrapa Pokéballs** | 3v3. Consigue 10 Pokéballs de la máquina central y aguanta 15 s. |
+| **Niebla Tóxica** | Todos contra todos (10). Rompe cajas para conseguir Caramelos Raros (+10 % vida y daño). La niebla cierra el mapa. Gana el último en pie. |
+| **Despierta a Snorlax** | 3v3. Protege a tu Snorlax dormido y despierta (debilita) al rival. Si se acaba el tiempo, gana quien conserve más vida. |
+| **Voltorbol** | 3v3. Mete el Voltorb en la portería rival; gana quien marque 2 goles. Si lo llevas más de 10 s, explota. |
+| **Territorio** | 3v3. Controla la zona central sin enemigos dentro; gana quien llegue antes al 100 %. |
 Hecho como PokéSurvivor: JavaScript puro + Canvas 2D, sin dependencias ni paso de compilación.
 
 **Fangame gratuito y sin ánimo de lucro.** No afiliado a Nintendo, Creatures, GAME FREAK ni
@@ -27,6 +37,7 @@ y entra en http://localhost:8123
 |---|---|
 | `js/data.js` | Mapa, tabla de tipos, luchadores y reglas. **Aquí se equilibra el juego.** |
 | `js/game.js` | Simulación de la partida (no dibuja). Preparada para usarse en un servidor en el futuro. |
+| `js/modes.js` | Reglas de cada modo y lo que hacen los bots en cada uno. |
 | `js/ai.js` | Bots. Generan el mismo tipo de input que un jugador. |
 | `js/world.js` | Colisiones, línea de visión y caminos (A*). |
 | `js/render.js` | Dibujado en Canvas. |

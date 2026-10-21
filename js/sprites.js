@@ -29,6 +29,11 @@ PB.Sprites = {
     return [2, 1, 0, 7, 6, 5, 4, 3][i];
   },
 
+  // Algunas animaciones (dormir, girar) solo tienen una fila
+  rowOf(img, a, angle) {
+    return img.naturalHeight / a.h >= 8 ? this.dirRow(angle) : 0;
+  },
+
   // t en segundos. Si length se indica, la animación se comprime a esa duración (no hace bucle).
   frameIndex(a, t, length) {
     const total = a.dur.reduce((s, d) => s + d, 0);
@@ -55,7 +60,7 @@ PB.Sprites = {
     const c = tmp.getContext('2d');
     c.clearRect(0, 0, a.w, a.h);
     c.globalCompositeOperation = 'source-over';
-    c.drawImage(img, this.frameIndex(a, t, length) * a.w, this.dirRow(angle) * a.h, a.w, a.h, 0, 0, a.w, a.h);
+    c.drawImage(img, this.frameIndex(a, t, length) * a.w, this.rowOf(img, a, angle) * a.h, a.w, a.h, 0, 0, a.w, a.h);
     c.globalCompositeOperation = 'source-atop';
     c.globalAlpha = amount == null ? 1 : amount;
     c.fillStyle = color;
@@ -78,7 +83,7 @@ PB.Sprites = {
       return;
     }
     const f = this.frameIndex(a, t, length);
-    const row = this.dirRow(angle);
+    const row = this.rowOf(img, a, angle);
     const w = a.w * scale;
     const h = a.h * scale;
     ctx.drawImage(img, f * a.w, row * a.h, a.w, a.h, Math.round(x - w / 2), Math.round(y - h / 2 - 10), w, h);

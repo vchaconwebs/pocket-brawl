@@ -1,4 +1,4 @@
-// Simulación de la partida (modo Atrapa Pokéballs 3v3).
+// Simulación de la partida. Las reglas de cada modo están en js/modes.js.
 // No dibuja nada: recibe "inputs" por luchador y avanza el estado. Así, en el futuro,
 // la misma lógica puede correr en un servidor o en el host de una partida online.
 //
@@ -6,45 +6,58 @@
 //   mx, my  -> dirección de movimiento (-1..1)
 //   attack / super -> null | { auto: true } | { dx, dy, dist }
 PB.Game = class {
+  // opts: { mode, blue: [ids], red: [ids], ffa: [ids], playerInBlue, noCountdown }
   constructor(opts) {
-    this.world = new PB.World(PB.buildMap());
-    this.rules = PB.RULES;
+    this.mode = PB.MODES[opts.mode] || PB.MODES.gems;
+    const map = PB.MAPS[this.mode.map];
+    this.world = new PB.World(map.quad ? PB.buildQuadMap(map.quad) : PB.buildMap(map.top));
+    this.rules = Object.assign({}, PB.RULES, this.mode.rules || {});
     this.time = 0; // tiempo de juego (empieza al terminar la cuenta atrás)
     this.clock = 0; // tiempo real de la partida (efectos)
     this.startT = opts.noCountdown ? 0 : this.rules.startCountdown;
     this.brawlers = [];
     this.projectiles = [];
-    this.zones = [];
-    this.balls = [];
+    this.zones = []; // zonas de Drenadoras
+    this.balls = []; // objetos del suelo: Pokéballs y Caramelos Raros ({ kind })
+    this.structures = []; // Snorlax
     this.fx = []; // efectos visuales (no afectan al juego)
     this.events = []; // para sonido / interfaz: { type, ... }
     this.feed = []; // mensajes de K.O.
-    this.ballT = 3;
     this.padGlow = 0;
     this.countdown = null; // { team, t }
-    this.winner = null; // 'blue' | 'red' | 'draw'
+    this.winner = null; // 'blue' | 'red' | equipo del ganador en Niebla | 'draw'
     this.shake = 0;
     this.nextShotId = 1;
 
-    const add = (id, team, i, isPlayer) => {
+    const add = (id, team, sp, isPlayer) => {
       const def = PB.brawlerById(id);
-      const sp = this.world.spawns[team][i % 3];
       this.brawlers.push({
         idx: this.brawlers.length, def, team, isPlayer: !!isPlayer,
         name: isPlayer ? 'TÚ' : def.name,
         x: sp.x, y: sp.y, r: 22, vx: 0, vy: 0, kx: 0, ky: 0,
         hp: def.hp, maxHp: def.hp, ammo: this.rules.maxAmmo, shotCd: 0, superCharge: 0,
-        balls: 0, dead: false, respawnT: 0, lastCombat: -99, revealT: 0,
-        facing: team === 'blue' ? -Math.PI / 2 : Math.PI / 2,
+        balls: 0, power: 0, stat: 0, dead: false, out: false, respawnT: 0, lastCombat: -99, revealT: 0,
+        facing: sp.y > this.world.pixelH / 2 ? -Math.PI / 2 : Math.PI / 2,
         moving: false, animT: Math.random() * 3, action: null, hurtT: 0, flashT: 0,
         stunT: 0, dash: null, stealthT: 0, powerNext: false, shieldT: this.rules.spawnShield,
         spawnT: 0, dustT: 0, burst: null, streak: 0,
         kills: 0, deaths: 0, ballsTaken: 0, dmgDone: 0,
       });
     };
-    opts.blue.forEach((id, i) => add(id, 'blue', i, i === 0 && opts.playerInBlue));
-    opts.red.forEach((id, i) => add(id, 'red', i, false));
+    if (this.mode.ffa) {
+      const spots = this.world.spawns.free.slice().sort(() => Math.random() - 0.5);
+      opts.ffa.forEach((id, i) => add(id, 'p' + i, spots[i % spots.length], i === 0 && opts.playerInBlue));
+    } else {
+      opts.blue.forEach((id, i) => add(id, 'blue', this.world.spawns.blue[i % 3], i === 0 && opts.playerInBlue));
+      opts.red.forEach((id, i) => add(id, 'red', this.world.spawns.red[i % 3], false));
+    }
+    if (this.mode.setup) this.mode.setup(this);
     if (!this.startT) for (const b of this.brawlers) this.releaseFx(b);
+  }
+
+  // Multiplicador de daño por Caramelos Raros
+  powerMul(b) {
+    return b ? 1 + 0.1 * (b.power || 0) : 1;
   }
 
   get player() {
@@ -107,13 +120,16 @@ PB.Game = class {
     this.updateProjectiles(dt);
     this.updateZones(dt);
     this.updateBalls(dt);
+    for (const s of this.structures) s.flashT -= dt;
+    if (this.mode.update) this.mode.update(this, dt);
     this.updateFx(dt);
-    this.checkWin(dt);
+    if (!this.winner && this.time >= this.rules.matchTime && this.mode.timeUp) this.mode.timeUp(this);
   }
 
   updateBrawler(b, dt, input) {
     const R = this.rules;
     if (b.dead) {
+      if (b.out) return; // eliminado (Niebla Tóxica)
       b.respawnT -= dt;
       if (b.respawnT <= 0) this.respawn(b);
       return;
@@ -170,6 +186,14 @@ PB.Game = class {
       b.moving = len > 0.15 && b.stunT <= 0;
       if (b.moving && !b.action) b.facing = Math.atan2(my, mx);
     }
+    // Snorlax y demás estructuras ocupan sitio
+    for (const s of this.structures) {
+      if (s.hp <= 0) continue;
+      const dx = b.x - s.x, dy = b.y - s.y, d = Math.hypot(dx, dy), min = s.r + b.r;
+      if (d < min && d > 0.01) {
+        this.world.moveCircle(b, (dx / d) * (min - d), (dy / d) * (min - d));
+      }
+    }
     const decay = Math.exp(-8 * dt);
     b.kx *= decay;
     b.ky *= decay;
@@ -204,22 +228,55 @@ PB.Game = class {
     // ataques
     if (b.stunT <= 0 && !b.dash && b.spawnT <= 0) {
       if (input.super && b.superCharge >= 1) this.doSuper(b, input.super);
-      else if (input.attack && b.ammo >= 1 && b.shotCd <= 0 && !b.burst) this.doAttack(b, input.attack);
+      else if (input.attack && this.mode.onAttack && this.mode.onAttack(this, b, input.attack)) {
+        // el modo se ha encargado (p. ej. chutar el Voltorb)
+      } else if (input.attack && b.ammo >= 1 && b.shotCd <= 0 && !b.burst) this.doAttack(b, input.attack);
     }
 
-    // recoger Pokéballs
+    // recoger Pokéballs / Caramelos Raros
     for (const g of this.balls) {
       if (g.taken || g.delay > 0 || g.z > 12) continue;
       if (Math.hypot(g.x - b.x, g.y - b.y) < b.r + 18) {
         g.taken = true;
-        b.balls++;
-        b.ballsTaken++;
-        this.events.push({ type: 'ball', b });
-        this.ring(g.x, g.y - 10, 6, 34, '#ffffff', 0.25, 3);
-        for (let i = 0; i < 6; i++) this.px(g.x, g.y - 10, i % 2 ? '#ff5a3c' : '#ffffff', { speed: 120, life: 0.35, size: 4 });
-        this.text(b.x, b.y - 96, '+1', '#ffffff', 18);
+        if (g.kind === 'candy') {
+          // Caramelo Raro: +10 % de vida y daño
+          b.power++;
+          b.stat++;
+          const extra = b.def.hp * 0.1;
+          b.maxHp += extra;
+          b.hp = Math.min(b.maxHp, b.hp + extra + 400);
+          this.events.push({ type: 'candy', b });
+          this.ring(g.x, g.y - 10, 6, 40, '#9ad4ff', 0.3, 4);
+          for (let i = 0; i < 8; i++) this.px(g.x, g.y - 10, i % 2 ? '#5a86ea' : '#e8f6ff', { speed: 140, vy: -40, life: 0.45, size: 4 });
+          this.text(b.x, b.y - 96, '¡Sube de nivel!', '#9ad4ff', 15);
+        } else {
+          b.balls++;
+          b.ballsTaken++;
+          b.stat++;
+          this.events.push({ type: 'ball', b });
+          this.ring(g.x, g.y - 10, 6, 34, '#ffffff', 0.25, 3);
+          for (let i = 0; i < 6; i++) this.px(g.x, g.y - 10, i % 2 ? '#ff5a3c' : '#ffffff', { speed: 120, life: 0.35, size: 4 });
+          this.text(b.x, b.y - 96, '+1', '#ffffff', 18);
+        }
       }
     }
+  }
+
+  // Objetivos que no son luchadores (Snorlax enemigos y cajas) a menos de "range"
+  objectTargets(b, range) {
+    const out = [];
+    for (const s of this.structures) {
+      if (s.hp > 0 && s.team !== b.team) out.push({ x: s.x, y: s.y, d: Math.hypot(s.x - b.x, s.y - b.y) - s.r * 0.6, struct: s });
+    }
+    const T = PB.TILE, W = this.world;
+    const c0 = Math.floor((b.x - range) / T), c1 = Math.floor((b.x + range) / T);
+    const r0 = Math.floor((b.y - range) / T), r1 = Math.floor((b.y + range) / T);
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+      if (W.tile(c, r) !== 'C') continue;
+      const x = c * T + T / 2, y = r * T + T / 2;
+      out.push({ x, y, d: Math.hypot(x - b.x, y - b.y) - 20, crate: { c, r } });
+    }
+    return out.filter((o) => o.d < range);
   }
 
   // Resuelve el apuntado (manual o automático) -> { ang, dist }
@@ -232,6 +289,8 @@ PB.Game = class {
         if (d < bd && d < range * 1.1) { bd = d; best = e; }
       }
       if (best) return { ang: Math.atan2(best.y - b.y, best.x - b.x), dist: bd };
+      const objs = this.objectTargets(b, range * 1.05).sort((p, q) => p.d - q.d);
+      if (objs.length) return { ang: Math.atan2(objs[0].y - b.y, objs[0].x - b.x), dist: Math.hypot(objs[0].x - b.x, objs[0].y - b.y) };
       return { ang: b.facing, dist: range };
     }
     return { ang: Math.atan2(aim.dy, aim.dx), dist: aim.dist == null ? range : aim.dist };
@@ -366,14 +425,25 @@ PB.Game = class {
         continue;
       }
       if (this.world.shotBlockedAt(p.x, p.y)) {
+        const T = PB.TILE, c = Math.floor(p.x / T), r = Math.floor(p.y / T);
         if (p.destroysWalls && this.breakWalls(p.x, p.y, 40).length) {
           this.shake = Math.max(this.shake, 6);
         } else {
+          if (this.world.tile(c, r) === 'C') this.damageCrate(c, r, p.dmg, p.owner, p.charge);
           this.puff(p, true);
           continue;
         }
       }
       let dead = false;
+      for (const st of this.structures) {
+        if (st.hp <= 0 || st.team === p.team || p.hit.has('s' + st.id)) continue;
+        if (Math.hypot(st.x - p.x, st.y - 10 - p.y) < p.r + st.r) {
+          p.hit.add('s' + st.id);
+          this.damageStructure(st, p.dmg, p.owner, p.charge, p.x, p.y);
+          if (!p.pierce) { dead = true; this.puff(p); break; }
+        }
+      }
+      if (dead) continue;
       for (const e of this.brawlers) {
         if (e.dead || e.team === p.team || p.hit.has(e.idx)) continue;
         if (Math.hypot(e.x - p.x, e.y - 8 - p.y) < p.r + e.r) {
@@ -459,6 +529,15 @@ PB.Game = class {
         this.damage(e, dmg, owner, atkType, { ...opts, kx: e.x - x, ky: e.y - y });
       }
     }
+    for (const st of this.structures) {
+      if (st.hp > 0 && st.team !== owner.team && Math.hypot(st.x - x, st.y - y) < radius + st.r) this.damageStructure(st, dmg, owner, opts.charge, st.x, st.y - 20);
+    }
+    const T = PB.TILE;
+    for (let r = Math.floor((y - radius) / T); r <= Math.floor((y + radius) / T); r++) {
+      for (let c = Math.floor((x - radius) / T); c <= Math.floor((x + radius) / T); c++) {
+        if (this.world.tile(c, r) === 'C' && Math.hypot(c * T + T / 2 - x, r * T + T / 2 - y) < radius + 30) this.damageCrate(c, r, dmg, owner, opts.charge);
+      }
+    }
     const pal = PB.VFX.PAL[atkType] || PB.VFX.PAL.normal;
     const n = opts.big ? 36 : 14;
     for (let i = 0; i < n; i++) this.px(x, y, pal[1 + (i % 4)], { speed: radius * 2.4, life: 0.5, size: opts.big ? 7 : 5, vz: 1 });
@@ -482,8 +561,53 @@ PB.Game = class {
       if (w.kind === 'T') for (let i = 0; i < 5; i++) this.vfx('leaf', 'grass', w.x, w.y - 40, { vx: (Math.random() - 0.5) * 160, vy: -40 - Math.random() * 60, life: 0.9, spin: 6, scale: 1, fade: true });
       this.px(w.x, w.y, 'rgba(220,220,210,0.6)', { speed: 20, life: 0.8, size: 40, grow: 1.5 });
     }
+    for (const w of broken) if (w.kind === 'C') this.dropCandy(w.x, w.y, 1);
     if (broken.length) this.events.push({ type: 'wall' });
     return broken;
+  }
+
+  // Daño a una caja de Caramelos (se rompe al llegar a 0)
+  damageCrate(c, r, amount, source, charge) {
+    const W = this.world, key = r * W.w + c;
+    const hp = (W.crateHp.get(key) || 0) - amount * this.powerMul(source);
+    const T = PB.TILE, x = c * T + T / 2, y = r * T + T / 2;
+    if (source && charge) source.superCharge = Math.min(1, source.superCharge + 0.5 / source.def.superHits);
+    this.fx.push({ kind: 'crateHit', c, r, t: 0, life: 0.15 });
+    if (hp <= 0) {
+      W.crateHp.delete(key);
+      W.tiles[r][c] = '.';
+      W.version++;
+      for (let i = 0; i < 14; i++) {
+        const a = Math.random() * Math.PI * 2, s = 60 + Math.random() * 200;
+        this.px(x, y, ['#7a4a24', '#b87c44', '#d29a5c'][i % 3], { vx: Math.cos(a) * s, vy: Math.sin(a) * s, z: 20, vz: 200 + Math.random() * 250, life: 0.9, size: 7 });
+      }
+      this.dropCandy(x, y, 1);
+      this.events.push({ type: 'wall' });
+    } else W.crateHp.set(key, hp);
+  }
+
+  dropCandy(x, y, n) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, s = n > 1 ? 80 + Math.random() * 120 : 20;
+      this.balls.push({ kind: 'candy', x, y, z: 10, vx: Math.cos(a) * s, vy: Math.sin(a) * s, vz: 380, delay: 0.4, taken: false, spin: 0 });
+    }
+  }
+
+  // Daño a Snorlax (o cualquier estructura)
+  damageStructure(st, amount, source, charge, hx, hy) {
+    const amt = Math.round(amount * this.powerMul(source));
+    st.hp = Math.max(0, st.hp - amt);
+    st.flashT = 0.1;
+    if (source) {
+      source.dmgDone += amt;
+      source.stat += amt;
+      if (charge) source.superCharge = Math.min(1, source.superCharge + 0.6 / source.def.superHits);
+    }
+    const pal = PB.VFX.PAL[source ? source.def.atkType : 'normal'] || PB.VFX.PAL.normal;
+    this.vfx('impact', source ? source.def.atkType : 'normal', hx, hy, { scale: 1.6, life: 0.16, frameRate: 14 });
+    for (let i = 0; i < 4; i++) this.px(hx, hy, pal[2 + (i % 3)], { speed: 140, life: 0.3, size: 4 });
+    this.text(st.x + (Math.random() - 0.5) * 40, st.y - 90, String(amt), '#ffffff', 16);
+    this.events.push({ type: 'structHit', st });
   }
 
   muzzle(b, ang) {
@@ -504,8 +628,8 @@ PB.Game = class {
 
   damage(target, amount, source, atkType, opts) {
     if (target.dead || target.shieldT > 0 || target.spawnT > 0) return;
-    const eff = PB.effectiveness(atkType, target.def.types);
-    const amt = Math.round(amount * eff);
+    const eff = atkType ? PB.effectiveness(atkType, target.def.types) : 1;
+    const amt = Math.round(amount * eff * this.powerMul(source));
     target.hp -= amt;
     target.lastCombat = this.time;
     target.hurtT = 0.2;
@@ -557,9 +681,10 @@ PB.Game = class {
     }
     for (let i = 0; i < b.balls; i++) {
       const a = Math.random() * Math.PI * 2, s = 90 + Math.random() * 140;
-      this.balls.push({ x: b.x, y: b.y, z: 20, vx: Math.cos(a) * s, vy: Math.sin(a) * s, vz: 300 + Math.random() * 200, delay: 0.5, taken: false, spin: Math.random() * 6 });
+      this.balls.push({ kind: 'ball', x: b.x, y: b.y, z: 20, vx: Math.cos(a) * s, vy: Math.sin(a) * s, vz: 300 + Math.random() * 200, delay: 0.5, taken: false, spin: Math.random() * 6 });
     }
     b.balls = 0;
+    if (this.mode.onKill) this.mode.onKill(this, b, killer);
     // animación: se debilita y vuelve a su Pokéball con el rayo rojo
     this.fx.push({ kind: 'faint', dex: b.def.dex, x: b.x, y: b.y, facing: b.facing, team: b.team, t: 0, life: 1.5 });
     for (let i = 0; i < 16; i++) this.px(b.x, b.y - 16, i % 2 ? '#ffffff' : b.team === 'blue' ? '#5ab0ff' : '#ff5a5a', { speed: 240, life: 0.5, size: 5 });
@@ -570,7 +695,8 @@ PB.Game = class {
   }
 
   respawn(b) {
-    const sp = this.world.spawns[b.team][Math.floor(Math.random() * 3)];
+    const list = this.world.spawns[b.team] || this.world.spawns.free;
+    const sp = list[Math.floor(Math.random() * list.length)];
     Object.assign(b, {
       x: sp.x, y: sp.y, dead: false, hp: b.maxHp, ammo: this.rules.maxAmmo, shieldT: this.rules.spawnShield,
       kx: 0, ky: 0, stunT: 0, action: null, powerNext: false,
@@ -585,19 +711,9 @@ PB.Game = class {
     this.fx.push({ kind: 'release', x: b.x, y: b.y, t: 0, life: 0.6 });
   }
 
+  // Física de los objetos del suelo (Pokéballs, Caramelos): saltan, rebotan y ruedan
   updateBalls(dt) {
-    this.ballT -= dt;
     this.padGlow = Math.max(0, this.padGlow - dt);
-    if (this.ballT <= 0) {
-      this.ballT = this.rules.ballEvery;
-      const a = Math.random() * Math.PI * 2, s = 70 + Math.random() * 80;
-      const m = this.world.mine;
-      this.balls.push({ x: m.x, y: m.y, z: 10, vx: Math.cos(a) * s, vy: Math.sin(a) * s, vz: 560, delay: 0.3, taken: false, spin: 0 });
-      this.padGlow = 0.6;
-      this.ring(m.x, m.y, 10, 70, '#ffffff', 0.4, 5);
-      for (let i = 0; i < 10; i++) this.px(m.x, m.y - 10, i % 2 ? '#fff6a8' : '#ffffff', { speed: 160, vy: -60, life: 0.5, size: 4 });
-      this.events.push({ type: 'ballspawn' });
-    }
     for (const g of this.balls) {
       g.delay -= dt;
       // altura con gravedad y rebotes
@@ -623,30 +739,6 @@ PB.Game = class {
       }
     }
     this.balls = this.balls.filter((g) => !g.taken);
-  }
-
-  checkWin(dt) {
-    const R = this.rules;
-    const blue = this.teamBalls('blue'), red = this.teamBalls('red');
-    let leader = null;
-    if (blue >= R.ballsToWin && blue > red) leader = 'blue';
-    else if (red >= R.ballsToWin && red > blue) leader = 'red';
-    if (leader) {
-      if (!this.countdown || this.countdown.team !== leader) {
-        this.countdown = { team: leader, t: R.countdown };
-        this.events.push({ type: 'countdown', team: leader });
-      }
-      const before = Math.ceil(this.countdown.t);
-      this.countdown.t -= dt;
-      if (Math.ceil(this.countdown.t) !== before) this.events.push({ type: 'tick', team: leader });
-      if (this.countdown.t <= 0) this.end(leader);
-    } else if (this.countdown) {
-      this.countdown = null;
-      this.events.push({ type: 'countdownStop' });
-    }
-    if (!this.winner && this.time >= R.matchTime) {
-      this.end(blue > red ? 'blue' : red > blue ? 'red' : 'draw');
-    }
   }
 
   end(result) {

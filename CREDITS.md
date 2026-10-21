@@ -11,6 +11,8 @@ Algunos sprites base proceden de Pokémon Mundo Misterioso (CHUNSOFT).
 - **Pikachu**: CHUNSOFT
 - **Geodude**: CHUNSOFT, JustAGunk
 - **Gastly**: CHUNSOFT, JFain
+- **Snorlax**: CHUNSOFT, Emboarger, NOLASMOR
+- **Voltorb**: CHUNSOFT, Emboarger, JFain
 
 ## Efectos de los ataques
 Generador de efectos pixel art adaptado de [PokéSurvivor](https://github.com/JPTER78/pokesurvivor)

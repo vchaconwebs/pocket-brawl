@@ -5,8 +5,13 @@ PB.World = class {
     this.h = rows.length;
     this.w = rows[0].length;
     this.tiles = rows.map((r) => r.split(''));
-    this.spawns = { red: [], blue: [] };
-    this.mine = { x: 0, y: 0 };
+    this.spawns = { red: [], blue: [], free: [] };
+    this.mine = { x: (this.w * T) / 2, y: (this.h * T) / 2 };
+    this.hasMine = false;
+    this.snorlax = {};
+    this.goals = { red: [], blue: [] };
+    this.ballSpot = null;
+    this.zoneSpot = null;
     for (let r = 0; r < this.h; r++) {
       for (let c = 0; c < this.w; c++) {
         const ch = this.tiles[r][c];
@@ -16,15 +21,35 @@ PB.World = class {
           const list = ch === 'R' ? this.spawns.red : this.spawns.blue;
           for (const dx of [-1.5, 0, 1.5]) list.push({ x: cx + dx * T, y: cy });
           this.tiles[r][c] = '.';
+        } else if (ch === 'S') {
+          this.spawns.free.push({ x: cx, y: cy });
+          this.tiles[r][c] = '.';
         } else if (ch === 'G') {
           this.mine = { x: cx, y: cy };
+          this.hasMine = true;
+          this.tiles[r][c] = '.';
+        } else if (ch === 'K' || ch === 'k') {
+          this.snorlax[ch === 'K' ? 'red' : 'blue'] = { x: cx, y: cy };
+          this.tiles[r][c] = 'P';
+        } else if (ch === 'O' || ch === 'o') {
+          this.goals[ch === 'O' ? 'red' : 'blue'].push({ c, r });
+          this.tiles[r][c] = '.';
+        } else if (ch === 'V') {
+          this.ballSpot = { x: cx, y: cy };
+          this.tiles[r][c] = '.';
+        } else if (ch === 'Z') {
+          this.zoneSpot = { x: cx, y: cy };
           this.tiles[r][c] = '.';
         }
       }
     }
+    // vida de las cajas de Caramelos
+    this.crateHp = new Map();
+    for (let r = 0; r < this.h; r++) for (let c = 0; c < this.w; c++) if (this.tiles[r][c] === 'C') this.crateHp.set(r * this.w + c, 3000);
     this.pixelW = this.w * T;
     this.pixelH = this.h * T;
     this.version = 0; // sube cada vez que se rompe un muro
+    this.pathBlock = new Set(); // casillas ocupadas por estructuras (Snorlax): las rutas las rodean
   }
 
   tile(c, r) {
@@ -34,12 +59,12 @@ PB.World = class {
 
   solidAt(c, r) {
     const t = this.tile(c, r);
-    return t === '#' || t === 'T' || t === 'X' || t === '~';
+    return t === '#' || t === 'T' || t === 'C' || t === 'X' || t === '~';
   }
 
   blocksShotAt(c, r) {
     const t = this.tile(c, r);
-    return t === '#' || t === 'T' || t === 'X';
+    return t === '#' || t === 'T' || t === 'C' || t === 'X';
   }
 
   isBushAt(x, y) {
@@ -59,7 +84,7 @@ PB.World = class {
     for (let r = r0; r <= r1; r++) {
       for (let c = c0; c <= c1; c++) {
         const t = this.tile(c, r);
-        if (t !== '#' && t !== 'T') continue;
+        if (t !== '#' && t !== 'T' && t !== 'C') continue;
         const cx = c * T + T / 2, cy = r * T + T / 2;
         if (Math.hypot(cx - x, cy - y) <= radius + T * 0.35) {
           this.tiles[r][c] = '.';
@@ -107,15 +132,50 @@ PB.World = class {
     }
   }
 
-  // ¿Puede un disparo ir en línea recta de A a B?
-  los(x1, y1, x2, y2) {
+  // Rectángulo (en píxeles) de una portería
+  goalRect(team) {
+    const g = this.goals[team];
+    if (!g || !g.length) return null;
+    const T = PB.TILE;
+    const c0 = Math.min(...g.map((t) => t.c)), c1 = Math.max(...g.map((t) => t.c));
+    const r0 = Math.min(...g.map((t) => t.r)), r1 = Math.max(...g.map((t) => t.r));
+    return { x0: c0 * T, x1: (c1 + 1) * T, y0: r0 * T, y1: (r1 + 1) * T, cx: ((c0 + c1 + 1) * T) / 2, cy: ((r0 + r1 + 1) * T) / 2 };
+  }
+
+  // ¿Choca un círculo con algo sólido?
+  circleSolid(x, y, r) {
+    const T = PB.TILE;
+    for (const [ox, oy] of [[-r, -r], [r, -r], [-r, r], [r, r], [0, 0]]) {
+      if (this.solidAt(Math.floor((x + ox) / T), Math.floor((y + oy) / T))) return true;
+    }
+    return false;
+  }
+
+  // ¿Puede un disparo ir en línea recta de A a B? (ignoreC/ignoreR: casilla objetivo, p. ej. una caja)
+  los(x1, y1, x2, y2, ignoreC, ignoreR) {
+    const T = PB.TILE;
     const d = Math.hypot(x2 - x1, y2 - y1);
     const steps = Math.ceil(d / 14);
     for (let i = 1; i < steps; i++) {
       const t = i / steps;
-      if (this.shotBlockedAt(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t)) return false;
+      const x = x1 + (x2 - x1) * t, y = y1 + (y2 - y1) * t;
+      const c = Math.floor(x / T), r = Math.floor(y / T);
+      if (c === ignoreC && r === ignoreR) return true;
+      if (this.blocksShotAt(c, r)) return false;
     }
     return true;
+  }
+
+  // Marca como ocupadas para las rutas las casillas que tapa un círculo
+  blockCircle(x, y, r) {
+    const T = PB.TILE;
+    for (let rr = Math.floor((y - r) / T); rr <= Math.floor((y + r) / T); rr++) {
+      for (let c = Math.floor((x - r) / T); c <= Math.floor((x + r) / T); c++) this.pathBlock.add(rr * this.w + c);
+    }
+  }
+
+  pathSolid(c, r) {
+    return this.solidAt(c, r) || this.pathBlock.has(r * this.w + c);
   }
 
   // ¿Puede un círculo de radio r caminar en línea recta de A a B?
@@ -127,7 +187,7 @@ PB.World = class {
       const t = steps ? i / steps : 0;
       const x = x1 + (x2 - x1) * t, y = y1 + (y2 - y1) * t;
       for (const [ox, oy] of [[-r, -r], [r, -r], [-r, r], [r, r]]) {
-        if (this.solidAt(Math.floor((x + ox) / T), Math.floor((y + oy) / T))) return false;
+        if (this.pathSolid(Math.floor((x + ox) / T), Math.floor((y + oy) / T))) return false;
       }
     }
     return true;
@@ -138,11 +198,11 @@ PB.World = class {
     const T = PB.TILE, W = this.w, H = this.h;
     const sc = Math.floor(sx / T), sr = Math.floor(sy / T);
     let tc = Math.floor(tx / T), tr = Math.floor(ty / T);
-    if (this.solidAt(tc, tr)) {
+    if (this.pathSolid(tc, tr)) {
       // objetivo dentro de un muro: buscar la casilla libre más cercana
       let best = null, bd = Infinity;
       for (let r = tr - 2; r <= tr + 2; r++) for (let c = tc - 2; c <= tc + 2; c++) {
-        if (!this.solidAt(c, r)) {
+        if (!this.pathSolid(c, r)) {
           const d = Math.abs(c - tc) + Math.abs(r - tr);
           if (d < bd) { bd = d; best = [c, r]; }
         }
@@ -171,8 +231,8 @@ PB.World = class {
       for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
         if (!dc && !dr) continue;
         const nc = c + dc, nr = r + dr;
-        if (nc < 0 || nr < 0 || nc >= W || nr >= H || this.solidAt(nc, nr)) continue;
-        if (dc && dr && (this.solidAt(c + dc, r) || this.solidAt(c, r + dr))) continue;
+        if (nc < 0 || nr < 0 || nc >= W || nr >= H || this.pathSolid(nc, nr)) continue;
+        if (dc && dr && (this.pathSolid(c + dc, r) || this.pathSolid(c, r + dr))) continue;
         const nk = key(nc, nr);
         const ng = g.get(k) + (dc && dr ? Math.SQRT2 : 1);
         if (ng < (g.has(nk) ? g.get(nk) : Infinity)) {
@@ -192,7 +252,7 @@ PB.World = class {
       if (k === undefined) break;
     }
     path.reverse();
-    if (path.length && !this.solidAt(Math.floor(tx / T), Math.floor(ty / T))) path[path.length - 1] = { x: tx, y: ty };
+    if (path.length && !this.pathSolid(Math.floor(tx / T), Math.floor(ty / T))) path[path.length - 1] = { x: tx, y: ty };
     return path;
   }
 };

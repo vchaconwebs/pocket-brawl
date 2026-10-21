@@ -22,6 +22,12 @@ POKEMON = {
 }
 ANIMS = ["Idle", "Walk", "Shoot", "Attack", "Hurt", "Faint"]
 
+# Pokémon que aparecen en los modos pero no son luchadores (dex -> (nombre, animaciones))
+EXTRA = {
+    "0143": ("Snorlax", ["Sleep", "Idle", "Hurt"]),
+    "0100": ("Voltorb", ["Idle", "Walk", "Hurt", "Rotate"]),
+}
+
 
 def get(url):
     with urllib.request.urlopen(url, timeout=30) as r:
@@ -50,7 +56,9 @@ def main():
     except Exception:
         names = {}
 
-    for dex, name in POKEMON.items():
+    todo = [(dex, name, ANIMS) for dex, name in POKEMON.items()]
+    todo += [(dex, name, anims) for dex, (name, anims) in EXTRA.items()]
+    for dex, name, anim_list in todo:
         print("->", dex, name)
         d = os.path.join(out_dir, dex)
         os.makedirs(d, exist_ok=True)
@@ -66,7 +74,7 @@ def main():
                 "hit": int(a.findtext("HitFrame") or -1),
             }
         entry = {"name": name, "anims": {}}
-        for want in ANIMS:
+        for want in anim_list:
             real = resolve(anims, want)
             if real not in anims or not anims[real]["w"]:
                 continue

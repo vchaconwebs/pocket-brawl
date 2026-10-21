@@ -162,6 +162,34 @@ PB.Tiles = (() => {
     }
   }
 
+  // Plataforma de Pokéballs del centro: una Pokéball gigante incrustada en un anillo de piedra
+  function paintPad(P, cx, cy) {
+    const R = 12, ROCK = C.rock;
+    for (let y = -R - 3; y <= R + 3; y++) for (let x = -R - 3; x <= R + 3; x++) {
+      const px = cx + x - 0.5, py = cy + y - 0.5;
+      const d = Math.hypot(x + 0.5, y + 0.5);
+      if (d > R + 3) continue;
+      let col;
+      if (d > R + 2.2) col = ROCK[0];
+      else if (d > R) { // anillo de piedra con losas
+        const a = Math.atan2(y, x);
+        const seam = Math.abs(((a / (Math.PI * 2)) * 12 + 12) % 1 - 0.5) > 0.44;
+        col = seam ? ROCK[1] : y < 0 ? ROCK[4] : ROCK[3];
+      } else if (d > R - 1) col = '#1b1418';
+      else if (Math.abs(y + 0.5) <= 1.2) col = '#1b1418'; // banda
+      else if (d < 3.2) col = d < 2.2 ? '#f6f4f0' : '#1b1418'; // botón
+      else if (d < 4.4) col = '#1b1418';
+      else {
+        const lit = (-(x + 0.5) * 0.5 - (y + 0.5) * 0.85) / R;
+        if (y < 0) col = lit > 0.45 ? '#ff7a58' : lit < -0.1 ? '#a8241a' : '#e2382a';
+        else col = lit < -0.3 ? '#a8a4ae' : lit < 0.1 ? '#cfcbd4' : '#f2eff4';
+      }
+      P.set(px, py, col);
+    }
+    // brillo
+    P.set(cx - 6, cy - 7, '#ffd0c0'); P.set(cx - 5, cy - 7, '#ffd0c0'); P.set(cx - 7, cy - 6, '#ffd0c0');
+  }
+
   // Pinta el suelo de todo el mapa (a resolución de arte)
   function floor(world) {
     const at = (c, r) => world.tile(c, r);
@@ -175,6 +203,23 @@ PB.Tiles = (() => {
     for (const [list, col, dark] of [[world.spawns.blue, '#5a9cf0', '#3a6cc0'], [world.spawns.red, '#f06a5a', '#c0443a']]) {
       for (const s of list) paintMat(P, Math.floor(s.x / PB.TILE) * A, Math.floor(s.y / PB.TILE) * A, col, dark);
     }
+    // porterías (Voltorbol)
+    for (const [team, col, dark] of [['blue', '#5a9cf0', '#3a6cc0'], ['red', '#f06a5a', '#c0443a']]) {
+      for (const g of world.goals[team]) {
+        const ox = g.c * A, oy = g.r * A;
+        for (let y = 0; y < A; y++) for (let x = 0; x < A; x++) P.set(ox + x, oy + y, (x + y) % 4 === 0 || (x - y + 64) % 4 === 0 ? '#f4f4f4' : (x + y) % 2 ? col : dark);
+      }
+    }
+    // círculo central del campo (Voltorbol) y líneas
+    if (world.ballSpot) {
+      const cx = (world.ballSpot.x / PB.TILE) * A, cy = (world.ballSpot.y / PB.TILE) * A;
+      for (let a = 0; a < 360; a += 1) {
+        const r = 30;
+        P.set(cx + Math.cos((a * Math.PI) / 180) * r, cy + Math.sin((a * Math.PI) / 180) * r, '#eef6e8');
+      }
+      for (let x = 0; x < world.w * A; x++) if (x % 6 < 4) P.set(x, Math.floor(cy), '#eef6e8');
+    }
+    if (world.mine && world.hasMine) paintPad(P, (world.mine.x / PB.TILE) * A, (world.mine.y / PB.TILE) * A);
     return P.done();
   }
 
@@ -290,9 +335,52 @@ PB.Tiles = (() => {
     });
   }
 
+  // Caja de suministros (Niebla Tóxica): madera con un Caramelo Raro pintado
+  function crate(v) {
+    return cached('crate' + v, () => {
+      const P = Pix(A, 20);
+      const W = ['#5a3418', '#7a4a24', '#9a6434', '#b87c44', '#d29a5c'];
+      for (let y = 2; y < 19; y++) for (let x = 1; x < 15; x++) {
+        let col = y < 7 ? W[3] : W[2];
+        if (y === 6 || y === 12 || y === 18) col = W[1];
+        if (x === 1 || x === 14) col = W[1];
+        if (y < 6 && (x + y) % 5 === 0) col = W[4];
+        if (y >= 7 && (x * 3 + y) % 7 === 0) col = W[1];
+        P.set(x, y, col);
+      }
+      // tablas en diagonal en la cara frontal
+      for (let i = 0; i < 6; i++) { P.set(3 + i * 2, 17 - i, W[3]); P.set(4 + i * 2, 17 - i, W[3]); }
+      // caramelo pintado
+      const cy = 3;
+      for (const [x, y, c] of [[6, cy, '#3a5cc8'], [7, cy, '#4c78e0'], [8, cy, '#4c78e0'], [9, cy, '#3a5cc8'], [7, cy - 1, '#a8dcff'], [5, cy - 1, '#a8dcff'], [10, cy + 1, '#a8dcff'], [5, cy + 1, '#a8dcff'], [10, cy - 1, '#a8dcff']]) P.set(x, y, c);
+      outline(P, W[0]);
+      return P.done();
+    });
+  }
+
+  // Caramelo Raro (12 x 8)
+  function candy() {
+    return cached('candy', () => {
+      const P = Pix(12, 8);
+      const rows = [
+        '.ll......ll.',
+        'lwl.bbbb.lwl',
+        '.llbBBwBbll.',
+        '..lBBBBBBl..',
+        '.llbBBBBbll.',
+        'lwl.bbbb.lwl',
+        '.ll......ll.',
+      ];
+      const pal = { l: '#9ad4ff', w: '#e8f6ff', b: '#3a5cc8', B: '#5a86ea' };
+      rows.forEach((row, y) => [...row].forEach((ch, x) => { if (pal[ch]) P.set(x, y, pal[ch]); }));
+      outline(P, '#1c2a68');
+      return P.done();
+    });
+  }
+
   function draw(ctx, cv, x, y) {
     ctx.drawImage(cv, Math.round(x), Math.round(y), cv.width * PX, cv.height * PX);
   }
 
-  return { floor, outsideFloor, rock, tree, tallGrass, draw, H, A, PX };
+  return { floor, outsideFloor, rock, tree, tallGrass, crate, candy, draw, H, A, PX };
 })();

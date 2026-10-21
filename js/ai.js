@@ -29,9 +29,6 @@ PB.Bot = class {
 
     const atk = b.def.attack;
     const hpF = b.hp / b.maxHp;
-    const myBalls = g.teamBalls(b.team);
-    const foeTeam = b.team === 'blue' ? 'red' : 'blue';
-    const foeBalls = g.teamBalls(foeTeam);
 
     // enemigo visible más cercano
     let foe = null, fd = Infinity;
@@ -41,38 +38,28 @@ PB.Bot = class {
       if (d < fd) { fd = d; foe = e; }
     }
 
-    const home = W.spawns[b.team][1];
-    const safe = { x: home.x + (W.mine.x - home.x) * 0.3, y: home.y + (W.mine.y - home.y) * 0.3 };
     const closeRange = atk.range < 250;
 
-    let goal = null;
+    // el modo decide a dónde ir y qué atacar
+    const plan = (g.mode.botPlan && g.mode.botPlan(this, { foe, fd, hpF })) || {};
+    const carrying = g.voltorb && g.voltorb.carrier === b;
+    let goal = plan.goal || null;
     let fight = false;
-    const winning = g.countdown && g.countdown.team === b.team;
-    const losing = g.countdown && g.countdown.team === foeTeam;
-
-    if ((hpF < 0.3 && foe && fd < atk.range * 1.4) || (winning && b.balls > 0) || (b.balls >= 5 && hpF < 0.6)) {
-      goal = safe; // retirarse
+    if (plan.retreat) {
       if (foe && fd < atk.range) fight = true;
-    } else if (foe && fd < Math.max(atk.range * 0.95, closeRange ? 520 : 0)) {
+    } else if (foe && !plan.avoidFight && !carrying && fd < Math.max(atk.range * 0.95, closeRange ? 520 : 0)) {
       fight = true;
-    } else if (foe && (fd < 700 || losing) && hpF > 0.45) {
-      goal = foe; // perseguir (sobre todo si nos van a ganar)
-    } else {
-      // balla suelta más cercana, o la mina
-      let best = null, bd = Infinity;
-      for (const gm of g.balls) {
-        const d = Math.hypot(gm.x - b.x, gm.y - b.y);
-        if (d < bd) { bd = d; best = gm; }
-      }
-      goal = best && bd < 900 ? best : W.mine;
-      if (Math.hypot(goal.x - b.x, goal.y - b.y) < 40 && goal === W.mine) {
-        goal = { x: W.mine.x + Math.cos(b.idx) * 90, y: W.mine.y + Math.sin(b.idx) * 90 };
-      }
     }
-    if (losing && foe && !fight && hpF > 0.3) goal = foe;
+    // con un objetivo prioritario (Snorlax), solo se pelea si el enemigo está muy encima
+    if (fight && plan.focus && plan.target && foe && fd > atk.range * 0.55) fight = false;
+
+    // objetivo que no es un luchador (Snorlax, caja)
+    const tgt = plan.target || null;
+    const tgtD = tgt ? Math.hypot(tgt.x - b.x, tgt.y - b.y) - (tgt.struct ? tgt.struct.r * 0.6 : 20) : Infinity;
+    const tgtLos = tgt && (atk.kind === 'lob' || (tgt.crate ? W.los(b.x, b.y, tgt.x, tgt.y, tgt.crate.c, tgt.crate.r) : W.los(b.x, b.y, tgt.x, tgt.y)));
 
     // movimiento
-    if (fight && foe && goal !== safe) {
+    if (fight && foe && !plan.retreat) {
       if (this.strafeT <= 0) { this.strafe *= -1; this.strafeT = 0.6 + Math.random() * 1.2; }
       const ax = (foe.x - b.x) / fd, ay = (foe.y - b.y) / fd;
       let push = 0, side = 1;
@@ -84,6 +71,12 @@ PB.Bot = class {
       input.mx = -ay * this.strafe * side + ax * push;
       input.my = ax * this.strafe * side + ay * push;
       if (!W.los(b.x, b.y, foe.x, foe.y) && atk.kind !== 'lob') this.followTo(foe, input);
+    } else if (tgt && tgtD < atk.range * 0.8 && tgtLos && !plan.retreat) {
+      // a tiro del objetivo: quedarse y moverse un poco de lado
+      if (this.strafeT <= 0) { this.strafe *= -1; this.strafeT = 0.8 + Math.random(); }
+      const ax = (tgt.x - b.x) / (tgtD || 1), ay = (tgt.y - b.y) / (tgtD || 1);
+      input.mx = -ay * this.strafe * 0.4;
+      input.my = ax * this.strafe * 0.4;
     } else if (goal) {
       this.followTo(goal, input);
     }
@@ -104,7 +97,20 @@ PB.Bot = class {
     }
     this.seenT += dt;
     this.superWait -= dt;
-    if (foe && this.seenT >= this.reaction && g.started) {
+    // chutar el Voltorb
+    if (carrying) {
+      if (plan.kick && g.started) input.attack = { dx: plan.kick.dx, dy: plan.kick.dy };
+      return input;
+    }
+    // disparar a Snorlax / cajas si no hay enemigos a tiro
+    const foeInRange = foe && fd <= atk.range * (plan.focus ? 0.55 : 0.95);
+    if (!foeInRange && tgt && tgtD <= atk.range * 0.95 && tgtLos && b.ammo >= 1 && this.fireT <= 0 && g.started) {
+      const ang = Math.atan2(tgt.y - b.y, tgt.x - b.x) + (Math.random() - 0.5) * 0.15;
+      input.attack = { dx: Math.cos(ang), dy: Math.sin(ang), dist: Math.hypot(tgt.x - b.x, tgt.y - b.y) };
+      this.fireT = 0.35 + (1 - this.skill) * 0.5 + Math.random() * 0.3;
+      if (b.superCharge >= 1 && tgt.struct && ['spread', 'zone'].includes(b.def.super.kind)) input.super = input.attack;
+    }
+    if (foe && this.seenT >= this.reaction && g.started && !(plan.focus && input.attack)) {
       const canHit = atk.kind === 'lob' || W.los(b.x, b.y, foe.x, foe.y);
       const keepAmmo = this.skill < 0.5 && b.ammo < 2 && hpF > 0.5 && Math.random() < 0.6;
       if (fd <= atk.range * 0.95 && canHit && b.ammo >= 1 && this.fireT <= 0 && !keepAmmo) {
