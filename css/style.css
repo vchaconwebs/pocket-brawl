@@ -1,0 +1,214 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #1b2a4a;
+  color: #fff;
+  font-family: 'Lilita One', system-ui, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+canvas { display: block; touch-action: none; }
+
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: radial-gradient(ellipse at center, rgba(20, 30, 70, 0.55), rgba(10, 15, 40, 0.85));
+  overflow-y: auto;
+}
+.hidden { display: none !important; }
+
+.panel {
+  width: min(720px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  text-align: center;
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: linear-gradient(#2d4a8f, #1e3266);
+  border: 4px solid #0c1838;
+  box-shadow: 0 10px 0 #0c1838, 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: clamp(36px, 8vw, 64px);
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-shadow: 0 4px 0 #0c1838, 0 0 2px #000;
+}
+h1 span { color: #ffcf2e; margin-left: 10px; }
+h1.win { color: #ffcf2e; }
+h1.lose { color: #ff6b6b; }
+
+.mode { margin: 0 0 14px; color: #bcd0ff; font-family: system-ui, sans-serif; font-size: 14px; }
+
+#roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  gap: 10px;
+}
+.card {
+  font: inherit;
+  color: #fff;
+  cursor: pointer;
+  padding: 8px 6px 10px;
+  border-radius: 14px;
+  border: 3px solid #0c1838;
+  background: linear-gradient(#4b6fc2, #34529c);
+  box-shadow: 0 4px 0 #0c1838;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: transform 0.08s;
+}
+.card:hover { transform: translateY(-2px); }
+.card.sel { background: linear-gradient(#ffd84a, #f0a81c); color: #3a2500; }
+.card img {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+}
+.card .nm { font-size: 15px; }
+.types { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; }
+.types i {
+  font-style: normal;
+  font-family: system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 10px;
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: 6px;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+#info {
+  margin: 14px 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.25);
+  text-align: left;
+  font-family: system-ui, sans-serif;
+}
+#info h3 { margin: 0 0 4px; font-family: 'Lilita One', system-ui, sans-serif; font-weight: 400; font-size: 22px; }
+#info h3 small { font-size: 14px; color: #ffcf2e; margin-left: 6px; }
+#info p { margin: 4px 0; font-size: 14px; color: #dfe7ff; }
+.stats { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: #fff; margin: 6px 0; }
+
+button { font: inherit; cursor: pointer; }
+.big, #back {
+  color: #3a2500;
+  font-size: 26px;
+  padding: 10px 40px;
+  border-radius: 16px;
+  border: 4px solid #0c1838;
+  background: linear-gradient(#ffe066, #f5a815);
+  box-shadow: 0 6px 0 #0c1838;
+}
+.big:active, #back:active { transform: translateY(4px); box-shadow: 0 2px 0 #0c1838; }
+#back { font-size: 18px; background: linear-gradient(#9fb6ef, #6f8bd6); color: #0c1838; }
+.row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+
+.legal { margin: 14px 0 0; font-family: system-ui, sans-serif; font-size: 11px; color: #9fb0d8; line-height: 1.5; }
+.legal a { color: #cfdcff; }
+
+#scores { width: 100%; border-collapse: collapse; margin-top: 12px; font-family: system-ui, sans-serif; font-size: 14px; }
+#scores th { font-weight: 600; color: #9fb0d8; padding: 4px; }
+#scores td { padding: 6px 4px; }
+#scores td:first-child { text-align: left; }
+#scores tr.blue td { background: rgba(60, 140, 255, 0.2); }
+#scores tr.red td { background: rgba(255, 70, 70, 0.2); }
+#scores tr.me td { font-weight: 700; color: #7dff8f; }
+
+#help .mobile { display: none; }
+@media (pointer: coarse) {
+  #help .pc { display: none; }
+  #help .mobile { display: inline; }
+}
+#help {
+  position: fixed;
+  left: 50%;
+  top: 96px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  pointer-events: none;
+}
+#mute {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 0;
+  background: rgba(0, 0, 0, 0.4);
+  font-size: 18px;
+}
+
+/* Aviso de girar el móvil (solo pantallas táctiles en vertical) */
+#rotate {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: #1b2a4a;
+  font-size: 24px;
+  text-align: center;
+}
+#rotate .phone {
+  width: 54px;
+  height: 92px;
+  border: 5px solid #ffcf2e;
+  border-radius: 12px;
+  animation: turn 1.8s ease-in-out infinite;
+}
+@keyframes turn {
+  0%, 25% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(-90deg); }
+}
+@media (pointer: coarse) and (orientation: portrait) {
+  #rotate { display: flex; }
+}
+
+/* Móvil en horizontal: pantallas bajas, menú más compacto */
+@media (max-height: 500px) {
+  .screen { padding: 8px; align-items: flex-start; }
+  .panel { padding: 10px 14px; border-width: 3px; }
+  h1 { font-size: 34px; }
+  .mode { margin-bottom: 8px; font-size: 12px; }
+  #roster { grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .card { padding: 4px 3px 6px; gap: 2px; }
+  .card img { width: 44px; height: 44px; }
+  .card .nm { font-size: 12px; }
+  #info { margin: 8px 0; padding: 6px 10px; }
+  #info h3 { font-size: 17px; }
+  #info p { font-size: 12px; margin: 2px 0; }
+  .stats { margin: 2px 0; font-size: 12px; }
+  .big { font-size: 20px; padding: 6px 30px; }
+  #back { font-size: 15px; padding: 6px 20px; }
+  .legal { margin-top: 8px; font-size: 10px; }
+  #scores { font-size: 12px; margin-top: 6px; }
+  #scores td { padding: 3px 4px; }
+  .row { margin-top: 10px; }
+  #help { top: 70px; font-size: 11px; }
+}

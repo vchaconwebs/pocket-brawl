@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1b2a4a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="description" content="Pocket Brawl: fangame gratuito de combates 3v3 en el navegador. Sin ánimo de lucro.">
+  <title>Pocket Brawl</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="loading" class="screen"><h1>Cargando…</h1></div>
+
+  <div id="menu" class="screen hidden">
+    <div class="panel">
+      <h1>Pocket<span>Brawl</span></h1>
+      <p class="mode">Atrapagemas 3v3 · Consigue 10 gemas y aguanta 15 segundos</p>
+      <div id="roster"></div>
+      <div id="info"></div>
+      <button id="play" class="big">¡JUGAR!</button>
+      <p class="legal">
+        Fangame gratuito y sin ánimo de lucro, no afiliado a Nintendo, Creatures, GAME FREAK ni The Pokémon Company.
+        Pokémon es marca de sus respectivos dueños. Sprites de
+        <a href="https://github.com/PMDCollab/SpriteCollab" target="_blank" rel="noopener">PMD SpriteCollab</a>
+        (CC BY-NC 4.0) · <a href="CREDITS.md" target="_blank">Créditos</a>
+      </p>
+    </div>
+  </div>
+
+  <div id="end" class="screen hidden">
+    <div class="panel">
+      <h1 id="result"></h1>
+      <table id="scores"></table>
+      <div class="row">
+        <button id="again" class="big">Otra vez</button>
+        <button id="back">Cambiar Pokémon</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="help" class="hidden">
+    <span class="pc">WASD mover · Clic disparar · Espacio disparo automático · E (mantén y suelta) o clic derecho súper · Esc menú</span>
+    <span class="mobile">Izquierda: moverte · Derecha: arrastra para apuntar, toque rápido = automático · Botón amarillo: súper</span>
+  </div>
+  <button id="mute" title="Silenciar (M)">🔊</button>
+
+  <div id="rotate">
+    <div class="phone"></div>
+    <p>Gira el móvil para jugar</p>
+  </div>
+
+  <script src="js/sprite-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

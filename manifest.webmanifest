@@ -1,0 +1,13 @@
+{
+  "name": "Pocket Brawl",
+  "short_name": "Pocket Brawl",
+  "description": "Fangame gratuito de combates 3v3 en el navegador.",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#1b2a4a",
+  "theme_color": "#1b2a4a",
+  "icons": [
+    { "src": "assets/sprites/0004/portrait.png", "sizes": "40x40", "type": "image/png" }
+  ]
+}
