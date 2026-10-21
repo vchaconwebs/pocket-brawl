@@ -539,12 +539,14 @@
     if (r.mid) return joinAndStart(r.mid);
     startMatch();
   }
-  async function joinAndStart(mid) {
+  async function joinAndStart(mid, fromParty) {
     if (mode === 'play') return;
     searchScreen('¡Partida encontrada!', PB.T('Conectando con los demás jugadores…'), false);
     let j = { local: true };
     try { j = await PB.Online.joinMatch(mid); } catch (e) { j = { local: true, failed: true }; }
     if (j.local) {
+      // los de una sala que no consiguen entrar a la partida del jefe vuelven a la lobby
+      if (fromParty) { PB.Lobby.toast(PB.T('No se ha podido entrar en la partida de tu grupo.')); PB.Lobby.show('lobby'); return; }
       if (j.failed) PB.Lobby.toast(PB.T('No se ha podido conectar. Juegas con bots.'));
       return startMatch();
     }
@@ -555,7 +557,7 @@
     startNetMatch(j);
   }
   // los de tu sala: el jefe ha encontrado partida
-  PB.Online.on('matchFound', ({ mid }) => { if (mode !== 'play') joinAndStart(mid); });
+  PB.Online.on('matchFound', ({ mid }) => { if (mode !== 'play') joinAndStart(mid, true); });
   PB.Online.on('partySearch', (on) => { if (on) PB.Lobby.toast(PB.T('Tu grupo está buscando partida…')); });
 
   $('#play').onclick = () => { if (PB.Lobby.playPressed()) play(); };

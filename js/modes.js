@@ -283,7 +283,7 @@ PB.MODES = {
         if (W.circleSolid(nx, v.y, 12)) v.vx = -v.vx * 0.7; else v.x = nx;
         const ny = v.y + v.vy * dt;
         if (W.circleSolid(v.x, ny, 12)) v.vy = -v.vy * 0.7; else v.y = ny;
-        const f = Math.exp((v.z > 0 ? -0.4 : -1.4) * dt);
+        const f = Math.exp((v.z > 0 ? -0.8 : -2.2) * dt);
         v.vx *= f; v.vy *= f;
         v.spin += (Math.hypot(v.vx, v.vy) / 20) * dt;
         // recoger
@@ -341,9 +341,9 @@ PB.MODES = {
         ang = Math.atan2(R.cy - b.y, R.cx - b.x);
       } else ang = Math.atan2(aim.dy, aim.dx);
       v.carrier = null;
-      v.vx = Math.cos(ang) * 780;
-      v.vy = Math.sin(ang) * 780;
-      v.vz = 140;
+      v.vx = Math.cos(ang) * 600;
+      v.vy = Math.sin(ang) * 600;
+      v.vz = 120;
       v.lastKicker = b;
       v.lastTouch = b;
       v.kickCd = 0.35;

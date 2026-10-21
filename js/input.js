@@ -39,6 +39,21 @@ PB.Input = class {
     window.addEventListener('pointermove', (e) => this.move(e));
     window.addEventListener('pointerup', (e) => this.up(e));
     window.addEventListener('pointercancel', (e) => this.up(e, true));
+    // Red de seguridad: a veces el móvil no avisa de que levantas el dedo (gestos del sistema,
+    // notificaciones...). Si ya no hay ningún dedo cerca de un joystick, se suelta.
+    const prune = (e) => {
+      const ts = [...e.touches];
+      for (const name of ['move', 'attack', 'super']) {
+        const s = this.sticks[name];
+        if (!s) continue;
+        const f = s.raw || s.pos; // donde está el dedo (pos se queda dentro del círculo del joystick)
+        const near = ts.some((t) => Math.hypot(t.clientX - f.x, t.clientY - f.y) < 90);
+        if (!near) this.sticks[name] = null;
+      }
+    };
+    window.addEventListener('touchend', prune, { passive: true });
+    window.addEventListener('touchcancel', prune, { passive: true });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.sticks = { move: null, attack: null, super: null }; });
   }
 
   // Posición y tamaño de los joysticks (según los ajustes: tamaño y modo zurdo)
@@ -96,7 +111,7 @@ PB.Input = class {
       return;
     }
     for (const s of Object.values(this.sticks)) {
-      if (s && s.id === e.pointerId) s.pos = { x: e.clientX, y: e.clientY };
+      if (s && s.id === e.pointerId) { s.pos = { x: e.clientX, y: e.clientY }; s.raw = { x: e.clientX, y: e.clientY }; }
     }
   }
 

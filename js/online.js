@@ -133,7 +133,7 @@ PB.Online = (() => {
       const s = await fs.collection('users').doc(uid).get();
       if (s.exists) myDoc = Object.assign({ friends: [] }, s.data());
     }
-    const p = { name: myName(), nameLower: myName().toLowerCase(), tag: d.tag, copas: PB.Save.totalCopas(), fav: d.selected, clan: myDoc.clan || null, clanName: myDoc.clanName || '' };
+    const p = { name: myName(), nameLower: myName().toLowerCase(), tag: d.tag, copas: PB.Save.totalCopas(), fav: d.avatar || d.selected, clan: myDoc.clan || null, clanName: myDoc.clanName || '' };
     const key = JSON.stringify(p);
     if (key === lastProfile) return;
     lastProfile = key;
@@ -363,7 +363,7 @@ PB.Online = (() => {
   const rankCache = {};
   async function cached(key, fn) {
     const c = rankCache[key];
-    if (c && Date.now() - c.t < 300000) return c.v;
+    if (c && Date.now() - c.t < 30000) return c.v;
     const v = await fn();
     rankCache[key] = { t: Date.now(), v };
     return v;
@@ -416,7 +416,12 @@ PB.Online = (() => {
   }
 
   async function myClan() {
-    if (!(await start()) || !myDoc.clan) return null;
+    if (!(await start()) || isGuest()) return null;
+    if (!myDoc.clan) {
+      const q = await fs.collection('clans').where('members', 'array-contains', uid).limit(1).get().catch(() => null);
+      if (!q || q.empty) return null;
+      await setMyClan(q.docs[0].id, clean(q.docs[0].data().name, 20));
+    }
     const c = await clanFull(myDoc.clan);
     if (!c || !c.memberIds.includes(uid)) { await setMyClan(null); return null; }
     return c;
@@ -540,7 +545,8 @@ PB.Online = (() => {
   // La sala no existe hasta que la creas; al cerrar la página sales de ella.
   let party = null, partyRef = null, partyOff = null;
   const memberInfo = () => {
-    const d = PB.Save.get(), id = d.selected;
+    // (un jugador que aún no ha elegido iniciales lleva el primero de la lista)
+    const d = PB.Save.get(), id = PB.brawlerById(d.selected) ? d.selected : PB.BRAWLERS[0].id;
     return { name: myName(), fav: id, line: PB.Save.lineOf(id), lvl: PB.Save.level(id), shiny: PB.Save.skin(id) === 'shiny', copas: PB.Save.copas(id), t: Date.now() };
   };
 
@@ -549,8 +555,12 @@ PB.Online = (() => {
     partyRef = rtdb.ref('parties/' + code);
     partyRef.child('members/' + uid).onDisconnect().remove();
     let prevIds = null;
+    let first = true;
     const cb = partyRef.on('value', (s) => {
       const v = s.val();
+      // al entrar en una sala, la partida que tuviera apuntada es vieja: no hay que unirse a ella
+      if (first && v && v.state && v.state.mid) lastJoined = v.state.mid;
+      first = false;
       if (!v || !v.members || !v.members[uid]) {
         // me han echado o la sala ya no existe
         const was = party;
@@ -575,7 +585,8 @@ PB.Online = (() => {
       for (const id of ids) if (party.invited) delete party.invited[id];
       emit('party', info);
       // el jefe ha encontrado partida: los demás se unen
-      if (v.state && v.state.mid && v.leader !== uid && v.state.mid !== lastJoined) { lastJoined = v.state.mid; emit('matchFound', { mid: v.state.mid }); }
+      const fresh = v.state && v.state.mid && (!v.state.t || now() - v.state.t < 30000);
+      if (fresh && v.leader !== uid && v.state.mid !== lastJoined) { lastJoined = v.state.mid; emit('matchFound', { mid: v.state.mid }); }
       if (v.state && v.state.k === 'search' && v.leader !== uid) emit('partySearch', true);
       if ((!v.state || v.state.k === 'idle') && v.leader !== uid) emit('partySearch', false);
     });
@@ -711,7 +722,12 @@ PB.Online = (() => {
         ref.onDisconnect().cancel();
         ref.remove().catch(() => {});
         search = null;
-        if (party && partyRef && party.leader === 'me') partyRef.child('state').set(r.mid ? { k: 'match', mid: r.mid } : { k: 'idle' });
+        if (party && partyRef && party.leader === 'me') {
+          const pr = partyRef;
+          pr.child('state').set(r.mid ? { k: 'match', mid: r.mid, t: fb.database.ServerValue.TIMESTAMP } : { k: 'idle' });
+          // pasado un rato, la sala vuelve a estar libre (para quien entre después)
+          if (r.mid) setTimeout(() => pr.child('state').set({ k: 'idle' }).catch(() => {}), 25000);
+        }
         resolve(r);
       };
       const cb = all.on('value', (s) => {
@@ -966,6 +982,7 @@ PB.Online = (() => {
   // ------------------------------------------------------------ API
   return {
     start, init, guest, isGuest: () => isGuest(), claimName,
+    isFriend: (id) => (myDoc.friends || []).includes(id),
     status: () => ({ online: !!uid, uid }),
     on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); },
     account, loginGoogle, emailAccount, resetPassword, logout, saveCloud,

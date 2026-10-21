@@ -62,6 +62,21 @@
     },
   };
 
+  // Descripción: rasgo del papel + cómo es su ataque básico de verdad (el estilo cambia la forma)
+  const TRAIT = {
+    tank: 'Aguanta muchísimo.', assassin: 'Muy rápido y escurridizo.', sniper: 'Frágil, pero pega muy fuerte.',
+    fighter: 'Equilibrado.', thrower: 'Resistente y algo lento.',
+  };
+  const ATK_DESC = {
+    tank: 'Dispara una ráfaga en abanico a corta distancia.', assassin: 'Dispara dos ataques seguidos.',
+    sniper: 'Un disparo potente de largo alcance.', fighter: 'Lanza tres disparos a media distancia.',
+    thrower: 'Lanza sus ataques por encima de los muros.',
+    cone: 'Suelta una llamarada corta en abanico.', burst3: 'Dispara una ráfaga rápida de tres ataques.',
+    orb: 'Lanza una esfera grande y lenta que atraviesa a los rivales.', homing: 'Sus ataques persiguen al rival más cercano.',
+    melee: 'Golpea cuerpo a cuerpo en un arco delante de él.', twin: 'Dispara dos ataques en paralelo.',
+    boomer: 'Lanza un ataque que va y vuelve, y golpea a la ida y a la vuelta.',
+  };
+
   // súper según el tipo
   const SUPER = {
     spread: { kind: 'spread', count: 9, spread: 0.75, range: 290, speed: 600, dmg: 360, r: 18, pierce: true, scale: 1.5, d: 'una gran ola de ataques que atraviesa a todos' },
@@ -208,7 +223,7 @@
       reload: R.reload, superHits: R.superHits,
       attack: Object.assign({ name: PB.TM(basicName) }, atk, { dmg: Math.round((atk.dmg * dmgMul) / 10) * 10, look: Object.assign({ scale: as }, look) }),
       super: Object.assign({ name: PB.TM(supName), type: supType }, sup, sup.dmg ? { dmg: Math.round((sup.dmg * dmgMul) / 10) * 10 } : {}, sup.dps ? { dps: Math.round(sup.dps * dmgMul) } : {}, { look: Object.assign({ scale: ss || 1.4 }, supLook) }),
-      desc: PB.T(R.desc) + ' ' + PB.T('Su súper, {name} ({type}), es {what}.', { name: PB.TM(supName), type: PB.T(PB.TYPE_INFO[supType].name), what: PB.T(sd) }),
+      desc: PB.T(TRAIT[roleId]) + ' ' + PB.T(ATK_DESC[st ? st[0] : roleId]) + ' ' + PB.T('Súper: {name} ({type}), {what}.', { name: PB.TM(supName), type: PB.T(PB.TYPE_INFO[supType].name), what: PB.T(sd) }),
       alts: fam.alts || null,
       rarity,
     };

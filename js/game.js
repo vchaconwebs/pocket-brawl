@@ -288,9 +288,11 @@ PB.Game = class {
       }
     }
 
-    // ataques
+    // ataques (si pulsas el súper justo cuando estás aturdido o embistiendo, se guarda un momento)
+    if (input.super && b.superCharge >= 1) b.superQ = { aim: input.super, t: 0.6 };
+    if (b.superQ) { b.superQ.t -= dt; if (b.superQ.t <= 0 || b.superCharge < 1) b.superQ = null; }
     if (b.stunT <= 0 && !b.dash && b.spawnT <= 0) {
-      if (input.super && b.superCharge >= 1) this.doSuper(b, input.super);
+      if (b.superQ) { const q = b.superQ.aim; b.superQ = null; this.doSuper(b, q); }
       else if (input.attack && this.mode.onAttack && this.mode.onAttack(this, b, input.attack)) {
         // el modo se ha encargado (p. ej. chutar el Voltorb)
       } else if (input.attack && b.ammo >= 1 && b.shotCd <= 0 && !b.burst) this.doAttack(b, input.attack);

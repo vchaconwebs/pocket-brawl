@@ -602,7 +602,7 @@ button { font: inherit; cursor: pointer; }
 .prow.me { background: rgba(90, 200, 120, 0.25); border: 2px solid #5ad07a; }
 .prow .pos { width: 28px; text-align: center; font-size: 18px; color: #ffcf2e; }
 .prow .av { width: 40px; height: 40px; border-radius: 10px; image-rendering: pixelated; background: rgba(255, 255, 255, 0.08); }
-.prow .av.big, .clan-head .av.big { width: 64px; height: 64px; }
+.prow .av.avbig, .clan-head .av.avbig { width: 64px; height: 64px; flex: 0 0 64px; }
 .pinfo { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .pinfo b { font-weight: 400; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pinfo small { font-size: 12px; color: #9fb0d8; }
@@ -1798,3 +1798,31 @@ h1.lose { color: #ff8a7a; }
 .nm-panel .sub { margin: 0; }
 #nm-input { font: inherit; font-size: 22px; padding: 8px 12px; color: #fff; background: #10183a; border: 3px solid #141824; box-shadow: inset 0 0 0 2px #3a4a8a; text-align: center; }
 .nm-err { margin: 0; min-height: 18px; color: #ff9a8a; text-align: center; font-size: 15px; }
+
+/* foto de perfil y código */
+.pf-av-btn { position: relative; padding: 0; border: 0; background: none; cursor: pointer; }
+.pf-av-btn span { position: absolute; right: -4px; bottom: -4px; width: 26px; height: 26px; line-height: 24px; text-align: center; background: #ffcf2e; color: #141824; border: 2px solid #141824; font-size: 15px; }
+.pf-tag-row { display: flex; align-items: center; gap: 8px; }
+.pf-avatars { margin: 8px 0; padding: 10px; background: rgba(0, 0, 0, 0.25); }
+.pf-avatars b { font-weight: 400; color: #ffcf2e; }
+#pf-av-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 6px; max-height: 190px; overflow-y: auto; margin-top: 6px; }
+#pf-av-grid button { padding: 2px; background: rgba(255, 255, 255, 0.08); border: 2px solid transparent; cursor: pointer; }
+#pf-av-grid button.sel { border-color: #ffcf2e; background: rgba(255, 207, 46, 0.2); }
+#pf-av-grid img { width: 100%; image-rendering: pixelated; display: block; }
+.pt-mem .tagok { margin-left: auto; color: #8ef59a; font-size: 13px; }
+
+/* clan en pantallas bajas (móvil en horizontal): todo cabe sin que el chat quede cortado */
+@media (max-height: 520px) {
+  #clan .pn-head { padding-top: 0 !important; padding-bottom: 0 !important; }
+  .clan-head { margin-bottom: 4px; gap: 8px; }
+  .clan-head .av.avbig { width: 40px; height: 40px; flex: 0 0 40px; }
+  .clan-head p { font-size: 12px; margin: 0; }
+  .clan-head small { font-size: 11px; }
+  .clan-grid .plist, .chat { max-height: calc(100vh - 210px); }
+  .chat { min-height: 0; height: calc(100vh - 210px); }
+  .clan-grid .plist { height: calc(100vh - 210px); }
+  .chat-in { padding: 4px; }
+}
+/* escudo elegido al crear un clan */
+.icons button.sel { outline: 3px solid #ffcf2e; outline-offset: 1px; }
+.pf-av-btn img#pf-big { width: 80px; height: 80px; image-rendering: pixelated; }

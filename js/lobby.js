@@ -143,7 +143,7 @@ PB.Lobby = (() => {
     $('#mode-name').textContent = M.name;
     $('#pf-name').textContent = d.name;
     $('#pf-copas').textContent = PB.Save.totalCopas();
-    $('#pf-avatar').src = portrait(b);
+    $('#pf-avatar').src = PB.Sprites.portraitURL(d.avatarDex || b.dex);
     // botón del cofre: la Pokéball, la barra de fichas y cuántos cofres hay para abrir
     const k = d.tokens / PB.META.tokensPerChest;
     $('#tok-fill').style.width = Math.round(k * 100) + '%';
@@ -269,11 +269,12 @@ PB.Lobby = (() => {
     const next = lvl < PB.META.maxLevel ? scaleStats(PB.statsAt(b, lvl + 1)) : null;
     const plus = (k) => (next && own && next[k] !== now[k] ? ` <em>+${next[k] - now[k]}</em>` : '');
     $('#dt-name').textContent = PB.stageName(L, dtStage);
-    $('#dt-role').textContent = b.role + ' · Generación ' + b.gen;
+    const sdef = dtStage > 0 ? PB.retype(b, L.line, dtStage) : b;
+    $('#dt-role').textContent = sdef.role + ' · Generación ' + b.gen;
     $('#dt-rar').textContent = r.name;
     $('#dt-rar').style.background = r.color;
     $('#dt-types').innerHTML = typeTags(b, PB.stageTypes(L, dtStage));
-    $('#dt-desc').textContent = b.desc;
+    $('#dt-desc').textContent = sdef.desc;
     // línea evolutiva: se puede tocar cada fase para verla
     const steps = PB.evoSteps(b);
     const branchPick = b.alts
@@ -512,6 +513,7 @@ PB.Lobby = (() => {
       '<div class="pt-members">' + p.members.map((m) =>
         `<div class="pt-mem${m.me ? ' me' : ''}"><img src="${memberPortrait(m)}" alt=""><span><b>${m.me ? 'Tú' : m.name}${p.leader === m.id ? ' <i>★ jefe</i>' : ''}</b>` +
         `<small>${(PB.brawlerById(m.fav) || {}).name || ''} · ${m.ready ? '¡Listo!' : 'Esperando…'}</small></span>` +
+        (!m.me && !PB.Online.isGuest() && !PB.Online.isFriend(m.id) ? `<button class="mini ok" data-addf="${m.id}" title="Añadir amigo">＋ Amigo</button>` : '') +
         (lead && !m.me ? `<button class="mini" data-kick="${m.id}">Echar</button>` : '') + '</div>').join('') +
       Object.keys(p.invited || {}).map(() => '<div class="pt-mem invited"><span><small>Invitación enviada…</small></span></div>').join('') +
       `</div><button class="act red" id="pt-leave">Salir de la sala</button>`;
@@ -522,6 +524,12 @@ PB.Lobby = (() => {
       else { navigator.clipboard && navigator.clipboard.writeText(link); toast('Enlace copiado: ' + p.code); }
     };
     box.querySelectorAll('[data-kick]').forEach((e) => (e.onclick = () => PB.Online.kick(e.dataset.kick)));
+    box.querySelectorAll('[data-addf]').forEach((e) => (e.onclick = async () => {
+      const r = await PB.Online.addFriend(e.dataset.addf);
+      if (r.error) return toast(r.error);
+      PB.Audio.play('ball');
+      e.replaceWith(Object.assign(document.createElement('span'), { className: 'tagok', textContent: PB.T('Solicitud enviada') }));
+    }));
     $('#pt-leave').onclick = () => { PB.Online.leaveParty(); PB.Audio.play('tick'); };
   }
 
@@ -732,9 +740,10 @@ PB.Lobby = (() => {
   function showProfile() {
     const d = PB.Save.get();
     const b = PB.brawlerById(d.selected);
-    $('#pf-big').src = portrait(b);
+    $('#pf-big').src = PB.Sprites.portraitURL(d.avatarDex || b.dex);
     $('#pf-input').value = d.name;
-    $('#pf-tag').textContent = 'Código de amigo: ' + d.tag;
+    $('#pf-tag').textContent = PB.T('Código de amigo: {tag}', { tag: d.tag });
+    $('#pf-avatars').classList.add('hidden');
     PB.Online.myClan().then((c) => { $('#pf-clan').textContent = c ? 'Clan: ' + c.name : 'Sin clan'; });
     const st = d.stats;
     const rows = [
@@ -750,6 +759,28 @@ PB.Lobby = (() => {
     $('#pf-stats').innerHTML = rows.map(([k, v]) => `<div><small>${k}</small><b>${typeof v === 'number' ? v.toLocaleString('es-ES') : v}</b></div>`).join('');
     renderAccount();
     show('profile');
+  }
+
+  // foto de perfil: cualquier fase de los Pokémon que tienes
+  function renderAvatars() {
+    const d = PB.Save.get();
+    const dexes = [];
+    for (const id of Object.keys(d.owned)) {
+      const b = PB.brawlerById(id);
+      if (b) for (const dex of PB.Save.lineOf(id)) if (!dexes.includes(String(dex))) dexes.push(String(dex));
+    }
+    $('#pf-av-grid').innerHTML = dexes.map((dex) => `<button class="${dex === d.avatarDex ? 'sel' : ''}" data-av="${dex}"><img src="${PB.Sprites.portraitURL(dex)}" alt="" loading="lazy"></button>`).join('');
+    $('#pf-av-grid').querySelectorAll('[data-av]').forEach((e) => (e.onclick = () => {
+      const dd = PB.Save.get();
+      dd.avatarDex = e.dataset.av;
+      // para el perfil público: el Pokémon (familia) de esa foto
+      dd.avatar = (PB.BRAWLERS.find((x) => [].concat(...(x.alts || [x.line])).some((dx) => String(dx) === e.dataset.av)) || {}).id || dd.selected;
+      PB.Save.persist();
+      PB.Online.updateMe();
+      PB.Audio.play('ready');
+      showProfile();
+      refreshLobby();
+    }));
   }
 
   // cuenta: invitado o Google
@@ -895,7 +926,7 @@ PB.Lobby = (() => {
     const full = c.count >= PB.META.clanMax;
     const btnTxt = c.pending ? 'Solicitud enviada' : full ? 'Clan lleno' : c.type === 'invite' ? 'Pedir unirse' : 'Unirse';
     $('#cl-body').innerHTML =
-      `<div class="clan-head"><img class="av big" src="${clanIcon(c)}" alt=""><div><p>${c.desc || ''}</p><small>${c.count}/${PB.META.clanMax} miembros · ${c.type === 'invite' ? '🔒 Solo invitación' : '🌐 Público'} · <img class="cup" src="${cupIcon()}" alt="">${c.copas.toLocaleString('es-ES')}</small></div></div>` +
+      `<div class="clan-head"><img class="av avbig" src="${clanIcon(c)}" alt=""><div><p>${c.desc || ''}</p><small>${c.count}/${PB.META.clanMax} miembros · ${c.type === 'invite' ? '🔒 Solo invitación' : '🌐 Público'} · <img class="cup" src="${cupIcon()}" alt="">${c.copas.toLocaleString('es-ES')}</small></div></div>` +
       `<div class="row left"><button class="act gray with-arrow" id="cl-back">Volver</button><button class="act gold" id="cl-join" ${c.pending || full ? 'disabled' : ''}>${btnTxt}</button></div>` +
       `<div class="plist">${c.members.map((m, i) => prow({ ...m, pos: i + 1, sub: m.role })).join('')}</div>`;
     $('#cl-back').onclick = showClan;
@@ -938,7 +969,7 @@ PB.Lobby = (() => {
   async function showMyClan(c) {
     $('#cl-title').textContent = c.name;
     $('#cl-body').innerHTML =
-      `<div class="clan-head"><img class="av big" src="${clanIcon(c)}" alt=""><div><p>${c.desc || ''}</p><small>${c.count}/${PB.META.clanMax} miembros · ${c.type === 'invite' ? '🔒 Solo invitación' : '🌐 Público'} · <img class="cup" src="${cupIcon()}" alt="">${c.copas.toLocaleString('es-ES')}</small></div><button class="act gray" id="cl-leave">Abandonar</button></div>` +
+      `<div class="clan-head"><img class="av avbig" src="${clanIcon(c)}" alt=""><div><p>${c.desc || ''}</p><small>${c.count}/${PB.META.clanMax} miembros · ${c.type === 'invite' ? '🔒 Solo invitación' : '🌐 Público'} · <img class="cup" src="${cupIcon()}" alt="">${c.copas.toLocaleString('es-ES')}</small></div><button class="act gray" id="cl-leave">Abandonar</button></div>` +
       `<div class="clan-grid"><div class="plist">${c.members.map((m, i) => prow({ ...m, pos: i + 1, sub: m.role + (m.me ? '' : m.online ? ' · <span class="on">●</span>' : ' · <span class="off">●</span>') })).join('')}</div>` +
       `<div class="chat"><div id="chat-log"></div><div class="chat-in"><input id="chat-q" maxlength="140" placeholder="Escribe al clan…"><button class="act blue" id="chat-send">Enviar</button></div></div></div>` +
       '<div id="cl-reqs"></div>';
@@ -1464,6 +1495,12 @@ PB.Lobby = (() => {
     });
     PB.Online.on('party', (info) => { if (info && info.kicked) toast(PB.T('Has salido de la sala')); });
     $('#pf-google').onclick = () => googleLogin('pf');
+    $('#pf-av-btn').onclick = () => { renderAvatars(); $('#pf-avatars').classList.toggle('hidden'); PB.Audio.play('tick'); };
+    $('#pf-copy').onclick = () => {
+      const tag = PB.Save.get().tag;
+      if (navigator.clipboard) navigator.clipboard.writeText(tag).catch(() => {});
+      toast(PB.T('Código copiado: {tag}. Tus amigos pueden buscarte con él.', { tag }));
+    };
     mailForm('pf');
     $('#wl-google').onclick = () => googleLogin('wl');
     mailForm('wl');

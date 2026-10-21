@@ -246,12 +246,32 @@ PB.DIFFICULTY = {
 };
 
 // Nombres de entrenador para los bots (inventados)
-PB.TRAINER_NAMES = [
-  'Lucía_7', 'MarcosGG', 'NerePlay', 'ElRayo23', 'Sandrix', 'Pablito99', 'Alba.exe', 'ToniPro', 'Irene_09', 'Dani3l',
-  'KaiZen', 'Mireia', 'XavierRB', 'Hugo_SP', 'Valen', 'Juls', 'Rocío22', 'Mateo_x', 'Iker10', 'Noa',
-  'Carla.b', 'Guille', 'SaraMoon', 'Unai', 'Leo_fire', 'Martina', 'Adri_G', 'PokeNico', 'Ainhoa', 'Bruno7',
-  'Elena', 'Gonzo', 'Paula_ss', 'Rubén', 'Zoe', 'Jaime_88', 'Clara', 'Óscar', 'Lola', 'Íñigo',
-];
+PB.TRAINER_NAMES = (() => {
+  // nombres de entrenador para los bots: base + estilo (sale una lista larga y variada)
+  const base = [
+    'Lucía', 'Marcos', 'Nerea', 'Rayo', 'Sandra', 'Pablo', 'Alba', 'Toni', 'Irene', 'Daniel', 'Kai', 'Mireia', 'Xavi', 'Hugo', 'Valen',
+    'Julia', 'Rocío', 'Mateo', 'Iker', 'Noa', 'Carla', 'Guille', 'Sara', 'Unai', 'Leo', 'Martina', 'Adri', 'Nico', 'Ainhoa', 'Bruno',
+    'Elena', 'Gonzo', 'Paula', 'Rubén', 'Zoe', 'Jaime', 'Clara', 'Óscar', 'Lola', 'Íñigo', 'Marta', 'Álex', 'Laura', 'Sergio', 'Nora',
+    'Diego', 'Vega', 'Izan', 'Abril', 'Thiago', 'Emma', 'Liam', 'Mía', 'Gael', 'Alma', 'Enzo', 'Olivia', 'Bosco', 'Candela', 'Marco',
+    'Aitana', 'Teo', 'Lara', 'Samu', 'Jimena', 'Pol', 'Aroa', 'Biel', 'Carmen', 'Raúl', 'Inés', 'Hector', 'Erik', 'Lía', 'Gabi',
+    'Fran', 'Judith', 'Mario', 'Noelia', 'Rafa', 'Silvia', 'Tomás', 'Vera', 'Yago', 'Ana', 'Berta', 'César', 'Dani', 'Eva', 'Félix',
+    'Gema', 'Hugo', 'Iris', 'Joan', 'Kira', 'Luna', 'Miguel', 'Nil', 'Oriol', 'Pau', 'Quim', 'Rosa', 'Saúl', 'Tania', 'Uxue',
+    'Víctor', 'Wendy', 'Yeray', 'Zaira', 'Cris', 'Jorge', 'Pilar', 'Ivan', 'Lucas', 'Bea', 'Joel', 'Mara', 'Neo', 'Ona', 'Rita',
+  ];
+  const tags = [
+    'Trainer', 'Master', 'Pro', 'GG', 'Play', 'Gamer', 'Poke', 'Kid', 'Star', 'King', 'Queen', 'Fire', 'Wave', 'Leaf', 'Bolt',
+    'Shadow', 'Storm', 'Ace', 'Crack', 'Max', 'Neo', 'Ultra', 'Mega', 'Giga', 'Zen', 'Fox', 'Wolf', 'Drake', 'Nova', 'Pixel',
+  ];
+  const H = (i) => { let h = (i + 1) * 2654435761; h ^= h >>> 13; h = Math.imul(h, 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  const out = new Set();
+  base.forEach((n, i) => {
+    out.add(n);
+    const t = tags[Math.floor(H(i) * tags.length)], num = 1 + Math.floor(H(i + 500) * 99);
+    const styles = [n + '_' + num, n + t, t + n, n + '.' + t.toLowerCase(), n.toLowerCase() + num, 'xX' + n + 'Xx', n + '_' + t, 'El' + n];
+    styles.forEach((s, k) => { if (H(i * 13 + k) < 0.45) out.add(s.slice(0, 16)); });
+  });
+  return [...out];
+})();
 
 PB.RULES = {
   ballsToWin: 10,
