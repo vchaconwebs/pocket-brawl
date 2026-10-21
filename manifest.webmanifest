@@ -1,6 +1,6 @@
 {
-  "name": "Pocket Brawl",
-  "short_name": "Pocket Brawl",
+  "name": "PokéVersus",
+  "short_name": "PokéVersus",
   "description": "Fangame gratuito de combates 3v3 en el navegador.",
   "start_url": "./",
   "display": "fullscreen",

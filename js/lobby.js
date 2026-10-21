@@ -492,7 +492,7 @@ PB.Lobby = (() => {
     const link = location.origin + location.pathname + '?sala=' + p.code;
     $('#pt-copy').onclick = () => { navigator.clipboard && navigator.clipboard.writeText(link); toast('Enlace copiado: ' + p.code); };
     $('#pt-share').onclick = () => {
-      if (navigator.share) navigator.share({ title: 'Pocket Brawl', text: '¡Únete a mi sala en Pocket Brawl! Código ' + p.code, url: link }).catch(() => {});
+      if (navigator.share) navigator.share({ title: 'PokéVersus', text: '¡Únete a mi sala en PokéVersus! Código ' + p.code, url: link }).catch(() => {});
       else { navigator.clipboard && navigator.clipboard.writeText(link); toast('Enlace copiado: ' + p.code); }
     };
     box.querySelectorAll('[data-kick]').forEach((e) => (e.onclick = () => PB.Online.kick(e.dataset.kick)));
@@ -1264,7 +1264,7 @@ PB.Lobby = (() => {
         `<div class="st-row"><div><b>Créditos y licencias</b><small>Sprites, efectos, fuente y avisos legales</small></div><a class="act blue" href="CREDITS.md" target="_blank" rel="noopener">Ver</a></div>` +
         `<div class="st-row"><div><b>Restablecer ajustes</b></div><button class="act gray" id="st-reset">Restablecer</button></div>` +
         `<div class="st-row danger"><div><b>Borrar progreso</b><small>Pierdes Pokémon, niveles, copas, monedas y logros de este navegador</small></div><button class="act red" id="st-wipe">Borrar</button></div>` +
-        `<p class="sub">Pocket Brawl · fangame gratuito y sin ánimo de lucro.</p>`;
+        `<p class="sub">PokéVersus · fangame gratuito y sin ánimo de lucro.</p>`;
     }
     body.innerHTML = html;
     body.querySelectorAll('[data-toggle]').forEach((b) => (b.onclick = () => {

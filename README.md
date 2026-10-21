@@ -1,4 +1,4 @@
-# Pocket Brawl (nombre provisional)
+# PokéVersus
 
 Fangame de combates estilo Brawl Stars con Pokémon, en el navegador.
 
