@@ -10,7 +10,7 @@
   <meta name="description" content="Pocket Brawl: fangame gratuito de combates 3v3 en el navegador. Sin ánimo de lucro.">
   <title>Pocket Brawl</title>
   <link rel="preload" href="assets/fonts/PixelifySans.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=17">
+  <link rel="stylesheet" href="css/style.css?v=19">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -29,17 +29,18 @@
         <div class="lb-money">
           <span class="pill"><img id="ico-coin" alt=""><b id="coins">0</b></span>
           <span class="pill"><img id="ico-star" alt=""><b id="points">0</b></span>
+          <button class="icon-btn" id="btn-settings" title="Ajustes"><img class="pxi" data-icon="gear" alt=""></button>
         </div>
       </header>
 
       <aside class="lb-left">
         <div class="lb-menu">
-          <button class="lb-btn" id="btn-pokemon"><i>🐾</i>Pokémon</button>
-          <button class="lb-btn" id="btn-missions"><i>📜</i>Misiones <span class="badge hidden" id="mis-badge">0</span></button>
-          <button class="lb-btn" id="btn-achievements"><i>🏅</i>Logros <span class="badge hidden" id="ach-badge">0</span></button>
-          <button class="lb-btn" id="btn-friends"><i>👥</i>Amigos <span class="badge hidden" id="fr-badge">0</span></button>
-          <button class="lb-btn" id="btn-clan"><i>🛡️</i>Clan</button>
-          <button class="lb-btn" id="btn-ranking"><i>🏆</i>Ranking</button>
+          <button class="lb-btn" id="btn-pokemon"><img class="pxi" data-icon="pokeball" alt="">Pokémon</button>
+          <button class="lb-btn" id="btn-missions"><img class="pxi" data-icon="scroll" alt="">Misiones <span class="badge hidden" id="mis-badge">0</span></button>
+          <button class="lb-btn" id="btn-achievements"><img class="pxi" data-icon="medal" alt="">Logros <span class="badge hidden" id="ach-badge">0</span></button>
+          <button class="lb-btn" id="btn-friends"><img class="pxi" data-icon="friends" alt="">Amigos <span class="badge hidden" id="fr-badge">0</span></button>
+          <button class="lb-btn" id="btn-clan"><img class="pxi" data-icon="shield" alt="">Clan</button>
+          <button class="lb-btn" id="btn-ranking"><img class="pxi" data-icon="cup" alt="">Ranking</button>
         </div>
         <button class="chest-widget" id="chest-widget">
           <span class="cw-ball"><img id="cw-img" alt=""><span class="cw-badge hidden" id="cw-count">0</span></span>
@@ -205,6 +206,34 @@
     </div>
   </div>
 
+
+  <!-- AJUSTES -->
+  <div id="settings" class="screen hidden">
+    <div class="panel">
+      <div class="pn-head"><button class="back" id="st-back">←</button><h2>Ajustes</h2></div>
+      <div class="tabs" id="st-tabs">
+        <button data-tab="sound" class="sel">Sonido</button>
+        <button data-tab="graphics">Gráficos</button>
+        <button data-tab="controls">Controles</button>
+        <button data-tab="account">Cuenta</button>
+      </div>
+      <div id="st-body"></div>
+    </div>
+  </div>
+
+  <!-- PAUSA -->
+  <div id="pause" class="screen hidden">
+    <div class="panel pause-panel">
+      <h1>Pausa</h1>
+      <div class="pause-btns">
+        <button class="big" id="pz-resume"><img class="pxi" data-icon="play" alt="">Reanudar</button>
+        <button class="lb-btn" id="pz-settings"><img class="pxi" data-icon="gear" alt="">Ajustes</button>
+        <button class="lb-btn" id="pz-quit"><img class="pxi" data-icon="home" alt="">Salir al lobby</button>
+      </div>
+      <p class="sub">Si sales, la partida no cuenta (ni copas ni fichas).</p>
+    </div>
+  </div>
+
   <!-- ABRIR COFRE -->
   <div id="chestopen" class="screen hidden">
     <canvas id="chest-fx"></canvas>
@@ -237,29 +266,31 @@
     <span class="pc">WASD mover · Clic disparar · Espacio disparo automático · E (mantén y suelta) o clic derecho súper · Esc menú</span>
     <span class="mobile">Izquierda: moverte · Derecha: arrastra para apuntar, toque rápido = automático · Botón amarillo: súper</span>
   </div>
-  <button id="mute" title="Silenciar (M)">🔊</button>
+  <button class="icon-btn hidden" id="btn-pause" title="Pausa (Esc)"><img class="pxi" data-icon="pause" alt=""></button>
 
   <div id="rotate">
     <div class="phone"></div>
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=17"></script>
-  <script src="js/data.js?v=17"></script>
-  <script src="js/sprites.js?v=17"></script>
-  <script src="js/vfx.js?v=17"></script>
-  <script src="js/pokeball.js?v=17"></script>
-  <script src="js/tiles.js?v=17"></script>
-  <script src="js/world.js?v=17"></script>
-  <script src="js/game.js?v=17"></script>
-  <script src="js/modes.js?v=17"></script>
-  <script src="js/ai.js?v=17"></script>
-  <script src="js/audio.js?v=17"></script>
-  <script src="js/render.js?v=17"></script>
-  <script src="js/input.js?v=17"></script>
-  <script src="js/save.js?v=17"></script>
-  <script src="js/online.js?v=17"></script>
-  <script src="js/lobby.js?v=17"></script>
-  <script src="js/main.js?v=17"></script>
+  <script src="js/sprite-data.js?v=19"></script>
+  <script src="js/data.js?v=19"></script>
+  <script src="js/sprites.js?v=19"></script>
+  <script src="js/vfx.js?v=19"></script>
+  <script src="js/pokeball.js?v=19"></script>
+  <script src="js/tiles.js?v=19"></script>
+  <script src="js/world.js?v=19"></script>
+  <script src="js/game.js?v=19"></script>
+  <script src="js/modes.js?v=19"></script>
+  <script src="js/ai.js?v=19"></script>
+  <script src="js/audio.js?v=19"></script>
+  <script src="js/render.js?v=19"></script>
+  <script src="js/input.js?v=19"></script>
+  <script src="js/settings.js?v=19"></script>
+  <script src="js/pixui.js?v=19"></script>
+  <script src="js/save.js?v=19"></script>
+  <script src="js/online.js?v=19"></script>
+  <script src="js/lobby.js?v=19"></script>
+  <script src="js/main.js?v=19"></script>
 </body>
 </html>

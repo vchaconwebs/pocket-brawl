@@ -281,6 +281,7 @@ PB.Game = class {
 
   // Resuelve el apuntado (manual o automático) -> { ang, dist }
   aim(b, aim, range) {
+    if (aim && aim.facing) return { ang: b.facing, dist: range };
     if (aim && aim.auto) {
       // apuntado automático: el enemigo visible más cercano (aunque esté algo lejos)
       let best = null, bd = Infinity;
@@ -659,7 +660,7 @@ PB.Game = class {
       for (let i = 0; i < (opts.big ? 10 : 5); i++) this.px(hx, hy, pal[2 + (i % 3)], { speed: opts.big ? 220 : 140, life: 0.3, size: 4 });
     }
     const col = eff > 1 ? '#ffcf3a' : eff < 1 ? '#c9c9c9' : '#ffffff';
-    this.text(target.x + (Math.random() - 0.5) * 24, target.y - 64, String(amt), col, eff > 1 ? 26 : opts.quiet ? 15 : 20);
+    this.text(target.x + (Math.random() - 0.5) * 24, target.y - 64, String(amt), col, eff > 1 ? 26 : opts.quiet ? 15 : 20, true);
     if (eff > 1 && opts.shotId && this._lastEffShot !== opts.shotId) {
       this._lastEffShot = opts.shotId;
       this.text(target.x, target.y - 92, '¡Muy eficaz!', '#ffcf3a', 16);
@@ -690,7 +691,7 @@ PB.Game = class {
     // animación: se debilita y vuelve a su Pokéball con el rayo rojo
     this.fx.push({ kind: 'faint', dex: b.def.dex, x: b.x, y: b.y, facing: b.facing, team: b.team, t: 0, life: 1.5 });
     for (let i = 0; i < 16; i++) this.px(b.x, b.y - 16, i % 2 ? '#ffffff' : b.team === 'blue' ? '#5ab0ff' : '#ff5a5a', { speed: 240, life: 0.5, size: 5 });
-    this.feed.push({ text: (killer ? killer.name : '?') + '  ➜  ' + b.name, team: killer ? killer.team : 'red', t: this.time });
+    this.feed.push({ killer: killer ? killer.name : '?', kdex: killer && killer.def ? killer.def.dex : null, victim: b.name, vdex: b.def.dex, team: killer ? killer.team : 'red', t: this.time });
     if (this.feed.length > 4) this.feed.shift();
     this.events.push({ type: 'ko', b, killer, streak: killer ? killer.streak : 0 });
     this.shake = Math.max(this.shake, b.isPlayer ? 16 : 6);
@@ -752,6 +753,7 @@ PB.Game = class {
   // Cuadrado de color (con altura opcional z/vz para trozos que saltan)
   px(x, y, color, o) {
     o = o || {};
+    if (PB.Settings.get('quality') === 'baja' && Math.random() < 0.55) return; // menos partículas
     let vx = o.vx, vy = o.vy;
     if (vx == null) {
       const a = Math.random() * Math.PI * 2, s = Math.random() * (o.speed || 0);
@@ -779,8 +781,8 @@ PB.Game = class {
     this.fx.push({ kind: 'flash', x, y, r, color, t: 0, life });
   }
 
-  text(x, y, text, color, size) {
-    this.fx.push({ kind: 'text', x, y, text, color, size, t: 0, life: 0.85 });
+  text(x, y, text, color, size, dmg) {
+    this.fx.push({ kind: 'text', x, y, text, color, size, t: 0, life: 0.85, dmg: !!dmg });
   }
 
   updateFx(dt) {

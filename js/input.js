@@ -39,14 +39,21 @@ PB.Input = class {
     window.addEventListener('pointercancel', (e) => this.up(e, true));
   }
 
+  // Posición y tamaño de los joysticks (según los ajustes: tamaño y modo zurdo)
   layout(W, H) {
-    const r = Math.min(70, Math.max(48, Math.min(W, H) * 0.11));
+    const k = { 'pequeño': 0.82, mediano: 1, grande: 1.2 }[PB.Settings.get('joySize')] || 1;
+    const r = Math.min(70, Math.max(48, Math.min(W, H) * 0.11)) * k;
+    const left = PB.Settings.get('leftHanded');
+    const near = r + 40, far = W - r - 40;
+    const atkX = left ? near : far, moveX = left ? far : near;
+    const dir = left ? 1 : -1; // el súper va hacia el centro de la pantalla
     return {
       r,
       sr: r * 0.7,
-      move: { x: r + 40, y: H - r - 40 },
-      attack: { x: W - r - 40, y: H - r - 40 },
-      super: { x: W - r - 40 - r * 1.7, y: H - r - 40 - r * 1.5 },
+      left,
+      move: { x: moveX, y: H - r - 40 },
+      attack: { x: atkX, y: H - r - 40 },
+      super: { x: atkX + dir * r * 1.7, y: H - r - 40 - r * 1.5 },
     };
   }
 
@@ -68,7 +75,7 @@ PB.Input = class {
       s.origin = { ...L.super };
       s.pos = { ...p };
       this.sticks.super = s;
-    } else if (p.x < window.innerWidth / 2) {
+    } else if ((p.x < window.innerWidth / 2) !== L.left) {
       if (!this.sticks.move) this.sticks.move = s;
     } else if (!this.sticks.attack) {
       this.sticks.attack = s;
@@ -100,7 +107,7 @@ PB.Input = class {
       const v = this.stickVec(s, name === 'super' ? L.sr : L.r);
       // toque rápido o casi sin arrastrar = disparo automático al enemigo más cercano
       const quick = performance.now() - s.t0 < 220;
-      if (v.len < 0.35 || (quick && v.len < 0.7)) this.pending[name] = { auto: true };
+      if (v.len < 0.35 || (quick && v.len < 0.7)) this.pending[name] = PB.Settings.get('autoAim') ? { auto: true } : { facing: true };
       else this.pending[name] = { dx: v.x, dy: v.y, frac: v.len };
     }
   }
@@ -129,7 +136,7 @@ PB.Input = class {
       return a.range || a.radius || 400;
     };
     const fromFrac = (p, isSuper) => {
-      if (!p || p.auto) return p;
+      if (!p || p.auto || p.facing) return p;
       if (p === 'mouse') return this.mouseAim(me, renderer);
       return { dx: p.dx, dy: p.dy, dist: rangeOf(isSuper) * Math.max(0.15, p.frac) };
     };
@@ -154,7 +161,7 @@ PB.Input = class {
       inp.my = (k.has('s') || k.has('arrowdown') ? 1 : 0) - (k.has('w') || k.has('arrowup') ? 1 : 0);
       const m = this.mouseAim(me, renderer);
       const showSuper = this.superKeyHeld && me.superCharge >= 1;
-      out.aim = { isSuper: showSuper, ang: Math.atan2(m.dy, m.dx), dist: m.dist, strong: this.mouse.left || showSuper };
+      if (PB.Settings.get('aimGuide') || this.mouse.left || showSuper) out.aim = { isSuper: showSuper, ang: Math.atan2(m.dy, m.dx), dist: m.dist, strong: this.mouse.left || showSuper };
       if (this.mouse.left) inp.attack = m;
     }
 

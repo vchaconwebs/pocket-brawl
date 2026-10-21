@@ -636,7 +636,7 @@ PB.Lobby = (() => {
     chest.cur = -1;
     PB.Audio.play('boom', { big: true });
     PB.Audio.play('release');
-    if (navigator.vibrate) navigator.vibrate(60);
+    PB.vibrate(60);
     // chispas y estrellas
     const W = window.innerWidth, H = window.innerHeight;
     const [r, g, bb] = CHEST_COL[chest.kind];
@@ -815,6 +815,101 @@ PB.Lobby = (() => {
     }
   }
 
+  // ------------------------------------------------------------------ ajustes
+  let stTab = 'sound';
+  let stReturn = 'lobby';
+
+  function openSettings(from) {
+    stReturn = from || 'lobby';
+    showSettings('sound');
+  }
+
+  function showSettings(tab) {
+    if (tab) stTab = tab;
+    setTab('#st-tabs', stTab);
+    const S = PB.Settings;
+    const body = $('#st-body');
+    const toggle = (key, label, hint) =>
+      `<div class="st-row"><div><b>${label}</b>${hint ? `<small>${hint}</small>` : ''}</div>` +
+      `<button class="px-toggle ${S.get(key) ? 'on' : ''}" data-toggle="${key}"><i></i></button></div>`;
+    const choice = (key, label, opts, hint) =>
+      `<div class="st-row"><div><b>${label}</b>${hint ? `<small>${hint}</small>` : ''}</div><div class="px-seg">` +
+      opts.map(([v, t]) => `<button data-choice="${key}" data-val="${v}" class="${S.get(key) === v ? 'sel' : ''}">${t}</button>`).join('') +
+      '</div></div>';
+    let html = '';
+    if (stTab === 'sound') {
+      html =
+        `<div class="st-row"><div><b>Volumen</b><small id="vol-txt">${S.get('volume')} %</small></div>` +
+        `<input type="range" class="px-range" id="st-vol" min="0" max="100" step="5" value="${S.get('volume')}"></div>` +
+        toggle('muted', 'Silenciar todo') +
+        toggle('vibration', 'Vibración', 'Al recibir golpes fuertes, súper listo y cofres (en móviles que lo permitan)') +
+        `<div class="st-row"><div><b>Probar sonido</b></div><button class="act blue" id="st-test">▶ Probar</button></div>`;
+    } else if (stTab === 'graphics') {
+      html =
+        choice('quality', 'Calidad de efectos', [['alta', 'Alta'], ['baja', 'Baja']], 'Baja: menos partículas y brillos, va mejor en móviles lentos') +
+        toggle('shake', 'Temblor de pantalla', 'En explosiones, golpes y súper') +
+        toggle('dmgNumbers', 'Números de daño') +
+        toggle('hpNumbers', 'Vida en números', 'Encima de la barra de vida') +
+        toggle('fps', 'Mostrar FPS');
+    } else if (stTab === 'controls') {
+      html =
+        choice('joySize', 'Tamaño de los joysticks', [['pequeño', 'Pequeño'], ['mediano', 'Mediano'], ['grande', 'Grande']], 'Móvil') +
+        toggle('leftHanded', 'Modo zurdo', 'El ataque y el súper pasan a la izquierda (móvil)') +
+        toggle('autoAim', 'Disparo automático al tocar', 'Un toque rápido dispara al enemigo más cercano. Si lo quitas, dispara hacia donde miras') +
+        toggle('aimGuide', 'Guía de apuntado en PC', 'Muestra siempre hacia dónde apuntas con el ratón') +
+        `<div class="keys"><b>Teclas en PC</b><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover</span><span><kbd>Clic</kbd> disparar</span>` +
+        `<span><kbd>Espacio</kbd> disparo automático</span><span><kbd>E</kbd> / <kbd>Clic der.</kbd> súper</span><span><kbd>Q</kbd> súper automático</span><span><kbd>Esc</kbd> pausa</span><span><kbd>M</kbd> silenciar</span></div>`;
+    } else {
+      const d = PB.Save.get();
+      html =
+        `<div class="st-row"><div><b>${d.name}</b><small>Código de amigo: ${d.tag}</small></div><button class="act blue" id="st-profile">Perfil</button></div>` +
+        `<div class="st-row"><div><b>Cuenta online</b><small>Pronto podrás entrar con Google o con tu correo para guardar el progreso en la nube.</small></div><button class="act gray" disabled>Próximamente</button></div>` +
+        `<div class="st-row"><div><b>Créditos y licencias</b><small>Sprites, efectos, fuente y avisos legales</small></div><a class="act blue" href="CREDITS.md" target="_blank" rel="noopener">Ver</a></div>` +
+        `<div class="st-row"><div><b>Restablecer ajustes</b></div><button class="act gray" id="st-reset">Restablecer</button></div>` +
+        `<div class="st-row danger"><div><b>Borrar progreso</b><small>Pierdes Pokémon, niveles, copas, monedas y logros de este navegador</small></div><button class="act red" id="st-wipe">Borrar</button></div>` +
+        `<p class="sub">Pocket Brawl · fangame gratuito y sin ánimo de lucro.</p>`;
+    }
+    body.innerHTML = html;
+    body.querySelectorAll('[data-toggle]').forEach((b) => (b.onclick = () => {
+      S.set(b.dataset.toggle, !S.get(b.dataset.toggle));
+      PB.Audio.play('tick');
+      showSettings();
+    }));
+    body.querySelectorAll('[data-choice]').forEach((b) => (b.onclick = () => {
+      S.set(b.dataset.choice, b.dataset.val);
+      PB.Audio.play('tick');
+      showSettings();
+    }));
+    const vol = $('#st-vol');
+    if (vol) {
+      vol.oninput = () => { S.set('volume', +vol.value); $('#vol-txt').textContent = vol.value + ' %'; };
+      vol.onchange = () => { PB.Audio.init(); PB.Audio.play('ball'); };
+    }
+    const test = $('#st-test');
+    if (test) test.onclick = () => { PB.Audio.init(); PB.Audio.play('win'); PB.vibrate(40); };
+    const prof = $('#st-profile');
+    if (prof) prof.onclick = showProfile;
+    const rs = $('#st-reset');
+    if (rs) rs.onclick = async () => { if (await modal('¿Volver a los ajustes de fábrica?', true)) { S.reset(); showSettings(); } };
+    const wipe = $('#st-wipe');
+    if (wipe) wipe.onclick = async () => {
+      if (!(await modal('¿Seguro? Se borrará TODO tu progreso de este navegador.', true))) return;
+      if (!(await modal('Última confirmación: no se puede deshacer.', true))) return;
+      PB.Save.reset();
+      try { localStorage.removeItem('pb.online.mock'); } catch (e) {}
+      location.reload();
+    };
+    show('settings');
+  }
+
+  // Rellena todas las imágenes de iconos pixel (data-icon) de la página
+  function fillIcons() {
+    for (const img of document.querySelectorAll('img.pxi[data-icon]')) {
+      const n = img.dataset.icon;
+      img.src = n === 'pokeball' ? ballIcon('poke', 2) : n === 'cup' ? cupIcon() : PB.PixUI.iconURL(n, 3);
+    }
+  }
+
   // ------------------------------------------------------------------ inicio
   function init(a) {
     api = a;
@@ -825,6 +920,10 @@ PB.Lobby = (() => {
     $('#btn-pokemon').onclick = showCollection;
     $('#btn-missions').onclick = () => showMissions();
     $('#btn-mode').onclick = showModes;
+    fillIcons();
+    $('#btn-settings').onclick = () => openSettings('lobby');
+    $('#st-back').onclick = () => (stReturn === 'pause' ? api.backToPause() : show('lobby'));
+    document.querySelectorAll('#st-tabs button').forEach((b) => (b.onclick = () => showSettings(b.dataset.tab)));
     $('#ico-cup').src = cupIcon();
     $('#btn-profile').onclick = showProfile;
     $('#btn-achievements').onclick = () => showAchievements();
@@ -854,5 +953,5 @@ PB.Lobby = (() => {
     window.addEventListener('resize', () => { if (current === 'chestopen') resizeFx(); });
   }
 
-  return { init, show, tick, refresh: refreshLobby, get current() { return current; } };
+  return { init, show, tick, openSettings, refresh: refreshLobby, get current() { return current; } };
 })();

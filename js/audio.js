@@ -2,6 +2,14 @@
 PB.Audio = {
   ctx: null,
   muted: false,
+  volume: 0.7,
+
+  // volumen general (0-1), lo fija el menú de ajustes
+  setVolume(v) {
+    this.volume = v;
+    this.muted = v <= 0;
+    if (this.master) this.master.gain.value = 0.36 * v;
+  },
   last: {},
 
   init() {
@@ -9,7 +17,7 @@ PB.Audio = {
     try {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.25;
+      this.master.gain.value = 0.36 * this.volume;
       this.master.connect(this.ctx.destination);
     } catch (e) {
       this.ctx = null;

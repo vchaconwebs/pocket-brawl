@@ -95,29 +95,57 @@
 
   const help = () => $('#help');
 
+  function hideScreens() {
+    for (const sc of document.querySelectorAll('.screen')) sc.classList.add('hidden');
+  }
+
   function startMatch() {
     goLandscape();
     PB.Audio.init();
+    PB.Settings.apply();
     newGame(PB.Save.get().selected);
     mode = 'play';
+    paused = false;
     input.enabled = true;
     endTimer = 0;
-    for (const sc of document.querySelectorAll('.screen')) sc.classList.add('hidden');
+    hideScreens();
+    $('#btn-pause').classList.remove('hidden');
     help().classList.remove('hidden');
     setTimeout(() => help().classList.add('hidden'), 6000);
   }
 
   function toMenu() {
     mode = 'menu';
+    paused = false;
     input.enabled = false;
     newGame(null);
     PB.Lobby.show('lobby');
+    $('#btn-pause').classList.add('hidden');
     help().classList.add('hidden');
   }
+
+  // ------------------------------------------------------------ pausa
+  let paused = false;
+  function pause() {
+    if (mode !== 'play' || game.winner) return;
+    paused = true;
+    input.enabled = false;
+    showScreen('pause');
+  }
+  function resume() {
+    paused = false;
+    input.enabled = true;
+    hideScreens();
+  }
+  $('#btn-pause').onclick = pause;
+  $('#pz-resume').onclick = resume;
+  $('#pz-settings').onclick = () => PB.Lobby.openSettings('pause');
+  $('#pz-quit').onclick = toMenu;
 
   function showEnd() {
     mode = 'end';
     input.enabled = false;
+    $('#btn-pause').classList.add('hidden');
     const me = game.player;
     const M = game.mode;
     const res = M.result(game, me);
@@ -156,15 +184,14 @@
   $('#play').onclick = startMatch;
   $('#again').onclick = startMatch;
   $('#back').onclick = toMenu;
-  $('#mute').onclick = () => {
-    PB.Audio.muted = !PB.Audio.muted;
-    $('#mute').textContent = PB.Audio.muted ? '🔇' : '🔊';
-  };
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && mode === 'play') toMenu();
+    if (e.target && e.target.tagName === 'INPUT') return;
+    if (e.key === 'Escape' && mode === 'play') (paused ? resume() : pause());
     if (e.key === 'Enter' && mode !== 'play' && PB.Lobby.current === 'lobby') startMatch();
-    if (e.key.toLowerCase() === 'm') $('#mute').click();
+    if (e.key.toLowerCase() === 'm') PB.Settings.set('muted', !PB.Settings.get('muted'));
   });
+  // si la pestaña se oculta en mitad de la partida, pausar
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 
   // ------------------------------------------------------------ bucle
   const STREAK = ['', '¡K.O.!', '¡DOBLE K.O.!', '¡TRIPLE K.O.!', '¡IMPARABLE!'];
@@ -191,7 +218,7 @@
           } else if (ev.killer === me) renderer.announce(STREAK[Math.min(ev.streak, 4)] || '¡K.O.!', '#ffcf2e', ev.b.def.name + ' debilitado', 1.3);
           break;
         case 'super': if (ev.b === me || near(ev.b)) PB.Audio.play('super'); break;
-        case 'superReady': if (ev.b === me) { PB.Audio.play('ready'); if (navigator.vibrate) navigator.vibrate(30); } break;
+        case 'superReady': if (ev.b === me) { PB.Audio.play('ready'); PB.vibrate(30); } break;
         case 'boom': PB.Audio.play('boom', { big: ev.big }); break;
         case 'wall': PB.Audio.play('wall'); break;
         case 'respawn': if (ev.b === me) PB.Audio.play('release'); break;
@@ -235,12 +262,14 @@
     }
 
     const read = input.read(game, renderer);
-    const inputs = {};
-    for (const bot of bots) inputs[bot.b.idx] = bot.think(dt);
     const me = game.player;
-    if (me) inputs[me.idx] = read.input;
-    game.update(dt, inputs);
-    handleEvents();
+    if (!paused) {
+      const inputs = {};
+      for (const bot of bots) inputs[bot.b.idx] = bot.think(dt);
+      if (me) inputs[me.idx] = read.input;
+      game.update(dt, inputs);
+      handleEvents();
+    }
 
     if (endTimer > 0) {
       endTimer -= dt;
@@ -278,7 +307,9 @@
     ? Promise.race([document.fonts.load('16px "Pixelify Sans"'), new Promise((r) => setTimeout(r, 2000))]).catch(() => {})
     : Promise.resolve();
 
+  PB.Settings.apply();
   PB.Lobby.init({
+    backToPause: () => showScreen('pause'),
     getMode: () => gameMode,
     setMode: (id) => { gameMode = id; save('pb.mode', id); newGame(null); },
   });

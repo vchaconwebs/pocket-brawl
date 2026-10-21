@@ -54,6 +54,7 @@ PB.Renderer = class {
 
   draw(game, view) {
     this.game = game;
+    this.low = PB.Settings.get('quality') === 'baja';
     const ctx = this.ctx, T = PB.TILE, W = game.world;
     if (this.floorFor !== W || !this.floor) this.buildFloor(W);
     const focus = view.focus;
@@ -74,7 +75,8 @@ PB.Renderer = class {
     ctx.fillStyle = '#2c5a3a';
     ctx.fillRect(0, 0, this.cv.width, this.cv.height);
     const s = this.cam.scale * this.dpr;
-    const shx = (Math.random() - 0.5) * game.shake, shy = (Math.random() - 0.5) * game.shake;
+    const sk = PB.Settings.get('shake') ? game.shake : 0;
+    const shx = (Math.random() - 0.5) * sk, shy = (Math.random() - 0.5) * sk;
     ctx.setTransform(s, 0, 0, s, (this.cw / 2 - this.cam.x * this.cam.scale + shx) * this.dpr, (this.ch / 2 - this.cam.y * this.cam.scale + shy) * this.dpr);
     ctx.imageSmoothingEnabled = false;
 
@@ -246,6 +248,7 @@ PB.Renderer = class {
     ctx.textAlign = 'center';
     for (const f of game.fx) {
       if (f.kind !== 'text') continue;
+      if (f.dmg && !PB.Settings.get('dmgNumbers')) continue;
       const k = f.t / f.life;
       const pop = k < 0.15 ? 0.6 + (k / 0.15) * 0.7 : 1.3 - Math.min(0.3, (k - 0.15) * 1.5);
       ctx.globalAlpha = 1 - k * k;
@@ -265,6 +268,7 @@ PB.Renderer = class {
 
   // Brillo radial aditivo
   glow(x, y, r, color) {
+    if (this.low) return;
     const ctx = this.ctx;
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, color);
@@ -714,74 +718,47 @@ PB.Renderer = class {
 
   drawOverhead(b, game, team, focus) {
     const ctx = this.ctx;
-    const x = b.x, y = b.y - 72;
-    const w = 66;
+    const UI = PB.PixUI;
+    const x = Math.round(b.x), y = Math.round(b.y - 74);
+    const w = 70;
     const mine = b.team === team;
     const isMe = b === focus && b.isPlayer;
-    ctx.textAlign = 'center';
-    ctx.font = '13px "Pixelify Sans", system-ui, sans-serif';
-    ctx.lineWidth = 4;
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#000';
-    ctx.strokeText(b.name, x, y - 12);
-    ctx.fillStyle = isMe ? '#7dff8f' : mine ? '#a9d0ff' : '#ffb0b0';
-    ctx.fillText(b.name, x, y - 12);
-    // vida
-    ctx.fillStyle = '#111';
-    ctx.fillRect(x - w / 2 - 2, y - 2, w + 4, 13);
+    // nombre (y un rayo si tiene el súper listo)
+    this.outlined(b.name, x, y - 8, 13, isMe ? '#7dff8f' : mine ? '#a9d0ff' : '#ffb0b0');
+    // vida: barra pixel con una marca cada 1000
     const hpk = Math.max(0, b.hp) / b.maxHp;
-    ctx.fillStyle = isMe ? '#43e05a' : mine ? '#3d8bff' : '#ff4545';
-    ctx.fillRect(x - w / 2, y, w * hpk, 9);
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.fillRect(x - w / 2, y, w * hpk, 3);
-    ctx.font = '700 11px "Pixelify Sans", system-ui, sans-serif';
-    ctx.lineWidth = 3;
-    ctx.strokeText(Math.ceil(b.hp), x, y + 9);
-    ctx.fillStyle = '#fff';
-    ctx.fillText(Math.ceil(b.hp), x, y + 9);
+    const col = isMe ? '#43e05a' : mine ? '#3d8bff' : '#ff4545';
+    UI.bar(ctx, x - w / 2, y - 2, w, 14, hpk, col, { p: 2, seg: true, segCount: Math.min(12, Math.ceil(b.maxHp / 1000)) });
+    if (PB.Settings.get('hpNumbers')) this.outlined(String(Math.ceil(b.hp)), x, y + 9, 11, '#ffffff');
     // nivel
     if (b.lvl) {
-      ctx.fillStyle = '#1b1418';
-      ctx.fillRect(x + w / 2 + 3, y - 3, 17, 15);
-      ctx.fillStyle = '#ffd23a';
-      ctx.fillRect(x + w / 2 + 4, y - 2, 15, 13);
+      UI.panel(ctx, x + w / 2 + 2, y - 4, 18, 18, { p: 2, fill: '#ffd23a', light: 'rgba(255,255,255,0.45)', dark: 'rgba(120,70,0,0.35)' });
+      ctx.textAlign = 'center';
+      ctx.font = '12px "Pixelify Sans", system-ui, sans-serif';
       ctx.fillStyle = '#3a2500';
-      ctx.fillText(b.lvl, x + w / 2 + 11.5, y + 9);
+      ctx.fillText(b.lvl, x + w / 2 + 11, y + 9);
     }
+    if (b.superCharge >= 1) UI.icon(ctx, 'bolt', x - w / 2 - 20, y - 6, 1.5);
+    // munición (solo la tuya)
     if (isMe) {
-      const seg = (w - 4) / 3;
+      const sw = (w - 4) / 3;
       for (let i = 0; i < 3; i++) {
-        ctx.fillStyle = '#222';
-        ctx.fillRect(x - w / 2 + i * (seg + 2), y + 13, seg, 6);
         const f = Math.max(0, Math.min(1, b.ammo - i));
-        ctx.fillStyle = f >= 1 ? '#ff9a1f' : '#a5652a';
-        ctx.fillRect(x - w / 2 + i * (seg + 2), y + 13, seg * f, 6);
+        UI.bar(ctx, x - w / 2 + i * (sw + 2), y + 13, sw, 8, f, f >= 1 ? '#ff9a1f' : '#b8702a', { p: 2 });
       }
     }
     // Caramelos Raros (Niebla Tóxica)
     if (b.power > 0) {
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(PB.Tiles.candy(), x - w / 2 - 34, y - 8, 22, 22);
-      ctx.font = '13px "Pixelify Sans", system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = '#000';
-      ctx.strokeText(b.power, x - w / 2 - 10, y + 8);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(b.power, x - w / 2 - 10, y + 8);
+      ctx.drawImage(PB.Tiles.candy(), x - w / 2 - 38, y - 8, 22, 22);
+      this.outlined(String(b.power), x - w / 2 - 14, y + 9, 13, '#ffffff');
     }
     // Pokéballs que lleva encima
     if (b.balls > 0) {
       const n = Math.min(b.balls, 5);
       const bx = x - ((n - 1) * 13) / 2;
-      for (let i = 0; i < n; i++) PB.Pokeball.draw(ctx, bx + i * 13, y - 34, 1, {});
-      if (b.balls > 5 || b.balls > 1) {
-        ctx.font = '15px "Pixelify Sans", system-ui, sans-serif';
-        ctx.lineWidth = 4;
-        ctx.strokeText('×' + b.balls, x + (n * 13) / 2 + 14, y - 28);
-        ctx.fillStyle = '#fff';
-        ctx.fillText('×' + b.balls, x + (n * 13) / 2 + 14, y - 28);
-      }
+      for (let i = 0; i < n; i++) PB.Pokeball.draw(ctx, bx + i * 13, y - 30, 1, {});
+      if (b.balls > 1) this.outlined('×' + b.balls, x + (n * 13) / 2 + 14, y - 24, 15, '#ffffff');
     }
   }
 
@@ -888,7 +865,7 @@ PB.Renderer = class {
     ctx.textAlign = align || 'center';
     ctx.font = `${size}px "Pixelify Sans", system-ui, sans-serif`;
     ctx.lineJoin = 'round';
-    ctx.lineWidth = Math.max(3, size / 7);
+    ctx.lineWidth = Math.max(3, size / 6);
     ctx.strokeStyle = '#0c1020';
     ctx.strokeText(text, x, y);
     ctx.fillStyle = color;
@@ -897,10 +874,9 @@ PB.Renderer = class {
 
   drawHud(game, view) {
     const ctx = this.ctx, W = this.cw, H = this.ch;
+    const UI = PB.PixUI;
     const team = view.team;
-    const foe = team === 'blue' ? 'red' : 'blue';
     const me = view.player;
-    void foe;
 
     // viñeta roja con poca vida
     if (me && !me.dead && me.hp / me.maxHp < 0.35) {
@@ -915,32 +891,54 @@ PB.Renderer = class {
     // marcador del modo
     this.drawModeHud(game, view);
 
-    // registro de K.O.
-    ctx.font = '14px "Pixelify Sans", system-ui, sans-serif';
-    game.feed.forEach((f, i) => {
+    // registro de K.O. con retratos: [quien] ➜ [a quién]
+    let fy = W < 760 ? 112 : 10; // en pantallas estrechas, debajo del marcador
+    for (const f of game.feed) {
       const age = game.time - f.t;
-      if (age > 5) return;
+      if (age > 5) continue;
       ctx.globalAlpha = Math.min(1, 5 - age);
-      const tw = ctx.measureText(f.text).width + 16;
-      ctx.fillStyle = 'rgba(0,0,0,0.45)';
-      ctx.fillRect(W - tw - 10, 12 + i * 24, tw, 20);
-      ctx.textAlign = 'right';
-      ctx.fillStyle = f.team === team ? '#9fcbff' : '#ffaaaa';
-      ctx.fillText(f.text, W - 18, 27 + i * 24);
-    });
+      const ours = f.team === team;
+      ctx.font = '13px "Pixelify Sans", system-ui, sans-serif';
+      const t1 = f.killer || '?', t2 = f.victim || '';
+      const w1 = ctx.measureText(t1).width, w2 = ctx.measureText(t2).width;
+      const pw = w1 + w2 + 92;
+      const px = W - pw - 10;
+      UI.panel(ctx, px, fy, pw, 30, { p: 2, fill: ours ? 'rgba(30,70,150,0.85)' : 'rgba(140,30,40,0.85)' });
+      const por = (dex, x2) => {
+        const img = dex && PB.Sprites.portraits[dex];
+        if (img) { ctx.imageSmoothingEnabled = false; ctx.drawImage(img, x2, fy + 4, 22, 22); }
+      };
+      por(f.kdex, px + 6);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(t1, px + 32, fy + 20);
+      // flecha pixel
+      const ax = px + 36 + w1;
+      ctx.fillStyle = '#ffd23a';
+      ctx.fillRect(ax, fy + 13, 10, 4);
+      ctx.fillRect(ax + 8, fy + 10, 3, 10);
+      ctx.fillRect(ax + 11, fy + 12, 3, 6);
+      por(f.vdex, ax + 18);
+      ctx.fillStyle = '#ffd8d8';
+      ctx.fillText(t2, ax + 44, fy + 20);
+      fy += 34;
+    }
     ctx.globalAlpha = 1;
 
     // cuenta atrás inicial
     if (game.startT > 0) {
       const n = Math.ceil(game.startT);
       const k = 1 - (game.startT % 1 || 1);
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.fillRect(0, 0, W, H);
-      this.outlined(String(n), W / 2, H / 2 + 30, Math.round(110 * (1.4 - k * 0.4)), '#ffcf2e');
-      this.outlined(game.mode.name, W / 2, H / 2 - 60, 26, '#ffffff');
+      ctx.font = '22px "Pixelify Sans", system-ui, sans-serif';
+      const tw = ctx.measureText(game.mode.name).width + 40;
+      UI.panel(ctx, W / 2 - tw / 2, H / 2 - 92, tw, 42, { p: 3, fill: 'rgba(30,50,110,0.95)' });
+      this.outlined(game.mode.name, W / 2, H / 2 - 63, 22, '#ffffff');
+      this.outlined(String(n), W / 2, H / 2 + 40, Math.round(110 * (1.4 - k * 0.4)), '#ffcf2e');
     }
 
-    // anuncios grandes (¡A LUCHAR!, ¡K.O.!, ...)
+    // anuncios grandes (¡A LUCHAR!, ¡K.O.!, ...) sobre una banda pixel
     if (this.banner) {
       const b = this.banner;
       b.t += 1 / 60;
@@ -949,51 +947,57 @@ PB.Renderer = class {
       else {
         const pop = k < 0.12 ? 0.5 + (k / 0.12) * 0.7 : k < 0.2 ? 1.2 - ((k - 0.12) / 0.08) * 0.2 : 1;
         ctx.globalAlpha = k > 0.8 ? (1 - k) / 0.2 : 1;
-        this.outlined(b.text, W / 2, H * 0.36, Math.round(52 * pop), b.color);
-        if (b.sub) this.outlined(b.sub, W / 2, H * 0.36 + 32, 18, '#ffffff');
+        const by = H * 0.33;
+        const bw = Math.min(W - 20, 520 * Math.min(1, pop + 0.2));
+        UI.panel(ctx, W / 2 - bw / 2, by - 44, bw, b.sub ? 86 : 64, { p: 3, fill: 'rgba(14,20,48,0.82)' });
+        this.outlined(b.text, W / 2, by + 6, Math.round(44 * pop), b.color);
+        if (b.sub) this.outlined(b.sub, W / 2, by + 32, 16, '#ffffff');
         ctx.globalAlpha = 1;
       }
     }
 
     if (me) {
       if (me.dead && !me.out) {
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(0, H / 2 - 40, W, 70);
-        this.outlined('Vuelves en ' + Math.ceil(me.respawnT), W / 2, H / 2 + 8, 30, '#ffffff');
+        UI.panel(ctx, W / 2 - 130, H / 2 - 34, 260, 62, { p: 3, fill: 'rgba(14,20,48,0.88)' });
+        PB.Pokeball.draw(ctx, W / 2 - 92, H / 2 - 3, 2, { angle: Math.sin(game.clock * 6) * 0.3 });
+        this.outlined('Vuelves en ' + Math.ceil(me.respawnT), W / 2 + 20, H / 2 + 8, 26, '#ffffff');
       }
       if (view.touch) this.drawTouch(view, me, game);
       else this.drawDesktopSuper(me, game);
+    }
+
+    // FPS
+    if (PB.Settings.get('fps')) {
+      this._fpsT = (this._fpsT || 0) + 1;
+      const now = performance.now();
+      if (!this._fpsAt || now - this._fpsAt > 500) { this._fps = Math.round((this._fpsT * 1000) / (now - (this._fpsAt || now - 500))); this._fpsT = 0; this._fpsAt = now; }
+      this.outlined((this._fps || 0) + ' FPS', W - 12, H - 10, 12, '#9fff9f', 'right');
     }
   }
 
   // Panel de arriba según el modo
   drawModeHud(game, view) {
     const ctx = this.ctx, W = this.cw;
+    const UI = PB.PixUI;
     const team = view.team;
     const foe = team === 'blue' ? 'red' : 'blue';
-    const cx = W / 2;
+    const cx = Math.round(W / 2);
     const id = game.mode.id;
-    const panel = (w, h) => {
-      ctx.fillStyle = 'rgba(10,15,40,0.55)';
-      this.roundRect(cx - w / 2, 6, w, h, 14);
-      ctx.fill();
-    };
+    const panel = (w, h, y) => UI.panel(ctx, cx - w / 2, y || 6, w, h, { p: 3 });
     const clock = (y) => {
       const left = Math.max(0, game.rules.matchTime - game.time);
-      this.outlined(Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0'), cx, y, 15, '#ffffff');
+      const txt = Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0');
+      UI.panel(ctx, cx - 34, y - 15, 68, 22, { p: 2, fill: left < 20 ? 'rgba(150,30,30,0.9)' : 'rgba(16,24,56,0.86)' });
+      this.outlined(txt, cx, y + 1, 14, '#ffffff');
     };
     // barra doble (Snorlax, Territorio)
     const bars = (label, mineK, theirsK, txtMine, txtTheirs) => {
       const w = Math.min(380, W - 140);
-      panel(w + 30, 62);
-      this.outlined(label, cx, 24, 13, '#ffffff');
-      const bw = w / 2 - 10;
-      for (const [k, x, col, txt, flip] of [[mineK, cx - 6 - bw, '#3d8bff', txtMine, true], [theirsK, cx + 6, '#ff4d4d', txtTheirs, false]]) {
-        ctx.fillStyle = '#111';
-        ctx.fillRect(x - 2, 32, bw + 4, 18);
-        ctx.fillStyle = col;
-        const fw = bw * Math.max(0, Math.min(1, k));
-        ctx.fillRect(flip ? x + bw - fw : x, 34, fw, 14);
+      panel(w + 30, 60);
+      this.outlined(label, cx, 25, 13, '#ffd23a');
+      const bw = w / 2 - 8;
+      for (const [k, x, col, txt] of [[mineK, cx - 4 - bw, '#3d8bff', txtMine], [theirsK, cx + 4, '#ff4d4d', txtTheirs]]) {
+        UI.bar(ctx, x, 32, bw, 20, Math.max(0, Math.min(1, k)), col, { p: 3 });
         this.outlined(txt, x + bw / 2, 47, 14, '#ffffff');
       }
     };
@@ -1004,120 +1008,109 @@ PB.Renderer = class {
       const px = W < 600 ? 1 : 1.2;
       const slot = 15 * px + 2;
       const panelW = slot * R + 70;
-      panel(panelW, 58);
+      panel(panelW, 60);
       [[0, mine, '#5aa8ff'], [1, theirs, '#ff5f5f']].forEach(([i, n, col]) => {
         const y = 22 + i * 24;
-        this.outlined(String(n), cx - panelW / 2 + 22, y + 8, 22, col);
+        this.outlined(String(n), cx - panelW / 2 + 24, y + 8, 22, col);
         for (let s2 = 0; s2 < R; s2++) {
           const x = cx - panelW / 2 + 46 + s2 * slot + slot / 2;
           if (s2 < n) PB.Pokeball.draw(ctx, x, y + 1, px, {});
           else PB.Pokeball.drawSlot(ctx, x, y + 1, px);
         }
       });
-      clock(82);
+      clock(88);
       if (game.countdown) {
         const ours = game.countdown.team === team;
         const pulse = 1 + Math.max(0, (game.countdown.t % 1) - 0.7) * 0.8;
-        this.outlined(String(Math.ceil(game.countdown.t)), cx, 130, Math.round(44 * pulse), ours ? '#5aa8ff' : '#ff5f5f');
-        this.outlined(ours ? '¡Aguantad las Pokéballs!' : '¡Quitadles las Pokéballs!', cx, 154, 16, '#ffffff');
+        this.outlined(String(Math.ceil(game.countdown.t)), cx, 140, Math.round(44 * pulse), ours ? '#5aa8ff' : '#ff5f5f');
+        this.outlined(ours ? '¡Aguantad las Pokéballs!' : '¡Quitadles las Pokéballs!', cx, 164, 16, '#ffffff');
       }
     } else if (id === 'showdown') {
       const alive = game.brawlers.filter((b) => !b.dead).length;
-      panel(220, 44);
-      PB.Pokeball.draw(ctx, cx - 76, 28, 1.3, {});
-      this.outlined('Quedan ' + alive, cx + 6, 36, 20, '#ffffff');
+      panel(200, 42);
+      PB.Pokeball.draw(ctx, cx - 66, 27, 1.4, {});
+      this.outlined('Quedan ' + alive, cx + 10, 34, 20, '#ffffff');
       const me = view.player;
-      if (me) {
-        if (!me.dead && Math.hypot(me.x - game.gas.x, me.y - game.gas.y) > game.gas.r) {
-          this.outlined('¡Sal de la niebla!', cx, 84, 20, Math.floor(game.clock * 4) % 2 ? '#d58cff' : '#ffffff');
-        }
+      if (me && !me.dead && Math.hypot(me.x - game.gas.x, me.y - game.gas.y) > game.gas.r) {
+        UI.panel(ctx, cx - 110, 58, 220, 30, { p: 2, fill: 'rgba(90,30,120,0.9)' });
+        this.outlined('¡Sal de la niebla!', cx, 79, 18, Math.floor(game.clock * 4) % 2 ? '#e8b0ff' : '#ffffff');
       }
     } else if (id === 'heist') {
       const m = game.structures.find((s2) => s2.team === team), t2 = game.structures.find((s2) => s2.team !== team);
       bars('Snorlax', m.hp / m.maxHp, t2.hp / t2.maxHp, Math.ceil((100 * m.hp) / m.maxHp) + '%', Math.ceil((100 * t2.hp) / t2.maxHp) + '%');
-      clock(84);
+      clock(88);
     } else if (id === 'ball') {
-      panel(200, 50);
-      this.outlined(String(game.score[team]), cx - 50, 42, 34, '#5aa8ff');
-      this.outlined('-', cx, 40, 26, '#ffffff');
-      this.outlined(String(game.score[foe]), cx + 50, 42, 34, '#ff5f5f');
-      clock(74);
+      panel(190, 50);
+      UI.panel(ctx, cx - 86, 13, 64, 36, { p: 2, fill: '#2a5ab8' });
+      UI.panel(ctx, cx + 22, 13, 64, 36, { p: 2, fill: '#b83a3a' });
+      this.outlined(String(game.score[team]), cx - 54, 42, 30, '#ffffff');
+      this.outlined('-', cx, 40, 24, '#ffd23a');
+      this.outlined(String(game.score[foe]), cx + 54, 42, 30, '#ffffff');
+      clock(78);
       const v = game.voltorb, me = view.player;
       if (me && v.carrier === me) {
         const left = Math.max(0, 10 - v.holdT);
-        this.outlined('¡Chuta! Voltorb explota en ' + left.toFixed(1) + ' s', cx, 104, 16, left < 4 ? '#ff6b4a' : '#fff36a');
+        UI.panel(ctx, cx - 150, 98, 300, 28, { p: 2, fill: left < 4 ? 'rgba(150,30,30,0.9)' : 'rgba(16,24,56,0.86)' });
+        this.outlined('¡Chuta! Voltorb explota en ' + left.toFixed(1) + ' s', cx, 117, 15, left < 4 ? '#ffd0c0' : '#fff36a');
       }
     } else if (id === 'zone') {
       bars('Territorio', game.progress[team] / 100, game.progress[foe] / 100, Math.floor(game.progress[team]) + '%', Math.floor(game.progress[foe]) + '%');
-      clock(84);
+      clock(88);
     }
   }
 
   drawDesktopSuper(me, game) {
-    this.superCircle(this.cw - 70, this.ch - 70, 44, me.superCharge, 'E', game.clock);
+    this.superButton(this.cw - 72, this.ch - 72, 44, me.superCharge, game.clock, 'E');
   }
 
-  superCircle(x, y, r, charge, label, t) {
+  // Botón de súper pixel: anillo con 16 casillas que se van encendiendo y un rayo en el centro
+  superButton(x, y, r, charge, t, key) {
     const ctx = this.ctx;
+    const UI = PB.PixUI;
     const ready = charge >= 1;
     if (ready) this.glow(x, y, r * 1.8, `rgba(255,200,40,${0.4 + Math.sin(t * 6) * 0.2})`);
-    ctx.fillStyle = ready ? 'rgba(255,200,30,0.95)' : 'rgba(0,0,0,0.45)';
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#ffd23a';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.arc(x, y, r - 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, charge));
-    ctx.stroke();
-    PB.VFX.draw(ctx, 'bolt', 'electric', x, y - 6, { scale: 1.3, angle: -Math.PI / 2.4, alpha: ready ? 1 : 0.5 });
-    ctx.textAlign = 'center';
-    ctx.font = '13px "Pixelify Sans", system-ui, sans-serif';
-    ctx.fillStyle = ready ? '#3a2500' : '#ffd23a';
-    ctx.fillText('SÚPER', x, y + 18);
-    if (label) {
-      ctx.font = '11px "Pixelify Sans", system-ui, sans-serif';
-      ctx.fillText(label, x, y + r + 14);
+    const base = UI.ring(r, 6, ready ? '#ffd23a' : '#4a5478', ready ? 'rgba(255,190,30,0.95)' : 'rgba(10,15,40,0.65)');
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(base, Math.round(x - base.width / 2), Math.round(y - base.height / 2));
+    const n = 16, lit = Math.floor(Math.min(1, charge) * n);
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
+      const sx = Math.round((x + Math.cos(a) * (r - 7)) / 3) * 3, sy = Math.round((y + Math.sin(a) * (r - 7)) / 3) * 3;
+      ctx.fillStyle = i < lit ? (ready ? '#fff6a8' : '#ffd23a') : 'rgba(0,0,0,0.45)';
+      ctx.fillRect(sx - 3, sy - 3, 6, 6);
+    }
+    UI.icon(ctx, 'bolt', x - 18, y - 22, 3);
+    this.outlined('SÚPER', x, y + 22, 12, ready ? '#3a2500' : '#ffd23a');
+    if (key) {
+      UI.panel(ctx, x - 12, y + r + 2, 24, 22, { p: 2, fill: '#2c3f78' });
+      this.outlined(key, x, y + r + 18, 12, '#ffffff');
     }
   }
 
   drawTouch(view, me, game) {
     const ctx = this.ctx, inp = view.inputState;
+    const UI = PB.PixUI;
     const L = inp.layout(this.cw, this.ch);
+    ctx.imageSmoothingEnabled = false;
     const stick = (base, knob, r, col) => {
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.beginPath();
-      ctx.arc(base.x, base.y, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.arc(knob.x, knob.y, r * 0.42, 0, Math.PI * 2);
-      ctx.fill();
+      const b = UI.ring(r, 6, 'rgba(255,255,255,0.4)', 'rgba(10,15,40,0.35)');
+      ctx.drawImage(b, Math.round(base.x - b.width / 2), Math.round(base.y - b.height / 2));
+      const k = UI.ring(Math.round(r * 0.42), 6, 'rgba(255,255,255,0.9)', col);
+      ctx.drawImage(k, Math.round(knob.x - k.width / 2), Math.round(knob.y - k.height / 2));
     };
     const mv = inp.sticks.move;
-    stick(mv ? mv.origin : L.move, mv ? mv.pos : L.move, L.r, 'rgba(255,255,255,0.6)');
+    stick(mv ? mv.origin : L.move, mv ? mv.pos : L.move, L.r, 'rgba(200,210,240,0.85)');
     const at = inp.sticks.attack;
-    stick(at ? at.origin : L.attack, at ? at.pos : L.attack, L.r, 'rgba(255,160,40,0.85)');
-    // munición alrededor del joystick de ataque
+    stick(at ? at.origin : L.attack, at ? at.pos : L.attack, L.r, 'rgba(255,150,40,0.95)');
+    // munición: tres barras pixel encima del joystick de ataque
+    const aw = 22;
     for (let i = 0; i < 3; i++) {
       const f = Math.max(0, Math.min(1, me.ammo - i));
-      const a0 = -Math.PI * 0.85 + i * 0.32;
-      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-      ctx.lineWidth = 7;
-      ctx.beginPath();
-      ctx.arc(L.attack.x, L.attack.y, L.r + 9, a0, a0 + 0.28);
-      ctx.stroke();
-      ctx.strokeStyle = f >= 1 ? '#ff9a1f' : '#a5652a';
-      ctx.beginPath();
-      ctx.arc(L.attack.x, L.attack.y, L.r + 9, a0, a0 + 0.28 * f);
-      ctx.stroke();
+      UI.bar(ctx, L.attack.x - (aw * 3 + 8) / 2 + i * (aw + 4), L.attack.y - L.r - 22, aw, 10, f, f >= 1 ? '#ff9a1f' : '#b8702a', { p: 2 });
     }
+    this.superButton(L.super.x, L.super.y, L.sr, me.superCharge, game.clock, '');
     const sp = inp.sticks.super;
-    this.superCircle(L.super.x, L.super.y, L.sr, me.superCharge, '', game.clock);
-    if (sp) stick(sp.origin, sp.pos, L.sr, 'rgba(255,210,40,0.9)');
+    if (sp) stick(sp.origin, sp.pos, L.sr, 'rgba(255,210,40,0.95)');
   }
 
   roundRect(x, y, w, h, r) {

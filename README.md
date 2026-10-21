@@ -54,6 +54,8 @@ y entra en http://localhost:8123
 | `js/modes.js` | Reglas de cada modo y lo que hacen los bots en cada uno. |
 | `js/save.js` | Progreso: monedas, puntos, niveles, cofres, fichas y misiones. **Aquí se ajusta la economía.** |
 | `js/lobby.js` | Lobby y todos los menús: Pokémon, ficha, modos, misiones, logros, perfil, amigos, clan, ranking y cofres. |
+| `js/settings.js` | Ajustes (sonido, gráficos, controles) guardados en el navegador. |
+| `js/pixui.js` | Interfaz pixel art: paneles, barras e iconos dibujados píxel a píxel. |
 | `js/online.js` | Amigos, clanes, chat y ranking (ahora simulado; aquí se conectará el servidor). |
 | `js/ai.js` | Bots. Generan el mismo tipo de input que un jugador. |
 | `js/world.js` | Colisiones, línea de visión y caminos (A*). |

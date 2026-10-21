@@ -273,7 +273,7 @@ button { font: inherit; cursor: pointer; }
   grid-template-rows: auto 1fr auto;
   grid-template-areas: "top top top" "left center right" "bottom bottom bottom";
   gap: 10px;
-  padding: 10px 14px 8px 64px;
+  padding: 10px 14px 8px 14px;
 }
 .lb-top { grid-area: top; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .lb-title { font-size: 30px; text-shadow: 0 3px 0 #0c1838; }
@@ -456,7 +456,7 @@ button { font: inherit; cursor: pointer; }
 
 /* pantallas bajas (móvil en horizontal) */
 @media (max-height: 500px) {
-  .lb { gap: 6px; padding: 6px 10px 4px 56px; grid-template-columns: minmax(150px, 1fr) minmax(170px, 1.2fr) minmax(170px, 1fr); }
+  .lb { gap: 6px; padding: 6px 10px 4px 10px; grid-template-columns: minmax(150px, 1fr) minmax(170px, 1.2fr) minmax(170px, 1fr); }
   .lb-title { font-size: 22px; }
   .pill { font-size: 15px; padding: 2px 10px 2px 4px; }
   .lb-btn { font-size: 16px; padding: 6px 10px; }
@@ -488,7 +488,7 @@ button { font: inherit; cursor: pointer; }
 
 /* pantallas estrechas (vertical en PC) */
 @media (max-width: 640px) and (min-height: 501px) {
-  .lb { grid-template-columns: 1fr; grid-template-rows: auto auto auto auto auto; grid-template-areas: "top" "center" "right" "left" "bottom"; overflow-y: auto; padding-left: 60px; }
+  .lb { grid-template-columns: 1fr; grid-template-rows: auto auto auto auto auto; grid-template-areas: "top" "center" "right" "left" "bottom"; overflow-y: auto; padding-left: 14px; }
   .lb-bottom { flex-direction: column; }
   .lb-bottom .legal { text-align: center; }
   .dt { grid-template-columns: 1fr; }
@@ -698,3 +698,99 @@ button { font: inherit; cursor: pointer; }
 }
 .lb-money { margin-left: auto; }
 .clan-head .av { border-radius: 12px; image-rendering: pixelated; background: rgba(255, 255, 255, 0.08); }
+
+/* =====================================================================
+   ESTILO PIXEL ART PARA TODA LA INTERFAZ
+   Bordes con esquinas recortadas (técnica de sombras desplazadas), brillo arriba,
+   sombra abajo y botones que "se hunden" al pulsarlos.
+   ===================================================================== */
+:root {
+  --px: 4px;
+  --line: #0c1020;
+  --pxb: 0 calc(-1 * var(--px)) 0 0 var(--line), 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line),
+    0 calc(var(--px) * 2) 0 0 rgba(0, 0, 0, 0.35),
+    inset 0 var(--px) 0 0 rgba(255, 255, 255, 0.22), inset 0 calc(-1 * var(--px)) 0 0 rgba(0, 0, 0, 0.28);
+  --pxb-down: 0 calc(-1 * var(--px)) 0 0 var(--line), 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line),
+    inset 0 var(--px) 0 0 rgba(0, 0, 0, 0.25);
+  --pxb-flat: 0 calc(-1 * var(--px)) 0 0 var(--line), 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line),
+    inset 0 var(--px) 0 0 rgba(255, 255, 255, 0.12);
+}
+
+.panel, .big, .act, .lb-btn, .card, .mode-card, .mode-card2, .tabs button, .back, .pill, .profile-chip, .chest-widget, .diff, .mini,
+.modal-box, .hero-plate, .icon-btn, .px-seg button, .icons button, .reward, .copas-change, .tokens, .cw-ball, .badge, .cw-badge {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: var(--pxb) !important;
+  image-rendering: pixelated;
+}
+.mission, .prow, .move, .st-row, .login-box, #pf-stats div, #dt-stats td, .ms-reward, .chat, .search input, .form input, .form select,
+.chat-in input, .pf-name-row input, #dt-hero, .mock-note, .keys {
+  border-radius: 0 !important;
+}
+.mission, .prow, .st-row, .login-box, .keys { box-shadow: var(--pxb-flat); border: 0; }
+.chat { border: 0 !important; box-shadow: var(--pxb-flat); }
+.search input, .form input, .form select, .chat-in input, .pf-name-row input { border: 0 !important; box-shadow: var(--pxb-flat), inset 0 4px 0 rgba(0, 0, 0, 0.15) !important; }
+
+.big:active, .act:active, .lb-btn:active, .card:active, .mode-card:active, .mode-card2:active, .tabs button:active, .back:active,
+.chest-widget:active, .icon-btn:active, .px-seg button:active, .mini:active, .profile-chip:active {
+  transform: translateY(var(--px));
+  box-shadow: var(--pxb-down) !important;
+}
+.act:disabled:active { transform: none; }
+.panel { background: linear-gradient(#2d4a8f, #1e3266); margin: 8px; }
+.badge, .cw-badge { box-shadow: 0 -3px 0 0 var(--line), 0 3px 0 0 var(--line), -3px 0 0 0 var(--line), 3px 0 0 0 var(--line) !important; }
+.prow.me { border: 0; box-shadow: 0 -4px 0 0 #5ad07a, 0 4px 0 0 #5ad07a, -4px 0 0 0 #5ad07a, 4px 0 0 0 #5ad07a; }
+
+/* iconos pixel */
+.pxi { width: 24px; height: 24px; image-rendering: pixelated; flex: none; }
+.lb-menu .lb-btn .pxi { width: 22px; height: 22px; }
+.icon-btn {
+  width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(#4b6fc2, #34529c); padding: 0; margin: 4px;
+}
+.icon-btn .pxi { width: 28px; height: 28px; }
+#btn-pause { position: fixed; top: 10px; left: 10px; z-index: 20; }
+
+/* ajustes */
+#st-body { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.st-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: rgba(0, 0, 0, 0.22); margin: 4px; }
+.st-row > div:first-child { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.st-row b { font-weight: 400; font-size: 17px; }
+.st-row small { font-size: 12px; color: #9fb0d8; }
+.st-row.danger { background: rgba(150, 30, 30, 0.25); }
+.act.red { background: linear-gradient(#ff6b5a, #c8302a); color: #fff; }
+a.act { text-decoration: none; }
+
+.px-toggle { position: relative; width: 64px; height: 32px; padding: 0; background: #3a4466; box-shadow: var(--pxb) !important; border: 0; flex: none; margin: 4px; }
+.px-toggle i { position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; background: #c8d0e8; box-shadow: inset 0 4px 0 #fff, inset 0 -4px 0 #8a94b0; transition: left 0.12s steps(3); }
+.px-toggle.on { background: #3aa858; }
+.px-toggle.on i { left: 36px; background: #ffffff; }
+
+.px-seg { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.px-seg button { font-size: 14px; padding: 6px 10px; color: #dfe7ff; background: #2c3f78; margin: 4px; }
+.px-seg button.sel { background: linear-gradient(#ffd84a, #f0a81c); color: #3a2500; }
+
+.px-range { -webkit-appearance: none; appearance: none; width: 180px; height: 16px; background: #0c1020; box-shadow: var(--pxb-flat); outline: none; margin: 6px; }
+.px-range::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 28px; background: #ffd23a; box-shadow: inset 0 4px 0 #fff4b0, inset 0 -4px 0 #b07810, 0 0 0 4px #0c1020; cursor: pointer; }
+.px-range::-moz-range-thumb { width: 20px; height: 28px; border: 0; border-radius: 0; background: #ffd23a; box-shadow: 0 0 0 4px #0c1020; }
+
+.keys { display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 10px 12px; background: rgba(0, 0, 0, 0.22); margin: 4px; font-size: 14px; color: #cfdcff; }
+.keys b { width: 100%; font-weight: 400; color: #ffcf2e; }
+kbd {
+  display: inline-block; min-width: 22px; padding: 1px 5px; margin-right: 3px; text-align: center; font-family: inherit; font-size: 13px;
+  color: #0c1838; background: #e8eeff; box-shadow: 0 -2px 0 #0c1020, 0 2px 0 #0c1020, -2px 0 0 #0c1020, 2px 0 0 #0c1020, inset 0 -3px 0 #a8b4d4;
+}
+
+/* pausa */
+.pause-panel { width: min(360px, 100%); }
+.pause-btns { display: flex; flex-direction: column; gap: 14px; margin: 12px 0 6px; }
+.pause-btns .big { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.pause-btns .lb-btn { display: flex; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+
+@media (max-height: 500px) {
+  .icon-btn { width: 34px; height: 34px; }
+  .icon-btn .pxi { width: 22px; height: 22px; }
+  .lb-menu .lb-btn .pxi { width: 16px; height: 16px; }
+  .st-row { padding: 6px 10px; }
+  .pause-btns { gap: 10px; margin: 6px 0; }
+}
