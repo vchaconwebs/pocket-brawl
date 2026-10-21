@@ -82,7 +82,10 @@ PB.MODES = {
       const losing = g.countdown && g.countdown.team === foeTeam;
       const home = W.spawns[b.team][1];
       const safe = { x: home.x + (W.mine.x - home.x) * 0.3, y: home.y + (W.mine.y - home.y) * 0.3 };
-      if ((info.hpF < 0.3 && info.foe && info.fd < 450) || (winning && b.balls > 0) || (b.balls >= 5 && info.hpF < 0.6)) {
+      // jugar seguro: con poca vida, si va ganando la cuenta atrás y lleva Pokéballs, o si lleva muchas
+      const teamBalls = g.teamBalls(b.team);
+      if ((info.hpF < 0.3 && info.foe && info.fd < 450) || (winning && b.balls > 0) || (b.balls >= 5 && info.hpF < 0.6) ||
+          (teamBalls >= g.rules.ballsToWin - 2 && b.balls >= 3)) {
         return { goal: safe, retreat: true };
       }
       if (info.foe && (losing || (info.fd < 700 && info.hpF > 0.45))) return { goal: info.foe };

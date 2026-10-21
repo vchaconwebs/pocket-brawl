@@ -77,9 +77,13 @@ PB.Bot = class {
       const ax = (tgt.x - b.x) / (tgtD || 1), ay = (tgt.y - b.y) / (tgtD || 1);
       input.mx = -ay * this.strafe * 0.4;
       input.my = ax * this.strafe * 0.4;
+    } else if (plan.retreat) {
+      this.survive(goal, foe, fd, input, dt);
     } else if (goal) {
       this.followTo(goal, input);
     }
+    // esquivar disparos que vienen hacia él (mejor cuanto más nivel)
+    this.dodge(input, dt);
 
     // atascado -> recalcular camino
     const moved = Math.hypot(b.x - this.lastPos.x, b.y - this.lastPos.y);
@@ -136,6 +140,82 @@ PB.Bot = class {
       }
     }
     return input;
+  }
+
+  // Jugar a no morir (lleva Pokéballs, va ganando o tiene poca vida):
+  // se aleja del rival en zigzag hacia su zona, y si no hay nadie cerca se esconde en un arbusto
+  survive(home, foe, fd, input, dt) {
+    const g = this.g, b = this.b, W = g.world;
+    const danger = foe && fd < Math.max(560, (foe.def.attack.range || 300) + 180);
+    if (danger) {
+      if (this.strafeT <= 0) { this.strafe *= -1; this.strafeT = 0.35 + Math.random() * 0.45; }
+      const ax = (b.x - foe.x) / fd, ay = (b.y - foe.y) / fd; // alejarse
+      let hx = 0, hy = 0;
+      if (home) { const hd = Math.hypot(home.x - b.x, home.y - b.y) || 1; hx = (home.x - b.x) / hd; hy = (home.y - b.y) / hd; }
+      let mx = ax + hx * 0.7 - ay * this.strafe * 0.8;
+      let my = ay + hy * 0.7 + ax * this.strafe * 0.8;
+      const l = Math.hypot(mx, my) || 1;
+      mx /= l; my /= l;
+      // si hay pared delante, a buscar refugio por el camino
+      if (!W.walkable(b.x, b.y, b.x + mx * 60, b.y + my * 60, b.r)) {
+        this.strafe *= -1;
+        const cover = this.findCover(home || b);
+        if (cover) return this.followTo(cover, input);
+      }
+      input.mx = mx;
+      input.my = my;
+      return;
+    }
+    // nadie cerca: a un arbusto cerca de casa y quieto dentro (escondido se cura)
+    const cover = this.findCover(home || b);
+    const spot = cover || home;
+    if (!spot) return;
+    if (Math.hypot(spot.x - b.x, spot.y - b.y) > 18) this.followTo(spot, input);
+  }
+
+  // Arbusto más seguro cerca de un punto (lejos de los rivales vivos)
+  findCover(near) {
+    const g = this.g, b = this.b, W = g.world, T = PB.TILE;
+    this.coverT = (this.coverT || 0) - 1;
+    if (this.cover && this.coverT > 0) return this.cover;
+    const foes = g.enemiesOf(b);
+    let best = null, bs = Infinity;
+    const c0 = Math.floor(near.x / T), r0 = Math.floor(near.y / T);
+    for (let r = r0 - 6; r <= r0 + 6; r++) for (let c = c0 - 6; c <= c0 + 6; c++) {
+      if (W.tile(c, r) !== 'b') continue;
+      const x = (c + 0.5) * T, y = (r + 0.5) * T;
+      let sc = Math.hypot(x - near.x, y - near.y) * 0.6 + Math.hypot(x - b.x, y - b.y) * 0.3;
+      for (const f of foes) { const d = Math.hypot(f.x - x, f.y - y); if (d < 520) sc += (520 - d) * 2.5; }
+      if (sc < bs) { bs = sc; best = { x, y }; }
+    }
+    this.cover = best;
+    this.coverT = 40; // se recalcula cada ~40 pensamientos
+    return best;
+  }
+
+  // Esquivar: si un proyectil rival viene directo, paso lateral
+  dodge(input, dt) {
+    const g = this.g, b = this.b;
+    this.dodgeT = (this.dodgeT || 0) - dt;
+    if (this.dodgeT <= 0) { this.dodgeT = 0.25; this.canDodge = Math.random() < this.skill * 0.75; }
+    if (!this.canDodge || b.dash) return;
+    for (const p of g.projectiles) {
+      if (p.lob || p.team === b.team || p.hit.has(b.idx)) continue;
+      const dx = b.x - p.x, dy = b.y - 8 - p.y;
+      const d = Math.hypot(dx, dy);
+      if (d > 280) continue;
+      const v = Math.hypot(p.vx, p.vy) || 1;
+      const ux = p.vx / v, uy = p.vy / v;
+      if (dx * ux + dy * uy <= 0) continue; // ya ha pasado
+      const side = dx * -uy + dy * ux; // distancia lateral a la trayectoria
+      if (Math.abs(side) > p.r + b.r + 16) continue;
+      const s = side >= 0 ? 1 : -1;
+      let mx = input.mx * 0.4 + -uy * s * 1.2, my = input.my * 0.4 + ux * s * 1.2;
+      const l = Math.hypot(mx, my) || 1;
+      input.mx = mx / l;
+      input.my = my / l;
+      return;
+    }
   }
 
   aimAt(foe, dist, atk) {
