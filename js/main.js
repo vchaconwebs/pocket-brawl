@@ -86,6 +86,7 @@
       b.trainer = b.isPlayer ? PB.Save.get().name : friend ? opts.partyNames[i - 1] : names[i % names.length];
       b.friend = !!friend;
       b.isBot = !b.isPlayer && !friend; // los que rellenan la partida
+      b.name = b.trainer; // encima de cada Pokémon sale el nombre del jugador
     });
     // niveles: el jugador usa el suyo; los bots, uno parecido para que sea justo
     const myLvl = playerId ? PB.Save.level(playerId) : 1;

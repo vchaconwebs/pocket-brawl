@@ -98,7 +98,6 @@ PB.Game = class {
       b.superCharge = Math.max(b.superCharge, 0.5);
       this.text(b.x, b.y - 128, nd.attack.name + ' · ' + nd.super.name, '#ffffff', 14);
     }
-    if (!b.isPlayer) b.name = PB.stageName(b, b.stage);
     // más vida máxima y se cura una parte
     b.maxHp = Math.round((b.maxHp * after) / before);
     b.hp = Math.min(b.maxHp, (b.hp * after) / before + b.maxHp * 0.25);

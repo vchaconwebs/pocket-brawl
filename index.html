@@ -10,7 +10,7 @@
   <meta name="description" content="Pocket Brawl: fangame gratuito de combates 3v3 en el navegador. Sin ánimo de lucro.">
   <title>Pocket Brawl</title>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=39">
+  <link rel="stylesheet" href="css/style.css?v=40">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -38,10 +38,12 @@
         <div class="lb-menu">
           <button class="tile sec-green" id="btn-pokemon"><span class="ib"><img class="pxi" data-icon="pokeball" alt=""></span><span class="tl">Pokémon</span></button>
           <button class="tile sec-yellow" id="btn-missions"><span class="ib"><img class="pxi" data-icon="scroll" alt=""></span><span class="tl">Misiones</span><span class="badge hidden" id="mis-badge">0</span></button>
-          <button class="tile sec-orange" id="btn-achievements"><span class="ib"><img class="pxi" data-icon="medal" alt=""></span><span class="tl">Logros</span><span class="badge hidden" id="ach-badge">0</span></button>
-          <button class="tile sec-pink" id="btn-friends"><span class="ib"><img class="pxi" data-icon="friends" alt=""></span><span class="tl">Amigos</span><span class="badge hidden" id="fr-badge">0</span></button>
           <button class="tile sec-blue" id="btn-clan"><span class="ib"><img class="pxi" data-icon="shield" alt=""></span><span class="tl">Clan</span></button>
-          <button class="tile sec-teal" id="btn-ranking"><span class="ib"><img class="pxi" data-icon="cup" alt=""></span><span class="tl">Ranking</span></button>
+          <div class="lb-icons">
+            <button class="tile icon sec-orange" id="btn-achievements" title="Logros"><span class="ib"><img class="pxi" data-icon="medal" alt=""></span><span class="badge hidden" id="ach-badge">0</span></button>
+            <button class="tile icon sec-pink" id="btn-friends" title="Amigos"><span class="ib"><img class="pxi" data-icon="friends" alt=""></span><span class="badge hidden" id="fr-badge">0</span></button>
+            <button class="tile icon sec-teal" id="btn-ranking" title="Ranking"><span class="ib"><img class="pxi" data-icon="cup" alt=""></span></button>
+          </div>
         </div>
         <button class="chest-widget" id="chest-widget">
           <span class="cw-ball"><img id="cw-img" alt=""><span class="cw-badge hidden" id="cw-count">0</span></span>
@@ -53,13 +55,15 @@
         </button>
       </aside>
 
-      <button class="lb-center" id="lb-hero" title="Cambiar Pokémon">
-        <canvas id="hero-cv" width="260" height="240"></canvas>
+      <div class="lb-center">
+        <div class="hero-stage">
+          <canvas id="hero-cv" width="470" height="250"></canvas>
+          <button class="hero-hit" id="lb-hero" title="Cambiar Pokémon"></button>
+          <div class="party-slots" id="party-slots"></div>
+        </div>
         <span class="hero-plate"><b id="hero-name"></b><span id="hero-lvl"></span></span>
-        <span class="hint">Toca para cambiar</span>
-      </button>
-
-      <div class="party-slots" id="party-slots"></div>
+        <span class="hint">Toca a tu Pokémon para cambiarlo</span>
+      </div>
 
       <aside class="lb-right">
         <button class="lb-quests" id="lb-quests"><span class="lq-head"><b>Misiones de hoy</b><small id="lq-reset"></small></span><span id="lq-list"></span></button>
@@ -339,26 +343,26 @@
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=39"></script>
-  <script src="js/data.js?v=39"></script>
-  <script src="js/roster-data.js?v=39"></script>
-  <script src="js/sprites.js?v=39"></script>
-  <script src="js/vfx.js?v=39"></script>
-  <script src="js/roster.js?v=39"></script>
-  <script src="js/pokeball.js?v=39"></script>
-  <script src="js/tiles.js?v=39"></script>
-  <script src="js/world.js?v=39"></script>
-  <script src="js/game.js?v=39"></script>
-  <script src="js/modes.js?v=39"></script>
-  <script src="js/ai.js?v=39"></script>
-  <script src="js/audio.js?v=39"></script>
-  <script src="js/render.js?v=39"></script>
-  <script src="js/input.js?v=39"></script>
-  <script src="js/settings.js?v=39"></script>
-  <script src="js/pixui.js?v=39"></script>
-  <script src="js/save.js?v=39"></script>
-  <script src="js/online.js?v=39"></script>
-  <script src="js/lobby.js?v=39"></script>
-  <script src="js/main.js?v=39"></script>
+  <script src="js/sprite-data.js?v=40"></script>
+  <script src="js/data.js?v=40"></script>
+  <script src="js/roster-data.js?v=40"></script>
+  <script src="js/sprites.js?v=40"></script>
+  <script src="js/vfx.js?v=40"></script>
+  <script src="js/roster.js?v=40"></script>
+  <script src="js/pokeball.js?v=40"></script>
+  <script src="js/tiles.js?v=40"></script>
+  <script src="js/world.js?v=40"></script>
+  <script src="js/game.js?v=40"></script>
+  <script src="js/modes.js?v=40"></script>
+  <script src="js/ai.js?v=40"></script>
+  <script src="js/audio.js?v=40"></script>
+  <script src="js/render.js?v=40"></script>
+  <script src="js/input.js?v=40"></script>
+  <script src="js/settings.js?v=40"></script>
+  <script src="js/pixui.js?v=40"></script>
+  <script src="js/save.js?v=40"></script>
+  <script src="js/online.js?v=40"></script>
+  <script src="js/lobby.js?v=40"></script>
+  <script src="js/main.js?v=40"></script>
 </body>
 </html>

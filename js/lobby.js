@@ -440,9 +440,9 @@ PB.Lobby = (() => {
       const m = others[i];
       const side = i === 0 ? 'left' : 'right';
       if (m) {
+        // su Pokémon se dibuja en el canvas; aquí solo va su nombre y si está listo
         html += `<button class="pslot ${side} filled${m.ready ? ' ready' : ''}" data-i="${i}">` +
-          (p.leader === m.id ? '<i class="crown">★</i>' : '') +
-          `<img src="${memberPortrait(m)}" alt=""><b>${m.name}</b><small>${m.ready ? '¡Listo!' : 'Esperando…'}</small></button>`;
+          `<span class="ptag">${p.leader === m.id ? '<i class="crown">★</i>' : ''}<b>${m.name}</b><small>${m.ready ? '✓ ¡Listo!' : 'Esperando…'}</small></span></button>`;
       } else {
         html += `<button class="pslot ${side}" data-i="${i}"><span class="plus">+</span><small>Invitar</small></button>`;
       }
@@ -1137,6 +1137,45 @@ PB.Lobby = (() => {
   }
 
   // ------------------------------------------------------------------ animación de los canvas
+  // Lobby: tu Pokémon en el centro y los de tu sala a los lados (como en Brawl Stars)
+  function drawLobbyTeam(cv) {
+    const c = cv.getContext('2d');
+    const w = cv.width, h = cv.height;
+    c.clearRect(0, 0, w, h);
+    c.imageSmoothingEnabled = false;
+    const p = PB.Online.party();
+    const others = p ? p.members.filter((m) => !m.me) : [];
+    const pedestal = (x, y, rx, glow) => {
+      c.fillStyle = 'rgba(0,0,0,0.35)';
+      c.beginPath();
+      c.ellipse(x, y, rx, rx * 0.28, 0, 0, Math.PI * 2);
+      c.fill();
+      if (glow) {
+        c.strokeStyle = glow;
+        c.lineWidth = 4;
+        c.beginPath();
+        c.ellipse(x, y, rx + 4, rx * 0.28 + 3, 0, 0, Math.PI * 2);
+        c.stroke();
+      }
+    };
+    // amigos (detrás, un poco más pequeños)
+    others.slice(0, 2).forEach((m, i) => {
+      const b = PB.brawlerById(m.fav);
+      if (!b) return;
+      const x = i === 0 ? w * 0.15 : w * 0.85, y = h * 0.74;
+      pedestal(x, y, 46, m.ready ? 'rgba(125,255,143,0.7)' : 'rgba(150,180,255,0.5)');
+      if (!PB.Sprites.ready(b.dex)) PB.Sprites.ensure([b.dex]);
+      PB.Sprites.draw(c, b.dex, 'Idle', Math.PI / 2, t + i * 0.7, x, y + 6, 3.6, 0);
+    });
+    // tú
+    const me = PB.brawlerById(PB.Save.get().selected);
+    if (!me) return;
+    const shiny = PB.Save.skin(me.id) === 'shiny';
+    pedestal(w / 2, h * 0.82, 70, 'rgba(255,210,60,' + (0.5 + Math.sin(t * 3) * 0.25) + ')');
+    if (!PB.Sprites.ready(me.dex, shiny)) PB.Sprites.ensure([{ dex: me.dex, shiny }]);
+    PB.Sprites.draw(c, me.dex, 'Idle', Math.PI / 2, t, w / 2, h * 0.82 + 10, 5, 0, shiny);
+  }
+
   function drawHero(cv, dex, scale, glow, shiny) {
     if (!PB.Sprites.ready(dex, shiny)) PB.Sprites.ensure([{ dex, shiny }]);
     const c = cv.getContext('2d');
@@ -1161,8 +1200,7 @@ PB.Lobby = (() => {
   function tick(dt) {
     t += dt;
     if (current === 'lobby') {
-      const b = PB.brawlerById(PB.Save.get().selected);
-      if (b) drawHero($('#hero-cv'), b.dex, 5, true, PB.Save.skin(b.id) === 'shiny');
+      drawLobbyTeam($('#hero-cv'));
     } else if (current === 'detail' && detailId) {
       const b = PB.brawlerById(detailId);
       drawHero($('#dt-cv'), PB.Save.lineOf(detailId)[dtStage] || b.dex, 4, PB.Save.owned(detailId), PB.Save.skin(detailId) === 'shiny');

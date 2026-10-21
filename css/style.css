@@ -1576,3 +1576,51 @@ h1.lose { color: #ff8a7a; }
   .pslot b { font-size: 16px; max-width: 100px; }
   .pslot small { font-size: 14px; }
 }
+
+/* =====================================================================
+   LOBBY CON TU EQUIPO: menú compacto y tres Pokémon en el centro
+   ===================================================================== */
+.lb-menu { grid-template-columns: 1fr !important; }
+.lb-icons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tile.icon { justify-content: center; padding: 0 !important; }
+.tile.icon .badge { right: -8px; top: -8px; transform: none; }
+.lb-center { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; }
+.hero-stage { position: relative; width: 100%; max-width: 640px; }
+#hero-cv { display: block; width: 100% !important; height: auto; image-rendering: pixelated; }
+.hero-hit { position: absolute; left: 33%; right: 33%; top: 10%; bottom: 0; background: none; border: 0; cursor: pointer; }
+.hero-hit:hover + .party-slots ~ * , .hero-hit:focus { outline: none; }
+.party-slots { position: absolute; inset: 0; grid-area: auto; pointer-events: none; }
+.pslot { top: auto !important; bottom: 6%; width: 30% !important; }
+.pslot.left { left: 2% !important; }
+.pslot.right { right: 2% !important; }
+.pslot:not(.filled) { height: 66%; justify-content: center; }
+.pslot.filled { background: none !important; border: 0 !important; box-shadow: none !important; height: 88%; justify-content: flex-end; padding: 0 !important; }
+.ptag { display: flex; flex-direction: column; align-items: center; line-height: 1.05; padding: 1px 8px; background: rgba(10, 16, 40, 0.85); box-shadow: 0 0 0 2px #141824; position: relative; }
+.ptag b { font-weight: normal; font-size: 13px; max-width: 100%; }
+.ptag small { font-size: 11px; color: #c8d4ff; }
+.pslot.filled.ready .ptag small { color: #7dff8f; }
+.ptag .crown { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); font-style: normal; color: #ffd23a; }
+@media (max-height: 500px) {
+  .lb { grid-template-columns: minmax(128px, 0.75fr) minmax(250px, 1.9fr) minmax(160px, 0.95fr) !important; }
+  .tile { min-height: 36px !important; }
+  .lb-icons .tile { min-height: 38px !important; }
+  .lb-icons .tile .ib { width: 28px; height: 28px; }
+  .lb-icons .tile .ib .pxi { width: 22px; height: 22px; }
+  .pslot:not(.filled) { height: 58%; }
+  .ptag b { font-size: 11px; }
+  .ptag small { font-size: 10px; }
+}
+@media (min-width: 1100px) and (min-height: 640px) {
+  .lb { grid-template-columns: 300px 1fr 360px !important; }
+  .hero-stage { max-width: 820px; }
+  .lb-icons .tile { min-height: 70px; }
+  .lb-icons .tile .ib { width: 52px; height: 52px; }
+  .lb-icons .tile .ib .pxi { width: 40px; height: 40px; }
+  .tile.icon:hover { transform: translateY(-3px); }
+  .ptag b { font-size: 18px; }
+  .ptag small { font-size: 14px; }
+  .pslot { width: 28% !important; }
+}
+.pslot:not(.filled) { width: 22% !important; height: 46% !important; bottom: 14%; }
+.pslot.left:not(.filled) { left: 4% !important; } .pslot.right:not(.filled) { right: 4% !important; }
+@media (max-height: 500px) { .pslot:not(.filled) { height: 42% !important; } .pslot .plus { font-size: 22px; } }
