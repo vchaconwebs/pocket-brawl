@@ -1413,3 +1413,96 @@ h1.lose { color: #ff8a7a; }
 #ps-track { scrollbar-color: #ffd23a #141824; }
 .ps-col.claimed .ps-item { opacity: 0.6; }
 @media (max-height: 500px) { .ps-card, .ps-col.milestone .ps-card, .ps-col.final .ps-card { height: 100px; } }
+
+/* etiquetas del pase nítidas: sin sombra heredada y sin medio píxel por centrar con transform */
+.ps-ribbon { text-shadow: none !important; transform: none !important; left: 0 !important; right: 0; margin: 0 auto; width: max-content; font-size: 13px !important; line-height: 16px; padding: 0 7px !important; }
+.ps-ribbon.small { font-size: 12px !important; }
+
+/* =====================================================================
+   LOBBY EN PC: pensado para pantalla grande (el móvil sigue igual)
+   ===================================================================== */
+@media (min-width: 1100px) and (min-height: 640px) {
+  .lb {
+    max-width: 1560px; margin: 0 auto;
+    grid-template-columns: 340px 1fr 360px; gap: 18px 28px; padding: 18px 30px 10px;
+  }
+  /* barra de arriba */
+  .lb-top { gap: 16px; }
+  .lb-top .lb-title { display: block !important; font-size: 48px; text-shadow: 0 4px 0 #0c1838, 0 0 24px rgba(255, 210, 60, 0.25); }
+  .profile-chip { padding-right: 14px !important; }
+  .profile-chip img#pf-avatar { width: 56px !important; height: 56px !important; }
+  .profile-chip b { font-size: 22px !important; }
+  .profile-chip small { font-size: 17px !important; }
+  .lb-money { gap: 12px; }
+  .lb-money .pill { font-size: 24px; padding: 2px 14px 2px 6px !important; }
+  .lb-money .pill img { width: 30px; height: 30px; }
+  .lb-money .icon-btn .pxi { width: 34px; height: 34px; }
+
+  /* izquierda: menú en lista, como un juego de PC */
+  .lb-left { gap: 14px; justify-content: center; }
+  .lb-menu { grid-template-columns: 1fr; gap: 10px; }
+  .tile { min-height: 64px; font-size: 24px; gap: 14px; padding: 0 10px !important; }
+  .tile .ib { width: 46px; height: 46px; }
+  .tile .ib .pxi { width: 34px; height: 34px; }
+  .tile .badge { right: -14px; top: 50%; transform: translateY(-50%); }
+  .tile:hover { transform: translateX(6px); }
+  .chest-widget { padding-right: 14px !important; }
+  .cw-ball { width: 92px !important; height: 92px !important; }
+  .cw-ball img { width: 64px !important; height: 64px !important; }
+  .cw-info b { font-size: 21px; }
+  .cw-info small { font-size: 15px; }
+  .cw-info .bar { height: 16px; }
+
+  /* centro: el Pokémon grande, con foco de luz */
+  .lb-center::before {
+    content: ''; position: absolute; left: 50%; top: 46%; width: min(620px, 100%); aspect-ratio: 1; transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255, 230, 140, 0.22), rgba(255, 230, 140, 0.06) 45%, transparent 70%); pointer-events: none;
+  }
+  #hero-cv { width: min(100%, 520px) !important; }
+  .hero-plate { font-size: 32px !important; padding: 2px 22px !important; gap: 16px; }
+  .hero-plate span { font-size: 22px !important; }
+  .lb-center .hint { display: block !important; font-size: 17px; }
+  .lb-center:hover #hero-cv { filter: drop-shadow(0 0 14px rgba(255, 220, 120, 0.35)); }
+
+  /* derecha: pase, modo y JUGAR grandes */
+  .lb-right { gap: 16px; justify-content: flex-end; }
+  .pass-btn { gap: 4px 12px; padding: 4px 10px 4px 4px !important; }
+  .pass-btn .pb-medal { width: 56px; height: 56px; font-size: 28px; }
+  .pass-btn .pb-top b { font-size: 26px; }
+  .pass-btn .pb-top small { font-size: 16px; }
+  .pass-btn .bar { height: 14px; }
+  .mode-card { padding: 6px 10px !important; gap: 14px; }
+  .mode-card img { width: 76px !important; height: 76px !important; }
+  .mode-card b { font-size: 28px !important; }
+  .mode-card small { font-size: 15px !important; }
+  .lb-right .big { font-size: 46px !important; padding-top: 14px !important; padding-bottom: 18px !important; }
+  .lb-right .big::after { width: 52px !important; height: 52px !important; left: 14px !important; }
+  .lb-bottom .legal { font-size: 13px; }
+}
+@media (min-width: 1600px) and (min-height: 860px) {
+  .lb { grid-template-columns: 380px 1fr 400px; }
+  .tile { min-height: 74px; font-size: 27px; }
+  #hero-cv { width: min(100%, 600px) !important; }
+}
+
+/* panel de misiones de hoy en el lobby (solo PC) */
+.lb-quests { display: none; }
+@media (min-width: 1100px) and (min-height: 640px) {
+  .lb-quests {
+    display: flex; flex-direction: column; gap: 8px; text-align: left; font: inherit; color: #fff; cursor: pointer; padding: 4px 8px 8px !important;
+    border-style: solid; border-width: 12px; border-image-slice: 12 fill; border-image-width: 12px; border-image-source: var(--sk-win);
+    background: transparent; text-shadow: 2px 2px 0 #02040c; margin-bottom: auto;
+  }
+  .lq-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .lq-head b { font-weight: normal; font-size: 22px; color: #ffe066; }
+  .lq-head small { font-size: 14px; color: #c8d4ff; }
+  .lq-head small::before { content: '⏳ '; }
+  .lq-row { display: flex; flex-direction: column; gap: 3px; }
+  .lq-row small { font-size: 15px; }
+  .lq-row .bar { height: 10px; }
+  .lq-row.done small { color: #7dff8f; }
+  .lq-row.done small::after { content: ' · ¡Reclamar!'; color: #ffe066; }
+  .lq-row.claimed { opacity: 0.5; }
+  .lq-row.claimed small::after { content: ' ✓'; color: #7dff8f; }
+  .lb-quests:hover { filter: brightness(1.1); }
+}

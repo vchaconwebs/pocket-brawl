@@ -151,6 +151,12 @@ PB.Lobby = (() => {
     const pend = PB.Save.pending();
     setBadge('#mis-badge', pend.missions);
     setBadge('#pass-badge', pend.pass);
+    // misiones de hoy (panel que solo se ve en PC)
+    $('#lq-reset').textContent = timeLeft(PB.Save.nextReset('daily'));
+    $('#lq-list').innerHTML = PB.Save.missions('daily').map((m) => {
+      const k = Math.min(1, m.progress / m.n);
+      return `<span class="lq-row${m.claimed ? ' claimed' : k >= 1 ? ' done' : ''}"><small>${m.text}</small><span class="bar"><i style="width:${Math.round(k * 100)}%"></i></span></span>`;
+    }).join('');
     const ps = PB.Save.pass();
     $('#pass-season').textContent = 'Temporada ' + ps.season;
     $('#pass-lv').textContent = ps.level;
@@ -1153,6 +1159,7 @@ PB.Lobby = (() => {
     $('#btn-missions').onclick = () => showMissions();
     $('#btn-mode').onclick = showModes;
     $('#btn-pass').onclick = showPass;
+    $('#lb-quests').onclick = () => showMissions('daily');
     $('#ps-all').onclick = claimAllPass;
     fillIcons();
     // la Pokéball como imagen para el CSS (cabeceras, botón de jugar, tarjetas)
