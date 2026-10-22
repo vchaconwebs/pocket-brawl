@@ -56,6 +56,30 @@
           }
         }
       }
+    },
+    "stats": {
+      ".read": true,
+      "$day": {
+        ".validate": "$day.matches(/^20[0-9][0-9]-[01][0-9]-[0-3][0-9]$/)",
+        "$k": {
+          ".write": "$k.matches(/^(visits|matches|players|guests|signups)$/)",
+          ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1"
+        },
+        "modes": {
+          "$m": {
+            ".write": "$m.matches(/^(gems|showdown|heist|ball|zone)$/)",
+            ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1"
+          }
+        }
+      }
+    },
+    "statsSeen": {
+      "$day": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists()",
+          ".validate": "newData.val() === true"
+        }
+      }
     }
   }
 }

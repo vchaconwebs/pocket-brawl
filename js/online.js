@@ -60,6 +60,7 @@ PB.Online = (() => {
         rtdb = fb.database();
         fs = fb.firestore();
         rtdb.ref('.info/serverTimeOffset').on('value', (s) => { offset = s.val() || 0; });
+        countVisit();
         const u = await new Promise((res) => { const off = auth.onAuthStateChanged((x) => { off(); res(x); }); });
         if (u) await setup(u);
         emit('auth', account());
@@ -71,6 +72,28 @@ PB.Online = (() => {
     })();
     return inited;
   }
+  // ------------------------------------------------------------ contador (stats.html)
+  // Solo números por día: visitas, partidas, jugadores distintos y cuentas nuevas. Nada personal.
+  const day = () => new Date(Date.now() + offset).toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+  function bump(path) {
+    if (!rtdb) return;
+    rtdb.ref('stats/' + day() + '/' + path).set(fb.database.ServerValue.increment(1)).catch(() => {});
+  }
+  function countVisit() {
+    try { if (sessionStorage.getItem('pb.visit')) return; sessionStorage.setItem('pb.visit', '1'); } catch (e) {}
+    bump('visits');
+  }
+  // el primer registro del día de cada jugador suma uno a "players" (la lista no se puede leer)
+  function countPlayer() {
+    if (!rtdb || !uid) return;
+    rtdb.ref('statsSeen/' + day() + '/' + uid).set(true).then(() => bump('players')).catch(() => {});
+  }
+  function countMatch(mode) {
+    bump('matches');
+    if (/^[a-z]+$/.test(mode || '')) bump('modes/' + mode);
+    countPlayer();
+  }
+
   async function start() {
     await init();
     if (ready) await ready;
@@ -96,6 +119,7 @@ PB.Online = (() => {
     try {
       const r = await auth.signInAnonymously();
       await setup(r.user);
+      bump('guests');
       return true;
     } catch (e) { return false; }
   }
@@ -179,10 +203,12 @@ PB.Online = (() => {
       if (!auth.currentUser) {
         // sin sesión: entrar (o registrarse) directamente con Google
         const r = await auth.signInWithPopup(prov);
+        if (r.additionalUserInfo && r.additionalUserInfo.isNewUser) bump('signups');
         return enteredExisting(r.user, { email: r.user.email });
       }
       const r = await auth.currentUser.linkWithPopup(prov);
       user = r.user;
+      bump('signups');
       saveCloud(true);
       lastProfile = '';
       await user.getIdToken(true).catch(() => {}); // el permiso de "registrado" va en el token
@@ -215,11 +241,13 @@ PB.Online = (() => {
       if (create) {
         if (!auth.currentUser) {
           const r = await auth.createUserWithEmailAndPassword(email, pass);
+          bump('signups');
           return enteredExisting(r.user, { email });
         }
         const cred = fb.auth.EmailAuthProvider.credential(email, pass);
         const r = await auth.currentUser.linkWithCredential(cred);
         user = r.user;
+        bump('signups');
         saveCloud(true);
         lastProfile = '';
         await user.getIdToken(true).catch(() => {});
@@ -994,6 +1022,7 @@ PB.Online = (() => {
     friends, requests, searchPlayers, addFriend, answerRequest, removeFriend,
     findMatch, cancelMatch, joinMatch, migrate,
     get searching() { return !!search; },
+    countMatch,
     trace,
   };
 })();

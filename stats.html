@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>PokéVersus · Estadísticas</title>
+<style>
+  @font-face { font-family: 'Jersey10'; src: url('assets/fonts/Jersey10.ttf'); }
+  :root { --bg: #141824; --panel: #1f2638; --line: #2f3a55; --text: #e8ecf5; --dim: #9aa6c2; --gold: #ffcf2e; --blue: #5aa8ff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, sans-serif; padding: 16px; }
+  h1 { font-family: 'Jersey10', sans-serif; font-weight: normal; font-size: 40px; margin: 0 0 4px; color: var(--gold); letter-spacing: 1px; }
+  p.sub { color: var(--dim); margin: 0 0 16px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .card { background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 12px; }
+  .card small { color: var(--dim); display: block; }
+  .card b { font-family: 'Jersey10', sans-serif; font-weight: normal; font-size: 38px; line-height: 1; }
+  .card i { font-style: normal; color: var(--blue); font-size: 13px; }
+  .wrap { overflow-x: auto; background: var(--panel); border: 2px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; }
+  th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--dim); font-weight: 600; font-size: 13px; }
+  tr.today td { background: #26304a; }
+  .bar { display: inline-block; height: 8px; background: var(--gold); border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+  .note { color: var(--dim); font-size: 13px; margin-top: 12px; }
+</style>
+</head>
+<body>
+<h1>PokéVersus · Estadísticas</h1>
+<p class="sub" id="sub">Cargando…</p>
+<div class="cards" id="cards"></div>
+<div class="wrap"><table>
+  <thead><tr><th>Día</th><th>Visitas</th><th>Jugadores</th><th>Partidas</th><th>Invitados nuevos</th><th>Registros</th><th>Partidas por modo</th></tr></thead>
+  <tbody id="rows"></tbody>
+</table></div>
+<p class="note">Visitas: veces que se abre la web (una por sesión del navegador). Jugadores: personas distintas que juegan al menos una partida ese día. Los días van en hora de España. Se actualiza al recargar.</p>
+<script>
+  const DB = 'https://pokeversus-9ed3a-default-rtdb.europe-west1.firebasedatabase.app';
+  const MODES = { gems: 'Pokéballs', showdown: 'Niebla', heist: 'Snorlax', ball: 'Voltorbol', zone: 'Territorio' };
+  const $ = (s) => document.querySelector(s);
+  const n = (x) => (x || 0).toLocaleString('es-ES');
+  async function load() {
+    let data;
+    try { data = (await (await fetch(DB + '/stats.json')).json()) || {}; } catch (e) { $('#sub').textContent = 'No se han podido cargar los datos.'; return; }
+    const days = Object.keys(data).sort().reverse();
+    const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+    const sum = (k) => days.reduce((a, d) => a + (data[d][k] || 0), 0);
+    const t = data[today] || {};
+    $('#sub').textContent = days.length ? `Desde el ${days[days.length - 1].split('-').reverse().join('/')}` : 'Aún no hay datos: se empiezan a contar desde ahora.';
+    $('#cards').innerHTML = [
+      ['Visitas', 'visits'], ['Partidas', 'matches'], ['Invitados nuevos', 'guests'], ['Registros', 'signups'],
+    ].map(([label, k]) => `<div class="card"><small>${label} (total)</small><b>${n(sum(k))}</b><i>hoy: ${n(t[k])}</i></div>`).join('') +
+      `<div class="card"><small>Jugadores hoy</small><b>${n(t.players)}</b><i>personas distintas</i></div>`;
+    const maxM = Math.max(1, ...days.map((d) => data[d].matches || 0));
+    $('#rows').innerHTML = days.map((d) => {
+      const r = data[d], m = r.modes || {};
+      const modes = Object.keys(MODES).filter((k) => m[k]).map((k) => `${MODES[k]} ${m[k]}`).join(' · ');
+      return `<tr class="${d === today ? 'today' : ''}"><td>${d.split('-').reverse().join('/')}</td><td>${n(r.visits)}</td><td>${n(r.players)}</td>` +
+        `<td>${n(r.matches)}<span class="bar" style="width:${Math.round(((r.matches || 0) / maxM) * 60)}px"></span></td>` +
+        `<td>${n(r.guests)}</td><td>${n(r.signups)}</td><td style="text-align:left">${modes || '—'}</td></tr>`;
+    }).join('');
+  }
+  load();
+</script>
+</body>
+</html>
