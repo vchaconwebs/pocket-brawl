@@ -174,6 +174,7 @@
     await PB.Sprites.ensure(spritesFor(opts, null));
     newGame(null, opts, myIdx);
     PB.Online.countMatch(opts.mode);
+    PB.Online.setPlaying(true);
     if (net.role === 'host') net.host = new PB.Net.Host(game);
     else { net.client = new PB.Net.Client(game, myIdx); net.link.send(net.hostPeer, { k: 'hello' }); }
     // en red, la partida no se para aunque abras el menú
@@ -396,6 +397,7 @@
     starting = false;
     newGame(id, opts);
     PB.Online.countMatch(gameMode);
+    PB.Online.setPlaying(true);
     PB.Audio.music(SONG_OF[gameMode] || 'battle');
     mode = 'play';
     paused = false;
@@ -417,6 +419,7 @@
     }
     endNet();
     try { localStorage.removeItem('pb.netMatch'); } catch (e) {}
+    PB.Online.setPlaying(false);
     PB.Audio.music('menu');
     mode = 'menu';
     paused = false;
@@ -448,6 +451,7 @@
 
   function showEnd() {
     try { localStorage.removeItem('pb.netMatch'); } catch (e) {}
+    PB.Online.setPlaying(false);
     PB.Audio.music(null);
     mode = 'end';
     input.enabled = false;

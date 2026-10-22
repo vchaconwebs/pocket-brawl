@@ -68,6 +68,9 @@
   .today .mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--edge); }
   .today .mini b { display: block; font-size: 30px; line-height: 1; font-weight: normal; }
   .today .mini span { font-size: 12px; color: var(--muted); }
+  .today .now { display: inline-flex; align-self: flex-start; align-items: center; gap: 8px; margin-bottom: 14px; padding: 6px 12px 6px 10px; border-radius: 999px; background: rgba(57,211,138,.12); border: 1px solid rgba(57,211,138,.35); color: var(--text-2); font-size: 13px; }
+  .today .now i { width: 9px; height: 9px; border-radius: 50%; background: var(--up); animation: ping 2s infinite; }
+  .today .now b { font-size: 24px; line-height: 1; color: var(--text); font-weight: normal; }
   .today .mascot { position: absolute; right: 14px; top: 14px; width: 88px; height: 88px; image-rendering: pixelated; border-radius: 14px; border: 2px solid var(--edge); background: var(--panel-3); }
 
   .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
@@ -164,6 +167,7 @@
   <section class="top">
     <div class="panel today">
       <img class="mascot" src="assets/pokemon/25/p.png" alt="">
+      <div class="now" id="now"><i></i><b class="num" id="now-n">–</b><span id="now-txt">en línea ahora</span></div>
       <div>
         <div class="lbl">Hoy han jugado</div>
         <div class="big num" id="today-big">–</div>
@@ -212,7 +216,7 @@
   <footer>
     <b>Visitas:</b> veces que se abre el juego (una por sesión del navegador), también desde itch.io y otras webs.
     <b>Jugadores:</b> personas distintas que juegan al menos una partida ese día; en periodos de varios días se suman los de cada día.
-    Días en hora de España · se actualiza solo cada minuto.
+    <b>En línea:</b> pestañas con el juego abierto ahora mismo (se refresca cada 15 s). Días en hora de España · el resto se actualiza cada minuto.
   </footer>
 </div>
 
@@ -442,6 +446,17 @@
     }
   }
 
+  // gente con el juego abierto ahora mismo (1 = en el menú, 2 = jugando)
+  async function loadOnline() {
+    try {
+      const o = (await (await fetch(DB + '/online.json', { cache: 'no-store' })).json()) || {};
+      if (o.error) return;
+      const all = Object.values(o), playing = all.filter((v) => v === 2).length;
+      $('#now-n').textContent = fmt(all.length);
+      $('#now-txt').textContent = all.length === 1 ? 'en línea ahora' + (playing ? ' · jugando' : ' · en el menú') : `en línea ahora · ${fmt(playing)} jugando`;
+    } catch (e) {}
+  }
+
   for (const b of document.querySelectorAll('#range button')) b.onclick = () => {
     document.querySelectorAll('#range button').forEach((x) => x.classList.toggle('on', x === b));
     range = +b.dataset.r;
@@ -456,7 +471,9 @@
   let rt;
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(trend, 150); });
   load();
+  loadOnline();
   setInterval(load, 60000);
+  setInterval(loadOnline, 15000);
 </script>
 </body>
 </html>

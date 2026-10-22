@@ -89,6 +89,13 @@
           ".validate": "newData.val() === true"
         }
       }
+    },
+    "online": {
+      ".read": true,
+      "$sid": {
+        ".write": "$sid.matches(/^[a-z0-9]{12}$/)",
+        ".validate": "newData.isNumber() && (newData.val() === 1 || newData.val() === 2)"
+      }
     }
   }
 }

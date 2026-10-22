@@ -61,6 +61,7 @@ PB.Online = (() => {
         fs = fb.firestore();
         rtdb.ref('.info/serverTimeOffset').on('value', (s) => { offset = s.val() || 0; });
         countVisit();
+        goOnline();
         const u = await new Promise((res) => { const off = auth.onAuthStateChanged((x) => { off(); res(x); }); });
         if (u) await setup(u);
         emit('auth', account());
@@ -104,6 +105,23 @@ PB.Online = (() => {
   function countPlayer() {
     if (!rtdb || !uid || testing) return;
     rtdb.ref('statsSeen/' + day() + '/' + uid).set(true).then(() => bump('players')).catch(() => {});
+  }
+  // gente conectada ahora mismo (para stats.html): una marca por pestaña, sin datos de la cuenta.
+  // 1 = en el menú, 2 = jugando. Se borra sola al cerrar la pestaña.
+  let onlineRef = null, onlineState = 1;
+  function goOnline() {
+    if (!rtdb || testing) return;
+    const sid = Array.from({ length: 12 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
+    onlineRef = rtdb.ref('online/' + sid);
+    // al reconectar (móvil que vuelve de segundo plano) se vuelve a apuntar
+    rtdb.ref('.info/connected').on('value', (s) => {
+      if (!s.val()) return;
+      onlineRef.onDisconnect().remove().then(() => onlineRef.set(onlineState)).catch(() => {});
+    });
+  }
+  function setPlaying(on) {
+    onlineState = on ? 2 : 1;
+    if (onlineRef) onlineRef.set(onlineState).catch(() => {});
   }
   function countMatch(mode) {
     bump('matches');
@@ -1068,7 +1086,7 @@ PB.Online = (() => {
     friends, requests, searchPlayers, addFriend, answerRequest, removeFriend,
     findMatch, cancelMatch, joinMatch, migrate,
     get searching() { return !!search; },
-    countMatch,
+    countMatch, setPlaying,
     trace,
   };
 })();
