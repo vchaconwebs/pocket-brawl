@@ -846,14 +846,19 @@ PB.Online = (() => {
   function voteRematch() {
     if (!partyRef) return;
     partyRef.child('rematch').transaction((cur) => {
-      if (!cur || cur.go || now() - (cur.t || 0) > REMATCH_S * 1000 + 500) return { t: now(), votes: { [uid]: true } };
+      // alguien acaba de volver a la sala: ya no se puede votar
+      if (cur && cur.closed && now() - (cur.t || 0) < 30000) return;
+      if (!cur || cur.go || cur.closed || now() - (cur.t || 0) > REMATCH_S * 1000 + 500) return { t: now(), votes: { [uid]: true } };
       cur.votes = cur.votes || {};
       cur.votes[uid] = true;
       return cur;
     }).catch(() => {});
   }
-  function cancelRematch() {
-    if (partyRef) partyRef.child('rematch').remove().catch(() => {});
+  // leave: vuelves a la sala; queda apuntado para que los demás también vuelvan
+  function cancelRematch(leave) {
+    if (!partyRef) return;
+    if (leave) partyRef.child('rematch').set({ closed: true, by: myName(), t: now() }).catch(() => {});
+    else partyRef.child('rematch').remove().catch(() => {});
   }
   // todos han votado: el jefe lo marca (para que los demás vean "buscando") y lo borra al rato
   function rematchGo() {
@@ -1218,6 +1223,7 @@ PB.Online = (() => {
     get searching() { return !!search; },
     countMatch, setPlaying, setSearching, sendFeedback,
     get live() { return live; },
+    now: () => now(),
     trace,
   };
 })();

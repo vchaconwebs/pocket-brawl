@@ -667,4 +667,13 @@ PB.I18N = {
   '¡Ataca!': ['Attack!', 'Ataque!', 'Attaque !', 'Attacca!', 'Angriff!'],
   '¡Atrás!': ['Fall back!', 'Recua!', 'Repli !', 'Indietro!', 'Zurück!'],
   '¡Gracias!': ['Thanks!', 'Valeu!', 'Merci !', 'Grazie!', 'Danke!'],
+  '{n} ha vuelto a la sala. Volvéis todos…': ['{n} went back to the room. Everyone returns…', '{n} voltou para a sala. Todos voltam…', '{n} est retourné au salon. Tout le monde revient…', '{n} è tornato nella stanza. Tornate tutti…', '{n} ist zurück im Raum. Alle kehren zurück…'],
+  'Alguien': ['Someone', 'Alguém', 'Quelqu’un', 'Qualcuno', 'Jemand'],
+  'Gente buscando': ['People searching', 'Gente procurando', 'Des joueurs cherchent', 'Gente che cerca', 'Spieler suchen'],
+  'Hay gente en línea': ['People online', 'Tem gente online', 'Des joueurs en ligne', 'Gente online', 'Spieler online'],
+  'Gente jugando y buscando': ['People playing and searching', 'Gente jogando e procurando', 'Des joueurs jouent et cherchent', 'Gente che gioca e cerca', 'Spieler spielen und suchen'],
+  'Gente buscando partida': ['People looking for a match', 'Gente procurando partida', 'Des joueurs cherchent un match', 'Gente che cerca partita', 'Spieler suchen ein Match'],
+  'Gente jugando': ['People playing', 'Gente jogando', 'Des joueurs jouent', 'Gente che gioca', 'Spieler spielen'],
+  'Buscando jugadores · {s} s': ['Looking for players · {s} s', 'Procurando jogadores · {s} s', 'Recherche de joueurs · {s} s', 'Cerco giocatori · {s} s', 'Suche Spieler · {s} s'],
+  'En directo': ['Live', 'Ao vivo', 'En direct', 'Dal vivo', 'Live'],
 };

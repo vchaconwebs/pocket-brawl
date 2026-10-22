@@ -963,21 +963,8 @@ PB.Renderer = class {
     const w = 70;
     const mine = b.team === team;
     const isMe = b === focus && b.isPlayer;
-    // nombre (y un rayo si tiene el súper listo); los bots llevan una etiqueta BOT al lado
+    // nombre (y un rayo si tiene el súper listo)
     this.outlined(b.name, x, y - 8, 13, isMe ? '#7dff8f' : mine ? '#a9d0ff' : '#ffb0b0');
-    if (b.isBot) {
-      ctx.font = '13px "Jersey 10", system-ui, sans-serif';
-      const nw = ctx.measureText(b.name).width;
-      const tx = Math.round(x + nw / 2 + 4), ty = y - 19;
-      ctx.fillStyle = '#141824';
-      ctx.fillRect(tx - 1, ty - 1, 27, 13);
-      ctx.fillStyle = '#5a6278';
-      ctx.fillRect(tx, ty, 25, 11);
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '11px "Jersey 10", system-ui, sans-serif';
-      ctx.fillText('BOT', tx + 12.5, ty + 9);
-    }
     // vida: barra pixel con una marca cada 1000
     const hpk = Math.max(0, b.hp) / b.maxHp;
     const col = isMe ? '#43e05a' : mine ? '#3d8bff' : '#ff4545';

@@ -491,15 +491,15 @@ PB.Lobby = (() => {
     if (id === 'random') {
       // si hay gente buscando en algún modo, Aleatorio te lleva ahí
       const s = PB.MODE_ORDER.slice().sort((a, b) => ((L.modes[b] || {}).search || 0) - ((L.modes[a] || {}).search || 0))[0];
-      const n = L.total || 0;
-      if ((L.modes[s] || {}).search) return PB.T('Ahora: {m}', { m: PB.MODES[s].name }) + ' · ' + PB.T('{n} buscando', { n: L.modes[s].search });
-      return n > 1 ? PB.T('{n} en línea', { n }) : '';
+      // (sin números: solo se dice que hay gente)
+      if ((L.modes[s] || {}).search) return PB.T('Ahora: {m}', { m: PB.MODES[s].name }) + ' · ' + PB.T('Gente buscando');
+      return (L.total || 0) > 1 ? PB.T('Hay gente en línea') : '';
     }
     const m = L.modes[id] || {};
-    const parts = [];
-    if (m.play) parts.push(PB.T('{n} jugando', { n: m.play }));
-    if (m.search) parts.push(PB.T('{n} buscando', { n: m.search }));
-    return parts.join(' · ');
+    if (m.play && m.search) return PB.T('Gente jugando y buscando');
+    if (m.search) return PB.T('Gente buscando partida');
+    if (m.play) return PB.T('Gente jugando');
+    return '';
   };
   function renderModeLive() {
     const rnd = api.isRandom && api.isRandom();

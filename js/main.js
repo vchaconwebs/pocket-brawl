@@ -505,7 +505,7 @@
       return `<div class="end-row${b.isPlayer ? ' me' : ''}">` +
         (M.ffa ? `<span class="er-rank">#${b.rank || '-'}</span>` : '') +
         `<span class="er-pt"><img src="${PB.Sprites.portraitURL(dex)}" alt="">${b === mvp ? '<i class="er-mvp">MVP</i>' : ''}</span>` +
-        `<span class="er-name"><b>${b.trainer || b.name}${b.isBot ? '<i class="bot-tag">BOT</i>' : b.friend ? '<i class="bot-tag friend">AMIGO</i>' : ''}</b><small>${PB.stageName(b, b.stage)}${lvl}</small></span>` +
+        `<span class="er-name"><b>${b.trainer || b.name}${b.friend ? '<i class="bot-tag friend">AMIGO</i>' : ''}</b><small>${PB.stageName(b, b.stage)}${lvl}</small></span>` +
         `<span class="er-st"><b>${b.kills}</b><small>K.O.</small></span>` +
         `<span class="er-st"><b>${b.deaths}</b><small>Caídas</small></span>` +
         `<span class="er-st"><b>${statTxt(b)}</b><small>${M.statName}</small></span>` +
@@ -563,20 +563,23 @@
   // ------------------------------------------------------------ fin de partida: otra / revancha en grupo
   // Solo: "Buscar otra". En una sala con amigos: "Volver a jugar" es una votación de 10 s;
   // cuando votan todos, el jefe busca partida; si alguien vuelve a la sala, se cancela.
-  let rematchSeen = null, rematchMsg = '', rematchStarting = false, voteIv = null;
+  let rematchSeen = null, rematchMsg = '', rematchStarting = false, voteIv = null, endAt = 0, leaveT = null;
   const inGroup = () => { const p = PB.Online.party(); return p && p.members.length > 1 ? p : null; };
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   function setupEndButtons() {
     rematchSeen = null;
     rematchMsg = '';
     rematchStarting = false;
+    endAt = PB.Online.now();
+    clearTimeout(leaveT);
+    leaveT = null;
     const again = $('#again'), back = $('#back');
     again.disabled = false;
     again.classList.remove('voted');
     if (inGroup()) {
       back.textContent = PB.T('Volver a la sala');
       again.onclick = () => { PB.Audio.play('ready'); PB.Online.voteRematch(); };
-      back.onclick = () => { PB.Online.cancelRematch(); toMenu(); };
+      back.onclick = () => { PB.Online.cancelRematch(true); toMenu(); };
     } else {
       again.textContent = PB.T('Buscar otra');
       back.textContent = PB.T('Volver al lobby');
@@ -587,16 +590,23 @@
     voteIv = setInterval(() => { if (mode !== 'end') { clearInterval(voteIv); return; } checkRematch(); renderVote(); }, 250);
     renderVote();
   }
+  // alguien del grupo ha vuelto a la sala después de esta partida: todos vuelven
+  const groupLeft = (p) => p && p.rematch && p.rematch.closed && (p.rematch.t || 0) > endAt - 15000 ? p.rematch : null;
   function checkRematch() {
     const p = inGroup();
     if (!p) return;
+    const gone = groupLeft(p);
+    if (gone) {
+      if (!leaveT && mode === 'end') leaveT = setTimeout(() => { leaveT = null; if (mode === 'end') toMenu(); }, 2500);
+      return;
+    }
     const r = p.rematch && !p.rematch.go && PB.Online.rematchLeft() > 0 ? p.rematch : null;
     // había votación y ya no está (sin haber empezado): alguien ha vuelto a la sala o se acabó el tiempo
     if (rematchSeen && !p.rematch) rematchMsg = PB.T('Votación cancelada');
     rematchSeen = p.rematch || null;
     if (!r) {
       // se acabó el tiempo sin que votaran todos: el jefe la quita
-      if (p.rematch && !p.rematch.go && p.leader === 'me') { rematchMsg = PB.T('No han votado todos a tiempo'); PB.Online.cancelRematch(); }
+      if (p.rematch && !p.rematch.go && !p.rematch.closed && p.leader === 'me') { rematchMsg = PB.T('No han votado todos a tiempo'); PB.Online.cancelRematch(); }
       return;
     }
     const votes = r.votes || {};
@@ -611,6 +621,14 @@
     const p = mode === 'end' ? inGroup() : null;
     if (!p) { box.classList.add('hidden'); return; }
     box.classList.remove('hidden');
+    const gone = groupLeft(p);
+    if (gone) {
+      again.disabled = true;
+      again.classList.remove('voted');
+      again.textContent = PB.T('Volver a jugar');
+      box.textContent = PB.T('{n} ha vuelto a la sala. Volvéis todos…', { n: gone.by || PB.T('Alguien') });
+      return;
+    }
     const r = p.rematch, votes = (r && r.votes) || {};
     if (r && r.go) {
       again.disabled = true;
@@ -656,7 +674,7 @@
       if (await PB.Online.start()) {
         PB.Online.setSearching(gameMode);
         r = await PB.Online.findMatch(gameMode, (st) => {
-          $('#ld-sub').textContent = (randomMode ? PB.MODES[gameMode].name + ' · ' : '') + PB.T('{n} jugadores buscando · {s} s', { n: Math.max(1, st.players), s: Math.floor(st.waited) });
+          $('#ld-sub').textContent = (randomMode ? PB.MODES[gameMode].name + ' · ' : '') + PB.T('Buscando jugadores · {s} s', { s: Math.floor(st.waited) });
         });
       }
     } catch (e) { r = { local: true }; }

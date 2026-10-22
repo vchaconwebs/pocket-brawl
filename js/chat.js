@@ -80,7 +80,7 @@ PB.Chat = (() => {
   }
   function online() {
     const n = (PB.Online.live && PB.Online.live.total) || 0;
-    $('#gc-online').textContent = n ? PB.T('{n} en línea', { n }) : '';
+    $('#gc-online').textContent = n > 1 ? '● ' + PB.T('En directo') : '';
   }
   function tabs() {
     const has = inParty();
