@@ -21,7 +21,8 @@
   };
   let gameMode = load('pb.mode', (v) => PB.MODES[v], 'gems');
   // "Aleatorio": al pulsar jugar se elige el modo donde hay más gente buscando (o jugando)
-  let randomMode = load('pb.modeRandom', (v) => v === '1', '0') === '1';
+  // (los jugadores nuevos empiezan en Aleatorio: así la mayoría coincide en el mismo modo)
+  let randomMode = load('pb.modeRandom', (v) => v === '1' || v === '0', '1') === '1';
   let endTimer = 0;
   let heartT = 0;
   let spectate = 0;
@@ -635,18 +636,16 @@
     if (r.mid) return joinAndStart(r.mid);
     startMatch();
   }
-  // modo con más gente buscando; si nadie busca, el que más juegan; si no hay nadie, uno al azar
-  // (en grupo no vale Niebla Tóxica, que es todos contra todos)
+  // Aleatorio: si alguien está buscando, a ese modo; si no, al "modo del momento", que es el mismo
+  // para todos y cambia cada 10 minutos (así los que eligen Aleatorio coinciden entre ellos).
+  // En grupo no vale Niebla Tóxica, que es todos contra todos.
   function pickRandomMode() {
     const p = PB.Online.party();
     const ids = PB.MODE_ORDER.filter((id) => !(p && p.members.length > 1 && PB.MODES[id].ffa));
     const L = PB.Online.live.modes || {};
-    const by = (k) => ids.slice().sort((a, b) => ((L[b] || {})[k] || 0) - ((L[a] || {})[k] || 0))[0];
-    const s = by('search');
+    const s = ids.slice().sort((a, b) => ((L[b] || {}).search || 0) - ((L[a] || {}).search || 0))[0];
     if ((L[s] || {}).search) return s;
-    const pl = by('play');
-    if ((L[pl] || {}).play) return pl;
-    return ids[Math.floor(Math.random() * ids.length)];
+    return PB.modeOfTheMoment(ids);
   }
   async function joinAndStart(mid, fromParty) {
     if (mode === 'play') return;

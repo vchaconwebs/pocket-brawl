@@ -1118,6 +1118,7 @@ PB.Online = (() => {
     get searching() { return !!search; },
     countMatch, setPlaying, setSearching,
     get live() { return live; },
+    now,
     trace,
   };
 })();

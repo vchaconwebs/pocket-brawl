@@ -613,4 +613,6 @@ PB.I18N = {
   '{n} jugando': ['{n} playing', '{n} jogando', '{n} en jeu', '{n} in partita', '{n} spielen'],
   '{n} buscando': ['{n} searching', '{n} procurando', '{n} en recherche', '{n} in cerca', '{n} suchen'],
   'Jugar ya con bots': ['Play now with bots', 'Jogar já com bots', 'Jouer avec des bots', 'Gioca subito con i bot', 'Jetzt mit Bots spielen'],
+  'Ahora: {m}': ['Now: {m}', 'Agora: {m}', 'Maintenant : {m}', 'Ora: {m}', 'Jetzt: {m}'],
+  'Todos los que eligen Aleatorio van al mismo modo, así es más fácil jugar con gente.': ['Everyone who picks Random goes to the same mode, so it’s easier to play with real people.', 'Todos que escolhem Aleatório vão para o mesmo modo, assim é mais fácil jogar com pessoas.', 'Tous ceux qui choisissent Aléatoire vont dans le même mode : plus facile de jouer avec du monde.', 'Tutti quelli che scelgono Casuale vanno nella stessa modalità, così è più facile giocare con altri.', 'Alle, die Zufällig wählen, landen im selben Modus – so spielst du leichter mit echten Leuten.'],
 };
