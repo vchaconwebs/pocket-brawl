@@ -4,278 +4,457 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<meta name="theme-color" content="#0e1220">
 <title>PokéVersus · Estadísticas</title>
+<link rel="icon" href="assets/icons/icon-192.png">
 <style>
   @font-face { font-family: 'Jersey10'; src: url('assets/fonts/Jersey10.ttf'); }
   :root {
     color-scheme: dark;
-    --bg: #11151f; --surface: #1a2030; --surface-2: #222a3d; --line: #2c3650; --grid: #263049;
-    --text: #eef1f8; --text-2: #b4bdd3; --muted: #7f8aa6;
-    --accent: #ffcf2e; --series: #3987e5; --series-soft: rgba(57, 135, 229, 0.18);
-    --up: #2fbf71; --down: #ef6b6b;
-  }
-  @media (prefers-color-scheme: light) {
-    :root:where(:not([data-theme="dark"])) {
-      color-scheme: light;
-      --bg: #f3f4f8; --surface: #ffffff; --surface-2: #f6f7fb; --line: #e1e4ee; --grid: #eceef4;
-      --text: #10131c; --text-2: #4d5469; --muted: #7c8398;
-      --accent: #b8860b; --series: #2a78d6; --series-soft: rgba(42, 120, 214, 0.14);
-      --up: #12884b; --down: #c93a3a;
-    }
+    --bg: #0e1220;
+    --panel: #182036; --panel-2: #1f2943; --panel-3: #263254;
+    --edge: #33416a; --edge-hi: rgba(255,255,255,0.06); --grid: #26304d;
+    --text: #f1f4fb; --text-2: #b9c3dc; --muted: #7d89a8;
+    --gold: #ffcf2e; --gold-2: #e8a91c;
+    --up: #39d38a; --down: #ff7a7a;
+    /* un color por dato, siempre el mismo (paleta validada, modo oscuro) */
+    --c-visits: #3987e5; --c-players: #d95926; --c-matches: #199e70; --c-newacc: #c98500;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif; }
-  .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
-  header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-  h1 { font-family: 'Jersey10', sans-serif; font-weight: normal; font-size: 42px; line-height: 1; margin: 0; color: var(--accent); letter-spacing: 1px; }
-  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
-  .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
-  .seg button { border: 0; background: transparent; color: var(--text-2); font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 7px; cursor: pointer; }
-  .seg button.on { background: var(--surface-2); color: var(--text); box-shadow: 0 0 0 1px var(--line); font-weight: 600; }
-  .seg button:focus-visible { outline: 2px solid var(--series); outline-offset: 1px; }
+  html, body { margin: 0; }
+  body {
+    background: radial-gradient(1200px 500px at 50% -180px, rgba(57, 135, 229, 0.20), transparent 70%), var(--bg);
+    color: var(--text); font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; min-height: 100vh;
+  }
+  body::before { /* cuadrícula sutil, como las tarjetas del juego */
+    content: ''; position: fixed; inset: 0; pointer-events: none; opacity: 0.35;
+    background-image: linear-gradient(rgba(80,100,160,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(80,100,160,.12) 1px, transparent 1px);
+    background-size: 32px 32px; -webkit-mask-image: linear-gradient(#000, transparent 70%); mask-image: linear-gradient(#000, transparent 70%);
+  }
+  .wrap { position: relative; max-width: 1180px; margin: 0 auto; padding: 22px 16px 48px; }
+  .num { font-family: 'Jersey10', system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: .5px; }
 
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 14px; }
-  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 14px 12px; }
-  .tile .k { color: var(--text-2); font-size: 13px; }
-  .tile .v { font-family: 'Jersey10', sans-serif; font-size: 44px; line-height: 1.05; margin: 2px 0; }
-  .tile .d { font-size: 12.5px; color: var(--muted); }
-  .tile .d b { font-weight: 600; }
-  .tile .d .up { color: var(--up); } .tile .d .down { color: var(--down); }
+  /* ---------- cabecera ---------- */
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 18px; margin-bottom: 20px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .ball { width: 46px; height: 46px; flex: none; filter: drop-shadow(0 3px 0 rgba(0,0,0,.35)); }
+  .logo { font-family: 'Jersey10', sans-serif; font-size: 46px; line-height: .9; color: var(--gold); text-shadow: 0 3px 0 #b8321f, 3px 3px 0 #10131c, -2px -2px 0 #10131c, 2px -2px 0 #10131c, -2px 2px 0 #10131c; }
+  .logo small { display: block; font-size: 19px; color: var(--text-2); text-shadow: none; letter-spacing: 1px; margin-top: 6px; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .live { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-2); background: var(--panel); border: 1px solid var(--edge); border-radius: 999px; padding: 6px 11px; }
+  .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--up); animation: ping 2s infinite; }
+  .live.off i { background: var(--down); animation: none; }
+  @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(57,211,138,.55); } 70% { box-shadow: 0 0 0 7px rgba(57,211,138,0); } 100% { box-shadow: 0 0 0 0 rgba(57,211,138,0); } }
+  .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 4px; gap: 2px; box-shadow: inset 0 1px 0 var(--edge-hi); }
+  .seg button { border: 0; background: transparent; color: var(--text-2); font: inherit; font-size: 14px; padding: 7px 13px; border-radius: 8px; cursor: pointer; transition: background .15s, color .15s; }
+  .seg button:hover { color: var(--text); }
+  .seg button.on { background: linear-gradient(var(--gold), var(--gold-2)); color: #1b1505; font-weight: 700; box-shadow: 0 2px 0 #8a5e08; }
+  .seg button:focus-visible, .chip:focus-visible, .tile:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 16px; margin-bottom: 14px; }
-  .card h2 { font-size: 15px; margin: 0; font-weight: 600; }
-  .card .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-  .card .note { color: var(--muted); font-size: 12.5px; margin: 2px 0 0; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } h1 { font-size: 34px; } .tile .v { font-size: 38px; } }
+  /* ---------- paneles ---------- */
+  .panel { position: relative; background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--edge); border-radius: 16px; box-shadow: inset 0 1px 0 var(--edge-hi), 0 10px 30px rgba(0,0,0,.25); }
+  .panel h2 { margin: 0; font-size: 15.5px; font-weight: 650; }
+  .panel .note { color: var(--muted); font-size: 12.5px; margin: 3px 0 0; }
+  .ph { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 16px 18px 6px; }
+  .pb { padding: 8px 18px 18px; }
 
+  /* ---------- hoy + tarjetas ---------- */
+  .top { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 2fr); gap: 14px; margin-bottom: 14px; }
+  .today { padding: 18px 20px; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 230px;
+    background: radial-gradient(420px 200px at 110% 110%, rgba(255,207,46,.16), transparent 60%), linear-gradient(180deg, var(--panel-2), var(--panel)); }
+  .today .lbl { font-size: 13px; color: var(--text-2); text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; }
+  .today .big { font-size: 96px; line-height: .85; color: var(--gold); margin: 10px 0 4px; text-shadow: 0 4px 0 rgba(0,0,0,.3); }
+  .today .big-sub { color: var(--text-2); font-size: 14px; }
+  .today .mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--edge); }
+  .today .mini b { display: block; font-size: 30px; line-height: 1; font-weight: normal; }
+  .today .mini span { font-size: 12px; color: var(--muted); }
+  .today .mascot { position: absolute; right: 14px; top: 14px; width: 88px; height: 88px; image-rendering: pixelated; border-radius: 14px; border: 2px solid var(--edge); background: var(--panel-3); }
+
+  .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .tile { padding: 14px 16px 12px; display: grid; grid-template-columns: 1fr auto; column-gap: 10px; cursor: pointer; transition: transform .12s, border-color .12s; }
+  .tile:hover { transform: translateY(-2px); }
+  .tile.sel { border-color: var(--c); box-shadow: inset 0 1px 0 var(--edge-hi), 0 0 0 1px var(--c), 0 10px 30px rgba(0,0,0,.25); }
+  .tile .k { grid-column: 1; display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 13.5px; font-weight: 600; }
+  .tile .ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 22%, transparent); color: var(--c); }
+  .tile .ic svg { width: 17px; height: 17px; }
+  .tile .v { grid-column: 1; font-size: 50px; line-height: 1; margin-top: 6px; }
+  .tile .d { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); margin-top: 4px; min-height: 18px; }
+  .tile .d b { font-weight: 650; }
+  .up { color: var(--up); } .down { color: var(--down); }
+  .tile .spark { grid-column: 2; grid-row: 1 / 3; align-self: end; width: 110px; height: 46px; }
+
+  /* ---------- gráfica principal ---------- */
   .chart { position: relative; }
   .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-  .chart .ax { fill: var(--muted); font-size: 11px; }
-  .tip { position: absolute; pointer-events: none; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12.5px; color: var(--text); box-shadow: 0 4px 14px rgba(0,0,0,.25); white-space: nowrap; opacity: 0; transition: opacity .08s; }
-  .tip b { font-size: 15px; }
+  .ax { fill: var(--muted); font-size: 11px; }
+  .tip { position: absolute; pointer-events: none; background: rgba(14,18,32,.96); border: 1px solid var(--edge); border-radius: 10px; padding: 7px 11px; font-size: 12.5px; color: var(--text-2); box-shadow: 0 8px 22px rgba(0,0,0,.4); white-space: nowrap; opacity: 0; transform: translateY(4px); transition: opacity .1s, transform .1s; }
+  .tip.on { opacity: 1; transform: none; }
+  .tip b { display: block; font-family: 'Jersey10', sans-serif; font-size: 26px; font-weight: normal; line-height: 1; color: var(--text); margin-top: 2px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--edge); background: var(--panel); color: var(--text-2); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .chip i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+  .chip.on { color: var(--text); border-color: var(--c); background: color-mix(in srgb, var(--c) 16%, var(--panel)); font-weight: 600; }
 
-  .bars { display: grid; gap: 7px; }
-  .bar { display: grid; grid-template-columns: 138px 1fr 62px; align-items: center; gap: 10px; font-size: 13.5px; }
-  .bar .lab { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .bar .track { display: block; height: 14px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
-  .bar .fill { display: block; height: 100%; background: var(--series); border-radius: 0 4px 4px 0; min-width: 2px; }
-  .bar .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .bar .num small { color: var(--muted); font-size: 11px; }
-  .empty { color: var(--muted); font-size: 13.5px; padding: 8px 0; }
+  /* ---------- filas con barra ---------- */
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .rows { display: grid; gap: 11px; }
+  .row { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; }
+  .row .av { width: 34px; height: 34px; border-radius: 9px; background: var(--panel-3); border: 1px solid var(--edge); display: grid; place-items: center; overflow: hidden; }
+  .row .av img { width: 32px; height: 32px; image-rendering: pixelated; }
+  .row .av svg { width: 22px; height: 22px; }
+  .row .mid { min-width: 0; }
+  .row .name { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .track { display: block; height: 8px; margin-top: 5px; background: var(--panel-3); border-radius: 99px; overflow: hidden; }
+  .row .fill { display: block; height: 100%; border-radius: 99px; background: var(--c); min-width: 3px; transition: width .5s cubic-bezier(.2,.8,.2,1); }
+  .row .val { text-align: right; }
+  .row .val b { display: block; font-size: 24px; line-height: 1; font-weight: normal; }
+  .row .val small { color: var(--muted); font-size: 11.5px; }
+  .empty { color: var(--muted); font-size: 13.5px; padding: 12px 0 4px; text-align: center; }
+  .empty img { display: block; margin: 0 auto 6px; width: 52px; image-rendering: pixelated; opacity: .75; }
 
+  /* embudo */
+  .funnel { display: grid; gap: 12px; }
+  .fstep .tl { display: flex; justify-content: space-between; align-items: baseline; font-size: 13.5px; color: var(--text-2); gap: 8px; }
+  .fstep .tl b { font-size: 26px; color: var(--text); font-weight: normal; }
+  .fstep .bar { height: 22px; border-radius: 7px; background: var(--panel-3); overflow: hidden; margin-top: 3px; }
+  .fstep .bar span { display: block; height: 100%; background: var(--c); border-radius: 7px; transition: width .5s cubic-bezier(.2,.8,.2,1); }
+  .pct { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .avg { margin-top: 4px; padding-top: 10px; border-top: 1px dashed var(--edge); font-size: 13px; color: var(--text-2); display: flex; justify-content: space-between; align-items: baseline; }
+  .avg b { font-size: 26px; color: var(--text); font-weight: normal; }
+
+  /* tabla */
   .tbl { overflow-x: auto; }
-  table { border-collapse: collapse; width: 100%; min-width: 620px; font-variant-numeric: tabular-nums; }
-  th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; font-size: 13.5px; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 10px 12px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; font-size: 13.5px; }
   th:first-child, td:first-child { text-align: left; }
-  th { color: var(--muted); font-weight: 600; font-size: 12px; }
-  tr.today td { background: var(--surface-2); }
+  th { color: var(--muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .8px; }
+  tbody tr:hover td { background: rgba(255,255,255,.025); }
+  tr.is-today td { background: rgba(255,207,46,.07); }
+  tr.is-today td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
   td.zero { color: var(--muted); }
-  footer { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .tag { display: inline-block; font-size: 10.5px; font-weight: 700; color: #1b1505; background: var(--gold); border-radius: 5px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 16px; line-height: 1.6; }
+
+  @media (max-width: 980px) { .top { grid-template-columns: minmax(0, 1fr); } .grid3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .grid3 .funnel-panel { grid-column: 1 / -1; } }
+  @media (max-width: 640px) {
+    .logo { font-size: 36px; } .logo small { font-size: 16px; } .ball { width: 38px; height: 38px; }
+    .today .big { font-size: 76px; } .today .mascot { width: 66px; height: 66px; }
+    .tiles { gap: 10px; } .tile { padding: 12px 12px 10px; } .tile .v { font-size: 40px; } .tile .spark { display: none; }
+    .grid3 { grid-template-columns: minmax(0, 1fr); }
+    .ph { padding: 14px 14px 4px; } .pb { padding: 8px 14px 16px; }
+  }
+  @media (max-width: 370px) { .tiles { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div>
-      <h1>PokéVersus · Estadísticas</h1>
-      <div class="sub" id="sub">Cargando…</div>
+    <div class="brand">
+      <svg class="ball" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#10131c"/><path d="M3 16a13 13 0 0 1 26 0z" fill="#e8443a"/><path d="M3 16a13 13 0 0 0 26 0z" fill="#f1f4fb"/><rect x="3" y="14.5" width="26" height="3" fill="#10131c"/><circle cx="16" cy="16" r="5" fill="#10131c"/><circle cx="16" cy="16" r="3" fill="#f1f4fb"/><path d="M8 9a9 9 0 0 1 5-3" stroke="#ff8f86" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      <div class="logo">PokéVersus<small>Panel de estadísticas</small></div>
     </div>
-    <div class="seg" id="range" role="tablist" aria-label="Periodo">
-      <button data-r="1">Hoy</button><button data-r="7" class="on">7 días</button><button data-r="30">30 días</button><button data-r="0">Todo</button>
+    <div class="controls">
+      <span class="live" id="live"><i></i><span id="live-txt">Conectando…</span></span>
+      <div class="seg" id="range" role="tablist" aria-label="Periodo">
+        <button data-r="1">Hoy</button><button data-r="7" class="on">7 días</button><button data-r="30">30 días</button><button data-r="0">Todo</button>
+      </div>
     </div>
   </header>
 
-  <section class="tiles" id="tiles"></section>
-
-  <section class="card">
-    <div class="head">
-      <div><h2 id="trend-title">Visitas por día</h2><p class="note" id="trend-note"></p></div>
-      <div class="seg" id="metric" role="tablist" aria-label="Dato">
-        <button data-m="visits" class="on">Visitas</button><button data-m="players">Jugadores</button><button data-m="matches">Partidas</button><button data-m="newacc">Cuentas nuevas</button>
+  <section class="top">
+    <div class="panel today">
+      <img class="mascot" src="assets/pokemon/25/p.png" alt="">
+      <div>
+        <div class="lbl">Hoy han jugado</div>
+        <div class="big num" id="today-big">–</div>
+        <div class="big-sub" id="today-sub">jugadores distintos</div>
+      </div>
+      <div class="mini">
+        <div><b class="num" id="t-visits">–</b><span>visitas</span></div>
+        <div><b class="num" id="t-matches">–</b><span>partidas</span></div>
+        <div><b class="num" id="t-newacc">–</b><span>cuentas nuevas</span></div>
       </div>
     </div>
-    <div class="chart" id="trend"><div class="tip" id="tip"></div></div>
+    <div class="tiles" id="tiles"></div>
   </section>
 
-  <div class="grid2">
-    <section class="card">
-      <div class="head"><div><h2>Partidas por modo</h2><p class="note">En el periodo elegido</p></div></div>
-      <div class="bars" id="modes"></div>
+  <section class="panel" style="margin-bottom:14px">
+    <div class="ph">
+      <div><h2 id="trend-title">Visitas por día</h2><p class="note" id="trend-note"></p></div>
+      <div class="chips" id="metric"></div>
+    </div>
+    <div class="pb"><div class="chart" id="trend"><div class="tip" id="tip"></div></div></div>
+  </section>
+
+  <div class="grid3">
+    <section class="panel funnel-panel">
+      <div class="ph"><div><h2>Conversión</h2><p class="note">Cuántos de los que entran juegan o se hacen cuenta</p></div></div>
+      <div class="pb"><div class="funnel" id="funnel"></div></div>
     </section>
-    <section class="card">
-      <div class="head"><div><h2>De dónde llegan</h2><p class="note" id="src-note">Visitas por origen</p></div></div>
-      <div class="bars" id="sources"></div>
+    <section class="panel">
+      <div class="ph"><div><h2>Partidas por modo</h2><p class="note">En el periodo elegido</p></div></div>
+      <div class="pb"><div class="rows" id="modes"></div></div>
+    </section>
+    <section class="panel">
+      <div class="ph"><div><h2>De dónde llegan</h2><p class="note" id="src-note">Visitas por origen</p></div></div>
+      <div class="pb"><div class="rows" id="sources"></div></div>
     </section>
   </div>
 
-  <section class="card">
-    <div class="head"><div><h2>Día a día</h2></div></div>
-    <div class="tbl"><table>
+  <section class="panel">
+    <div class="ph"><div><h2>Día a día</h2><p class="note">Del más reciente al más antiguo</p></div></div>
+    <div class="pb"><div class="tbl"><table>
       <thead><tr><th>Día</th><th>Visitas</th><th>Jugadores</th><th>Partidas</th><th>Partidas / jugador</th><th>Invitados nuevos</th><th>Registros</th></tr></thead>
       <tbody id="rows"></tbody>
-    </table></div>
+    </table></div></div>
   </section>
 
-  <footer>Visitas: veces que se abre el juego (una por sesión del navegador), también desde itch.io y otras webs. Jugadores: personas distintas que juegan al menos una partida ese día (en periodos de varios días se suman los de cada día). Días en hora de España. Se actualiza solo cada minuto.</footer>
+  <footer>
+    <b>Visitas:</b> veces que se abre el juego (una por sesión del navegador), también desde itch.io y otras webs.
+    <b>Jugadores:</b> personas distintas que juegan al menos una partida ese día; en periodos de varios días se suman los de cada día.
+    Días en hora de España · se actualiza solo cada minuto.
+  </footer>
 </div>
 
 <script>
   const DB = 'https://pokeversus-9ed3a-default-rtdb.europe-west1.firebasedatabase.app';
-  const MODES = { gems: 'Atrapa Pokéballs', showdown: 'Niebla Tóxica', heist: 'Despierta a Snorlax', ball: 'Voltorbol', zone: 'Territorio' };
-  const SOURCES = { directo: 'Directo', tiktok: 'TikTok', itch: 'itch.io', minijuegos: 'Minijuegos', google: 'Buscadores', youtube: 'YouTube', instagram: 'Instagram', x: 'X', reddit: 'Reddit', facebook: 'Facebook', otros: 'Otras webs' };
-  const METRICS = { visits: 'Visitas', players: 'Jugadores', matches: 'Partidas', newacc: 'Cuentas nuevas' };
+  const P = (dex) => `assets/pokemon/${dex}/p.png`;
+  const S = (id) => `assets/sprites/${id}/portrait.png`;
+  const IC = {
+    eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+    people: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.6.8 2.6 2.5 3 5.2"/></svg>',
+    swords: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 6.5 14 2h3v3l-4.5 4.5M5 14l4 4M7 17l-3 3M3 19l2 2"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5 1.6 0 3 .5 4.1 1.4M19 13v7M15.5 16.5h7"/></svg>',
+  };
+  const METRICS = {
+    visits: { name: 'Visitas', c: 'var(--c-visits)', ic: IC.eye },
+    players: { name: 'Jugadores', c: 'var(--c-players)', ic: IC.people },
+    matches: { name: 'Partidas', c: 'var(--c-matches)', ic: IC.swords },
+    newacc: { name: 'Cuentas nuevas', c: 'var(--c-newacc)', ic: IC.plus },
+  };
+  const ball = (top) => `<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#10131c"/><path d="M4 16a12 12 0 0 1 24 0z" fill="${top}"/><path d="M4 16a12 12 0 0 0 24 0z" fill="#f1f4fb"/><rect x="4" y="14.6" width="24" height="2.8" fill="#10131c"/><circle cx="16" cy="16" r="4.5" fill="#10131c"/><circle cx="16" cy="16" r="2.6" fill="#f1f4fb"/></svg>`;
+  const flag = '<svg viewBox="0 0 24 24"><path d="M6 3v18" stroke="#b9c3dc" stroke-width="2.2" stroke-linecap="round"/><path d="M7 4h11l-3 4 3 4H7z" fill="#3987e5"/></svg>';
+  const MODES = {
+    gems: { name: 'Atrapa Pokéballs', av: ball('#e8443a') },
+    showdown: { name: 'Niebla Tóxica', av: `<img src="${P(94)}" alt="">` },
+    heist: { name: 'Despierta a Snorlax', av: `<img src="${S('0143')}" alt="">` },
+    ball: { name: 'Voltorbol', av: `<img src="${S('0100')}" alt="">` },
+    zone: { name: 'Territorio', av: flag },
+  };
+  const badge = (txt, bg, fg = '#fff') => `<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="${bg}"/><text x="12" y="16.5" text-anchor="middle" font-size="12" font-weight="800" font-family="system-ui,sans-serif" fill="${fg}">${txt}</text></svg>`;
+  const SOURCES = {
+    directo: { name: 'Directo', av: badge('↗', '#3a4670') },
+    tiktok: { name: 'TikTok', av: badge('♪', '#111', '#25f4ee') },
+    itch: { name: 'itch.io', av: badge('it', '#fa5c5c') },
+    minijuegos: { name: 'Minijuegos', av: badge('M', '#f39200') },
+    google: { name: 'Buscadores', av: badge('G', '#fff', '#4285f4') },
+    youtube: { name: 'YouTube', av: badge('▶', '#ff0033') },
+    instagram: { name: 'Instagram', av: badge('◎', '#d62976') },
+    x: { name: 'X', av: badge('X', '#000') },
+    reddit: { name: 'Reddit', av: badge('r/', '#ff4500') },
+    facebook: { name: 'Facebook', av: badge('f', '#1877f2') },
+    otros: { name: 'Otras webs', av: badge('…', '#3a4670') },
+  };
+
   const $ = (s) => document.querySelector(s);
   const fmt = (n) => Math.round(n || 0).toLocaleString('es-ES');
+  const dec = (n) => (Math.round(n * 10) / 10).toLocaleString('es-ES');
   const dayKey = (d) => d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
   const label = (k, long) => { const [y, m, d] = k.split('-'); return long ? `${+d}/${+m}/${y}` : `${+d}/${+m}`; };
-  const val = (r, m) => (m === 'newacc' ? (r.guests || 0) + (r.signups || 0) : r[m] || 0);
+  const weekday = (k) => new Date(k + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '');
+  const val = (r, m) => (m === 'newacc' ? ((r || {}).guests || 0) + ((r || {}).signups || 0) : (r || {})[m] || 0);
   let data = {}, range = 7, metric = 'visits';
 
-  // días del periodo (de más antiguo a más reciente), incluidos los días sin datos
+  // días del periodo, de más antiguo a más reciente (sin los días de antes de empezar a contar)
   function days(n, endOffset = 0) {
-    const keys = Object.keys(data).sort();
-    const today = dayKey(new Date());
-    const first = n ? null : keys[0] || today;
-    const out = [];
-    const end = new Date(Date.now() - endOffset * 86400000);
-    if (n) for (let i = n - 1; i >= 0; i--) out.push(dayKey(new Date(end.getTime() - i * 86400000)));
-    else for (let t = new Date(first + 'T12:00:00'); dayKey(t) <= today; t = new Date(t.getTime() + 86400000)) out.push(dayKey(t));
-    // antes del primer día con datos no se contaba nada: esos días no se enseñan como ceros
-    const start = keys[0];
-    return start ? out.filter((k) => k >= start) : out;
+    const keys = Object.keys(data).sort(), today = dayKey(new Date()), out = [];
+    if (n) {
+      const end = Date.now() - endOffset * 86400000;
+      for (let i = n - 1; i >= 0; i--) out.push(dayKey(new Date(end - i * 86400000)));
+    } else for (let t = new Date((keys[0] || today) + 'T12:00:00'); dayKey(t) <= today; t = new Date(t.getTime() + 86400000)) out.push(dayKey(t));
+    return keys[0] ? out.filter((k) => k >= keys[0]) : out;
   }
-  const sum = (ks, m) => ks.reduce((a, k) => a + val(data[k] || {}, m), 0);
+  const sum = (ks, m) => ks.reduce((a, k) => a + val(data[k], m), 0);
+
+  function spark(ys, c) {
+    if (ys.length < 2) return `<svg class="spark" viewBox="0 0 110 46" aria-hidden="true"><line x1="4" x2="106" y1="38" y2="38" stroke="var(--grid)" stroke-width="2" stroke-dasharray="3 4"/><circle cx="106" cy="38" r="3.2" fill="${c}"/></svg>`;
+    const max = Math.max(1, ...ys), x = (i) => 4 + (i / (ys.length - 1)) * 102, y = (v) => 40 - (v / max) * 32;
+    const pts = ys.map((v, i) => `${x(i)},${y(v)}`).join(' ');
+    return `<svg class="spark" viewBox="0 0 110 46" aria-hidden="true"><polygon points="${x(0)},40 ${pts} ${x(ys.length - 1)},40" fill="${c}" opacity=".16"/><polyline points="${pts}" fill="none" stroke="${c}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${x(ys.length - 1)}" cy="${y(ys[ys.length - 1])}" r="3.2" fill="${c}"/></svg>`;
+  }
+
+  function today() {
+    const r = data[dayKey(new Date())] || {}, y = data[dayKey(new Date(Date.now() - 86400000))] || {};
+    $('#today-big').textContent = fmt(r.players);
+    const d = (r.players || 0) - (y.players || 0);
+    $('#today-sub').innerHTML = 'jugadores distintos' + (y.players ? ` · <span class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '+' : ''}${fmt(d)} que ayer</span>` : '');
+    $('#t-visits').textContent = fmt(r.visits);
+    $('#t-matches').textContent = fmt(r.matches);
+    $('#t-newacc').textContent = fmt(val(r, 'newacc'));
+  }
 
   function tiles() {
     const ks = days(range), prev = range ? days(range, range) : null;
-    const pLabel = range === 1 ? 'ayer' : range ? `los ${range} días anteriores` : '';
-    const tile = (name, m, extra) => {
+    const pLabel = range === 1 ? 'ayer' : `los ${range} días anteriores`;
+    const sk = days(14);
+    const extra = {
+      players: () => { const v = sum(ks, 'visits'); return v ? `${Math.round((sum(ks, 'players') / v) * 100)} % de las visitas juega` : ''; },
+      matches: () => { const p = sum(ks, 'players'); return p ? `${dec(sum(ks, 'matches') / p)} por jugador` : ''; },
+      newacc: () => `${fmt(sum(ks, 'signups'))} registradas`,
+    };
+    $('#tiles').innerHTML = Object.entries(METRICS).map(([m, M]) => {
       const v = sum(ks, m);
-      let d = extra || '';
-      if (prev) {
+      let d = extra[m] ? extra[m]() : '';
+      if (prev && prev.length) {
         const p = sum(prev, m);
         if (p > 0) {
           const pct = Math.round(((v - p) / p) * 100);
-          d = `<b class="${pct >= 0 ? 'up' : 'down'}">${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)} %</b> frente a ${pLabel}` + (extra ? ' · ' + extra : '');
+          d = `<b class="${pct >= 0 ? 'up' : 'down'}">${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)} %</b> vs ${pLabel}` + (d ? ' · ' + d : '');
         }
       }
-      return `<div class="tile"><div class="k">${name}</div><div class="v">${fmt(v)}</div><div class="d">${d || '&nbsp;'}</div></div>`;
-    };
-    const players = sum(ks, 'players'), matches = sum(ks, 'matches'), visits = sum(ks, 'visits');
-    const signups = sum(ks, 'signups');
-    $('#tiles').innerHTML =
-      tile('Visitas', 'visits') +
-      tile(range === 1 ? 'Jugadores hoy' : 'Jugadores', 'players', visits ? `${Math.round((players / visits) * 100)} % de las visitas juega` : '') +
-      tile('Partidas', 'matches', players ? `${(matches / players).toFixed(1).replace('.', ',')} por jugador` : '') +
-      tile('Cuentas nuevas', 'newacc', `${fmt(signups)} registradas`);
+      return `<div class="panel tile${m === metric ? ' sel' : ''}" style="--c:${M.c}" data-m="${m}" role="button" tabindex="0" aria-label="Ver ${M.name} en la gráfica">` +
+        `<div class="k"><span class="ic">${M.ic}</span>${M.name}</div>${spark(sk.map((k) => val(data[k], m)), M.c)}` +
+        `<div class="v num">${fmt(v)}</div><div class="d">${d || '&nbsp;'}</div></div>`;
+    }).join('');
+    for (const t of document.querySelectorAll('.tile')) {
+      const pick = () => setMetric(t.dataset.m);
+      t.onclick = pick;
+      t.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } };
+    }
   }
 
-  // línea con área: un solo dato cada vez (mismo eje), con cruz y tooltip al pasar
+  function chips() {
+    $('#metric').innerHTML = Object.entries(METRICS).map(([m, M]) => `<button class="chip${m === metric ? ' on' : ''}" style="--c:${M.c}" data-m="${m}"><i></i>${M.name}</button>`).join('');
+    for (const b of document.querySelectorAll('#metric .chip')) b.onclick = () => setMetric(b.dataset.m);
+  }
+  function setMetric(m) {
+    metric = m;
+    try { localStorage.setItem('pv.stats.m', m); } catch (e) {}
+    tiles(); chips(); trend();
+  }
+
   function trend() {
+    const M = METRICS[metric];
     const ks = days(range === 1 ? 14 : range || 0);
-    const ys = ks.map((k) => val(data[k] || {}, metric));
-    $('#trend-title').textContent = METRICS[metric] + ' por día';
-    $('#trend-note').textContent = range === 1 ? 'Últimos 14 días' : range ? `Últimos ${range} días` : 'Desde el primer día';
-    const box = $('#trend'), W = Math.max(320, box.clientWidth), H = W < 500 ? 200 : 240;
-    const L = 36, R = 12, T = 12, B = 26, iw = W - L - R, ih = H - T - B;
+    const ys = ks.map((k) => val(data[k], metric));
+    $('#trend-title').textContent = M.name + ' por día';
+    $('#trend-note').textContent = (range === 1 ? 'Últimos 14 días' : range ? `Últimos ${range} días` : 'Desde el primer día') + ` · total ${fmt(ys.reduce((a, b) => a + b, 0))}`;
+    const box = $('#trend'), W = Math.max(300, box.clientWidth), H = W < 520 ? 210 : 270;
+    const L = 38, R = 14, T = 22, B = 28, iw = W - L - R, ih = H - T - B;
     const max = Math.max(4, ...ys);
-    const step = Math.pow(10, Math.floor(Math.log10(max))) * (max / Math.pow(10, Math.floor(Math.log10(max))) > 5 ? 2 : 1);
+    const mag = Math.pow(10, Math.floor(Math.log10(max)));
+    const step = max / mag > 5 ? mag * 2 : max / mag > 2 ? mag : mag / 2;
     const top = Math.ceil(max / step) * step;
-    const x = (i) => L + (ks.length < 2 ? iw / 2 : (i / (ks.length - 1)) * iw);
+    const n = ks.length;
+    const x = (i) => L + (n < 2 ? iw / 2 : (i / (n - 1)) * iw);
     const y = (v) => T + ih - (v / top) * ih;
     let g = '';
-    for (let v = 0; v <= top; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/><text class="ax" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${fmt(v)}</text>`;
-    const every = Math.ceil(ks.length / (W < 500 ? 5 : 8));
-    ks.forEach((k, i) => { if (i % every === 0 || i === ks.length - 1) g += `<text class="ax" x="${x(i)}" y="${H - 6}" text-anchor="middle">${label(k)}</text>`; });
-    const pts = ys.map((v, i) => `${x(i)},${y(v)}`).join(' ');
-    const area = `M${x(0)},${y(0)} L${pts.replace(/ /g, ' L')} L${x(ys.length - 1)},${y(0)} Z`;
-    const last = ys.length - 1;
-    box.querySelector('svg') && box.querySelector('svg').remove();
-    box.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${METRICS[metric]} por día">${g}
-      <path d="${area}" fill="var(--series-soft)"/>
-      <polyline points="${pts}" fill="none" stroke="var(--series)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-      <circle cx="${x(last)}" cy="${y(ys[last])}" r="4.5" fill="var(--series)" stroke="var(--surface)" stroke-width="2"/>
-      <text x="${Math.min(x(last), W - R - 4)}" y="${y(ys[last]) - 10}" text-anchor="end" fill="var(--text)" font-size="12" font-weight="600">${fmt(ys[last])}</text>
-      <line id="cross" y1="${T}" y2="${T + ih}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>
-      <circle id="dot" r="5" fill="var(--series)" stroke="var(--surface)" stroke-width="2" opacity="0"/>
-      <rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="transparent" id="hit"/></svg>`);
-    const svg = box.querySelector('svg'), tip = $('#tip');
+    for (let v = 0; v <= top + 1e-9; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/><text class="ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${fmt(v)}</text>`;
+    const every = Math.max(1, Math.ceil(n / (W < 520 ? 4 : 9)));
+    ks.forEach((k, i) => { if (i % every === 0 || i === n - 1) g += `<text class="ax" x="${x(i)}" y="${H - 6}" text-anchor="middle">${n <= 14 && W >= 520 ? weekday(k) + ' ' : ''}${label(k)}</text>`; });
+    // curva suave en vez de picos
+    const pts = ys.map((v, i) => [x(i), y(v)]);
+    let path = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 1; i < n; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], cx = (x0 + x1) / 2;
+      path += ` C${cx},${y0} ${cx},${y1} ${x1},${y1}`;
+    }
+    const area = n > 1 ? `${path} L${pts[n - 1][0]},${y(0)} L${pts[0][0]},${y(0)} Z` : '';
+    const last = n - 1, lx = x(last), ly = y(ys[last]);
+    const old = box.querySelector('svg'); if (old) old.remove();
+    box.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${M.name} por día">
+      <defs><linearGradient id="ga" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${M.c}" stop-opacity=".38"/><stop offset="1" stop-color="${M.c}" stop-opacity="0"/></linearGradient></defs>
+      ${g}
+      ${area ? `<path d="${area}" fill="url(#ga)"/>` : ''}
+      ${n > 1 ? `<path d="${path}" fill="none" stroke="${M.c}" stroke-width="2.5" stroke-linecap="round"/>` : ''}
+      <circle cx="${lx}" cy="${ly}" r="10" fill="${M.c}" opacity=".2"/><circle cx="${lx}" cy="${ly}" r="5" fill="${M.c}" stroke="var(--panel)" stroke-width="2.5"/>
+      <text x="${n > 1 ? lx - 12 : lx}" y="${ly - 14}" text-anchor="${n > 1 ? 'end' : 'middle'}" fill="var(--text)" font-family="Jersey10, sans-serif" font-size="22">${fmt(ys[last])}</text>
+      <line id="cross" y1="${T}" y2="${T + ih}" stroke="var(--text-2)" stroke-width="1" stroke-dasharray="3 4" opacity="0"/>
+      <circle id="dot" r="6" fill="${M.c}" stroke="var(--panel)" stroke-width="2.5" opacity="0"/>
+      <rect id="hit" x="${L - 10}" y="0" width="${iw + 20}" height="${H}" fill="transparent"/></svg>`);
+    const svg = box.querySelector('svg'), tip = $('#tip'), cross = svg.querySelector('#cross'), dot = svg.querySelector('#dot');
     const move = (ev) => {
       const r = svg.getBoundingClientRect(), px = ((ev.clientX - r.left) / r.width) * W;
-      const i = Math.max(0, Math.min(ks.length - 1, Math.round(((px - L) / iw) * (ks.length - 1))));
-      svg.querySelector('#cross').setAttribute('x1', x(i)); svg.querySelector('#cross').setAttribute('x2', x(i)); svg.querySelector('#cross').setAttribute('opacity', 1);
-      const dot = svg.querySelector('#dot'); dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(ys[i])); dot.setAttribute('opacity', 1);
-      tip.innerHTML = `${label(ks[i], true)}<br><b>${fmt(ys[i])}</b> ${METRICS[metric].toLowerCase()}`;
+      const i = n < 2 ? 0 : Math.max(0, Math.min(n - 1, Math.round(((px - L) / iw) * (n - 1))));
+      cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('opacity', 1);
+      dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(ys[i])); dot.setAttribute('opacity', 1);
+      tip.innerHTML = `${weekday(ks[i])} ${label(ks[i], true)}<b>${fmt(ys[i])}</b>${M.name.toLowerCase()}`;
+      tip.classList.add('on');
       const sx = (x(i) / W) * r.width, sy = (y(ys[i]) / H) * r.height;
       tip.style.left = Math.min(r.width - tip.offsetWidth - 4, Math.max(4, sx - tip.offsetWidth / 2)) + 'px';
-      tip.style.top = Math.max(0, sy - tip.offsetHeight - 12) + 'px';
-      tip.style.opacity = 1;
+      tip.style.top = Math.max(-6, sy - tip.offsetHeight - 16) + 'px';
     };
-    const leave = () => { tip.style.opacity = 0; svg.querySelector('#cross').setAttribute('opacity', 0); svg.querySelector('#dot').setAttribute('opacity', 0); };
+    const leave = () => { tip.classList.remove('on'); cross.setAttribute('opacity', 0); dot.setAttribute('opacity', 0); };
     const hit = svg.querySelector('#hit');
     hit.addEventListener('pointermove', move); hit.addEventListener('pointerdown', move); hit.addEventListener('pointerleave', leave);
   }
 
-  function barList(el, entries, names) {
+  function rowList(el, entries, defs, color) {
     const total = entries.reduce((a, [, v]) => a + v, 0);
-    if (!total) { el.innerHTML = '<div class="empty">Todavía no hay datos en este periodo.</div>'; return; }
+    if (!total) { el.innerHTML = `<div class="empty"><img src="${S('0143')}" alt="">Todavía no hay datos en este periodo</div>`; return; }
     const max = Math.max(...entries.map(([, v]) => v));
     el.innerHTML = entries.filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([k, v]) =>
-      `<div class="bar" title="${names[k] || k}: ${fmt(v)} (${Math.round((v / total) * 100)} %)"><span class="lab">${names[k] || k}</span>` +
-      `<span class="track"><span class="fill" style="width:${(v / max) * 100}%"></span></span>` +
-      `<span class="num">${fmt(v)} <small>${Math.round((v / total) * 100)}%</small></span></div>`).join('');
+      `<div class="row" title="${defs[k].name}: ${fmt(v)}"><span class="av">${defs[k].av}</span>` +
+      `<span class="mid"><span class="name">${defs[k].name}</span><span class="track"><span class="fill" style="width:${(v / max) * 100}%;--c:${color}"></span></span></span>` +
+      `<span class="val"><b class="num">${fmt(v)}</b><small>${Math.round((v / total) * 100)} %</small></span></div>`).join('');
   }
   function breakdowns() {
     const ks = days(range);
-    const agg = (field, names) => Object.keys(names).map((k) => [k, ks.reduce((a, d) => a + (((data[d] || {})[field] || {})[k] || 0), 0)]);
-    barList($('#modes'), agg('modes', MODES), MODES);
-    barList($('#sources'), agg('src', SOURCES), SOURCES);
+    const agg = (field, defs) => Object.keys(defs).map((k) => [k, ks.reduce((a, d) => a + (((data[d] || {})[field] || {})[k] || 0), 0)]);
+    rowList($('#modes'), agg('modes', MODES), MODES, 'var(--c-matches)');
+    rowList($('#sources'), agg('src', SOURCES), SOURCES, 'var(--c-visits)');
     const firstSrc = Object.keys(data).sort().find((k) => data[k].src);
-    $('#src-note').textContent = firstSrc ? `Visitas por origen (se cuenta desde el ${label(firstSrc, true)})` : 'Visitas por origen (se empieza a contar ahora)';
+    $('#src-note').textContent = firstSrc ? `Visitas por origen · desde el ${label(firstSrc, true)}` : 'Visitas por origen · se empieza a contar ahora';
+    // embudo: visitas → juegan → crean cuenta
+    const v = sum(ks, 'visits'), p = sum(ks, 'players'), m = sum(ks, 'matches'), a = sum(ks, 'newacc');
+    const steps = [
+      ['Visitas', v, 'var(--c-visits)', ''],
+      ['Juegan al menos una partida', p, 'var(--c-players)', v ? `${Math.round((p / v) * 100)} % de las visitas` : ''],
+      ['Crean cuenta', a, 'var(--c-newacc)', v ? `${Math.round((a / v) * 100)} % de las visitas` : ''],
+    ];
+    const top = Math.max(1, v, p, a);
+    $('#funnel').innerHTML = steps.map(([nm, x, c, s]) => `<div class="fstep" style="--c:${c}"><div class="tl"><span>${nm}</span><b class="num">${fmt(x)}</b></div><div class="bar"><span style="width:${Math.max(1.5, (x / top) * 100)}%"></span></div><div class="pct">${s || '&nbsp;'}</div></div>`).join('') +
+      `<div class="avg"><span>Partidas por jugador</span><b class="num">${p ? dec(m / p) : '0'}</b></div>`;
   }
 
   function table() {
-    const today = dayKey(new Date());
+    const t = dayKey(new Date());
     const ks = days(range ? Math.max(range, 7) : 0).reverse();
     const td = (n) => `<td class="${n ? '' : 'zero'}">${fmt(n)}</td>`;
     $('#rows').innerHTML = ks.map((k) => {
       const r = data[k] || {};
-      const ppj = r.players ? (r.matches / r.players).toFixed(1).replace('.', ',') : '–';
-      return `<tr class="${k === today ? 'today' : ''}"><td>${label(k, true)}${k === today ? ' · hoy' : ''}</td>${td(r.visits)}${td(r.players)}${td(r.matches)}<td class="${r.players ? '' : 'zero'}">${ppj}</td>${td(r.guests)}${td(r.signups)}</tr>`;
+      return `<tr class="${k === t ? 'is-today' : ''}"><td>${weekday(k)} ${label(k, true)}${k === t ? '<span class="tag">HOY</span>' : ''}</td>${td(r.visits)}${td(r.players)}${td(r.matches)}` +
+        `<td class="${r.players ? '' : 'zero'}">${r.players ? dec(r.matches / r.players) : '–'}</td>${td(r.guests)}${td(r.signups)}</tr>`;
     }).join('');
   }
 
-  function render() { tiles(); trend(); breakdowns(); table(); }
+  function render() { today(); tiles(); chips(); trend(); breakdowns(); table(); }
 
   async function load() {
     try {
       data = (await (await fetch(DB + '/stats.json', { cache: 'no-store' })).json()) || {};
-      const first = Object.keys(data).sort()[0];
-      $('#sub').textContent = (first ? `Datos desde el ${label(first, true)}` : 'Aún no hay datos') + ' · actualizado a las ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      $('#live').classList.remove('off');
+      $('#live-txt').textContent = 'En directo · ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       render();
     } catch (e) {
-      $('#sub').textContent = 'No se han podido cargar los datos. Se reintentará en un minuto.';
+      $('#live').classList.add('off');
+      $('#live-txt').textContent = 'Sin conexión · reintentando';
     }
   }
 
-  function seg(sel, attr, set) {
-    for (const b of document.querySelectorAll(sel + ' button')) b.onclick = () => {
-      document.querySelectorAll(sel + ' button').forEach((x) => x.classList.toggle('on', x === b));
-      set(b.dataset[attr]);
-      try { localStorage.setItem('pv.stats.' + attr, b.dataset[attr]); } catch (e) {}
-      render();
-    };
-  }
-  seg('#range', 'r', (v) => (range = +v));
-  seg('#metric', 'm', (v) => (metric = v));
+  for (const b of document.querySelectorAll('#range button')) b.onclick = () => {
+    document.querySelectorAll('#range button').forEach((x) => x.classList.toggle('on', x === b));
+    range = +b.dataset.r;
+    try { localStorage.setItem('pv.stats.r', b.dataset.r); } catch (e) {}
+    render();
+  };
   try {
     const r = localStorage.getItem('pv.stats.r'), m = localStorage.getItem('pv.stats.m');
-    if (r !== null) { range = +r; document.querySelectorAll('#range button').forEach((b) => b.classList.toggle('on', b.dataset.r === r)); }
-    if (m && METRICS[m]) { metric = m; document.querySelectorAll('#metric button').forEach((b) => b.classList.toggle('on', b.dataset.m === m)); }
+    if (r !== null && ['0', '1', '7', '30'].includes(r)) { range = +r; document.querySelectorAll('#range button').forEach((b) => b.classList.toggle('on', b.dataset.r === r)); }
+    if (m && METRICS[m]) metric = m;
   } catch (e) {}
   let rt;
-  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => data && trend(), 150); });
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(trend, 150); });
   load();
   setInterval(load, 60000);
 </script>
