@@ -11,8 +11,8 @@ PB.META = {
   tokensPerChest: 100,
   // premio de cada partida (en Niebla Tóxica cuenta como victoria quedar entre los 4 primeros)
   matchReward: {
-    win: { coins: 25, points: 16, rainbow: 1 },
-    lose: { coins: 10, points: 7, rainbow: 0 },
+    win: { coins: 25, points: 16, rainbow: 3 },
+    lose: { coins: 10, points: 7, rainbow: 1 },
   },
   bonusWins: 3, // las 3 primeras victorias del día dan el doble de fichas
   // cofres (Pokéballs): tiradas de premio y probabilidad de Pokémon nuevo en cada tirada
@@ -22,7 +22,7 @@ PB.META = {
     ultra: { name: 'Ultra Ball', rolls: 8, pokemon: 0.1, guaranteed: true, color: '#f8c030' },
   },
   pityChests: 6, // si abres 6 cofres seguidos sin Pokémon nuevo, el siguiente trae uno seguro
-  rainbowChance: { great: 0.25, ultra: 0.8 },
+  rainbowChance: { great: 0.6, ultra: 1 },
   // pase de temporada (gratis): una temporada por mes, 30 niveles que se suben jugando
   pass: { levels: 30, xpPerLevel: 300, xpWin: 60, xpLose: 30, xpMission: 50, firstSeason: [2026, 10] },
   clanCost: 300, // monedas para crear un clan
@@ -393,10 +393,10 @@ PB.Save = (() => {
     }
     if (!res.coins && !res.points && !res.pokemon.length) res.coins = 20;
     if (!res.pokemon.length) d.pity = (d.pity || 0) + 1;
-    // Monedas Arcoíris: a veces en Super Ball y casi siempre en Ultra Ball
+    // Monedas Arcoíris: muchas veces en Super Ball y siempre en Ultra Ball
     res.rainbow = 0;
-    if (kind === 'great' && Math.random() < PB.META.rainbowChance.great) res.rainbow = 3 + Math.floor(Math.random() * 4);
-    if (kind === 'ultra' && Math.random() < PB.META.rainbowChance.ultra) res.rainbow = 8 + Math.floor(Math.random() * 8);
+    if (kind === 'great' && Math.random() < PB.META.rainbowChance.great) res.rainbow = 4 + Math.floor(Math.random() * 5);
+    if (kind === 'ultra' && Math.random() < PB.META.rainbowChance.ultra) res.rainbow = 10 + Math.floor(Math.random() * 11);
     d.coins += res.coins;
     d.points += res.points;
     d.rainbow = (d.rainbow || 0) + res.rainbow;

@@ -1070,7 +1070,7 @@ PB.Renderer = class {
       ctx.save();
       ctx.translate(b.x, b.y);
       ctx.rotate(ang);
-      ctx.fillRect(0, -10, 460, 20);
+      ctx.fillRect(0, -10, PB.KICK.reach, 20);
       ctx.restore();
       return;
     }
@@ -1278,7 +1278,7 @@ PB.Renderer = class {
     const id = game.mode.id;
     const panel = (w, h, y) => UI.panel(ctx, cx - w / 2, y || 6, w, h, { p: 3 });
     const clock = (y) => {
-      const left = Math.max(0, game.rules.matchTime - game.time);
+      const left = Math.max(0, (game.overtimeEnd || game.rules.matchTime) - game.time);
       const txt = Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0');
       UI.panel(ctx, cx - 34, y - 15, 68, 22, { p: 2, fill: left < 20 ? 'rgba(150,30,30,0.9)' : 'rgba(16,24,56,0.86)' });
       this.outlined(txt, cx, y + 1, 14, '#ffffff');
@@ -1346,6 +1346,7 @@ PB.Renderer = class {
       this.outlined('-', cx, 40, 24, '#ffd23a');
       this.outlined(String(game.score[foe]), cx + 54, 42, 30, '#ffffff');
       clock(78);
+      if (game.overtime) this.outlined(PB.T('¡GOL DE ORO!'), cx, 108, 18, '#ffd23a');
       const v = game.voltorb, me = view.player;
       if (me && v.carrier === me) {
         const left = Math.max(0, 10 - v.holdT);

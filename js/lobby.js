@@ -391,7 +391,7 @@ PB.Lobby = (() => {
         if (e.dataset.sk === 'normal') { PB.Save.setSkin(id, 'normal'); PB.Audio.play('tick'); return renderDetail(); }
         if (PB.Save.hasShiny(id)) { PB.Save.setSkin(id, 'shiny'); PB.Audio.play('ball'); return renderDetail(); }
         if (!own) return modal('Primero tienes que conseguir a este Pokémon.');
-        if ((d.rainbow || 0) < PB.META.shinyCost) return modal(`Te faltan ${PB.META.shinyCost - (d.rainbow || 0)} Monedas Arcoíris. Salen en las Super Ball y sobre todo en las Ultra Ball.`);
+        if ((d.rainbow || 0) < PB.META.shinyCost) return modal(`Te faltan ${PB.META.shinyCost - (d.rainbow || 0)} Monedas Arcoíris. Se ganan jugando partidas y salen en las Super Ball y las Ultra Ball.`);
         if (!(await modal(`¿Comprar la skin shiny de ${b.name} por ${PB.META.shinyCost} Monedas Arcoíris?`, true))) return;
         if (PB.Save.buyShiny(id)) { PB.Audio.play('win'); renderDetail(); flashIn('#dt-hero'); }
       }));

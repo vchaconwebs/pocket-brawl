@@ -185,7 +185,7 @@ PB.Game = class {
     for (const s of this.structures) s.flashT -= dt;
     if (this.mode.update) this.mode.update(this, dt);
     this.updateFx(dt);
-    if (!this.winner && this.time >= this.rules.matchTime && this.mode.timeUp) this.mode.timeUp(this);
+    if (!this.winner && this.time >= (this.overtimeEnd || this.rules.matchTime) && this.mode.timeUp) this.mode.timeUp(this);
   }
 
   updateBrawler(b, dt, input) {
@@ -308,14 +308,15 @@ PB.Game = class {
     }
 
     // ataques (si pulsas el súper justo cuando estás aturdido o embistiendo, se guarda un momento)
-    if (input.super && b.superCharge >= 1) b.superQ = { aim: input.super, t: 0.6 };
-    if (b.superQ) { b.superQ.t -= dt; if (b.superQ.t <= 0 || b.superCharge < 1) b.superQ = null; }
+    // (también si le falta muy poco: en red la pantalla puede ir un pelín por delante)
+    if (input.super && b.superCharge >= 0.9) b.superQ = { aim: input.super, t: 0.6 };
+    if (b.superQ) { b.superQ.t -= dt; if (b.superQ.t <= 0) b.superQ = null; }
     // el ataque también se guarda un poco: si pegas justo antes de que acabe el anterior, no se pierde
     if (b.atkQ) { b.atkQ.t -= dt; if (b.atkQ.t <= 0) b.atkQ = null; }
     if (input.attack) b.atkQ = { aim: input.attack, t: b.ai ? 0 : 0.35 };
     if (b.stunT <= 0 && !b.dash && b.spawnT <= 0) {
       const atk = b.atkQ && b.atkQ.aim;
-      if (b.superQ) { const q = b.superQ.aim; b.superQ = null; this.doSuper(b, q); }
+      if (b.superQ && b.superCharge >= 1) { const q = b.superQ.aim; b.superQ = null; this.doSuper(b, q); }
       else if (input.attack && this.mode.onAttack && this.mode.onAttack(this, b, input.attack)) {
         // el modo se ha encargado (p. ej. chutar el Voltorb)
         b.atkQ = null;

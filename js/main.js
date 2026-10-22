@@ -764,6 +764,11 @@
         case 'kick': if (ev.b === me || near(ev.b)) PB.Audio.play('kick'); break;
         case 'pickBall': if (ev.b === me) PB.Audio.play('ball'); break;
         case 'voltorbBoom': break;
+        case 'goldenGoal':
+          PB.Audio.play('alarm');
+          PB.Audio.play('wall');
+          renderer.announce(PB.T('¡GOL DE ORO!'), '#ffd23a', PB.T('Quien marque gana'), 2.2);
+          break;
         case 'goal':
           PB.Audio.play('goal');
           renderer.announce(PB.T('¡Gol! {a} - {b}', { a: game.score[myTeam], b: game.score[otherOf(myTeam)] }), tc(ev.team), '', 1.6);

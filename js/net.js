@@ -78,7 +78,8 @@ PB.Net = (() => {
         const prev = this.last.b[i], d = {};
         for (const k in b) {
           if (SKIP_B.has(k)) continue;
-          const p = pack(b[k], g, 1);
+          // la súper y la munición se redondean hacia abajo: si no, con 0,95 ya se vería la súper lista
+          const p = k === 'superCharge' || k === 'ammo' ? Math.floor(b[k] * 100) / 100 : pack(b[k], g, 1);
           const s = typeof p === 'object' && p !== null ? JSON.stringify(p) : p;
           if (full || prev[k] !== s) { d[k] = p === undefined ? null : p; prev[k] = s; }
         }

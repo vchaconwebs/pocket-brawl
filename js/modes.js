@@ -49,6 +49,9 @@ function hideSpot(g, b, home) {
   return best;
 }
 
+// chut del Voltorb: velocidad de salida y hasta dónde llega rodando (lo que marca la línea de apuntado)
+PB.KICK = { speed: 600, reach: 326 };
+
 PB.MODES = {
   // ------------------------------------------------------------------ Atrapa Pokéballs
   gems: {
@@ -360,7 +363,7 @@ PB.MODES = {
           g.events.push({ type: 'goal', team: scorer, by: v.lastTouch });
           for (let i = 0; i < 30; i++) g.px(v.x, v.y, i % 2 ? '#fff36a' : scorer === 'blue' ? '#5aa8ff' : '#ff5f5f', { speed: 320, life: 0.8, size: 6 });
           g.shake = 14;
-          if (g.score[scorer] >= 2) g.end(scorer);
+          if (g.score[scorer] >= 2 || g.overtime) g.end(scorer);
           else this.kickoff(g);
           break;
         }
@@ -380,7 +383,20 @@ PB.MODES = {
     },
     timeUp(g) {
       const { blue, red } = g.score;
-      g.end(blue > red ? 'blue' : red > blue ? 'red' : 'draw');
+      if (blue !== red || g.overtime) return g.end(blue > red ? 'blue' : red > blue ? 'red' : 'draw');
+      // empate: gol de oro. Se rompe todo menos las porterías y quien marque gana;
+      // si en 1 minuto nadie marca, empate
+      g.overtime = true;
+      g.overtimeEnd = g.time + 60;
+      const W = g.world, T = PB.TILE, goals = W.goals.red.concat(W.goals.blue);
+      const nearGoal = (c, r) => goals.some((t) => Math.abs(t.c - c) <= 2 && Math.abs(t.r - r) <= 2);
+      for (let r = 0; r < W.h; r++) for (let c = 0; c < W.w; c++) {
+        if ('#TCFW'.includes(W.tile(c, r)) && !nearGoal(c, r)) g.breakWalls(c * T + T / 2, r * T + T / 2, 1);
+      }
+      // un solo sonido para todo (no uno por muro)
+      for (let i = g.events.length - 1; i >= 0; i--) if (g.events[i].type === 'wall') g.events.splice(i, 1);
+      g.shake = 16;
+      g.events.push({ type: 'goldenGoal' });
     },
     onAttack(g, b, aim) {
       const v = g.voltorb;
@@ -392,8 +408,8 @@ PB.MODES = {
         ang = Math.atan2(R.cy - b.y, R.cx - b.x);
       } else ang = Math.atan2(aim.dy, aim.dx);
       v.carrier = null;
-      v.vx = Math.cos(ang) * 600;
-      v.vy = Math.sin(ang) * 600;
+      v.vx = Math.cos(ang) * PB.KICK.speed;
+      v.vy = Math.sin(ang) * PB.KICK.speed;
       v.vz = 120;
       v.lastKicker = b;
       v.lastTouch = b;
