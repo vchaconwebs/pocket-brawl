@@ -290,6 +290,14 @@ PB.MODES = {
     },
     update(g, dt) {
       const v = g.voltorb, W = g.world;
+      // nadie puede meterse en su propia portería (no vale ponerse de portero dentro)
+      for (const b of g.brawlers) {
+        if (b.dead) continue;
+        const R = W.goalRect(b.team);
+        if (!R || b.x < R.x0 - b.r || b.x > R.x1 + b.r) continue;
+        if (R.y0 < W.pixelH / 2) { if (b.y < R.y1 + b.r) b.y = R.y1 + b.r; } // portería de arriba
+        else if (b.y > R.y0 - b.r) b.y = R.y0 - b.r; // portería de abajo
+      }
       v.kickCd -= dt;
       if (v.carrier) {
         const c = v.carrier;
