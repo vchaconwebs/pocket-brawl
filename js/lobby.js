@@ -438,11 +438,11 @@ PB.Lobby = (() => {
   const liveTxt = (id) => {
     const L = PB.Online.live || { modes: {} };
     if (id === 'random') {
-      // qué modo toca ahora: el que tiene gente buscando o el modo del momento
+      // si hay gente buscando en algún modo, Aleatorio te lleva ahí
       const s = PB.MODE_ORDER.slice().sort((a, b) => ((L.modes[b] || {}).search || 0) - ((L.modes[a] || {}).search || 0))[0];
-      const pick = (L.modes[s] || {}).search ? s : PB.modeOfTheMoment();
       const n = L.total || 0;
-      return PB.T('Ahora: {m}', { m: PB.MODES[pick].name }) + (n > 1 ? ' · ' + PB.T('{n} en línea', { n }) : '');
+      if ((L.modes[s] || {}).search) return PB.T('Ahora: {m}', { m: PB.MODES[s].name }) + ' · ' + PB.T('{n} buscando', { n: L.modes[s].search });
+      return n > 1 ? PB.T('{n} en línea', { n }) : '';
     }
     const m = L.modes[id] || {};
     const parts = [];
@@ -461,7 +461,7 @@ PB.Lobby = (() => {
     grid.innerHTML = '';
     const rnd = api.isRandom && api.isRandom();
     for (const id of ['random'].concat(PB.MODE_ORDER)) {
-      const M = id === 'random' ? { name: PB.T('Aleatorio'), desc: PB.T('Todos los que eligen Aleatorio van al mismo modo, así es más fácil jugar con gente.') } : PB.MODES[id];
+      const M = id === 'random' ? { name: PB.T('Aleatorio'), desc: PB.T('Te mete en el modo donde más gente está buscando partida ahora mismo.') } : PB.MODES[id];
       const el = document.createElement('button');
       el.className = 'mode-card2' + ((id === 'random' ? rnd : !rnd && id === api.getMode()) ? ' sel' : '') + (id === 'random' ? ' rnd' : '');
       el.dataset.mode = id;

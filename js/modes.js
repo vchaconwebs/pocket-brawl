@@ -493,11 +493,4 @@ PB.MODES = {
 };
 
 PB.MODE_ORDER = ['gems', 'showdown', 'heist', 'ball', 'zone'];
-
-// "Modo del momento" para Aleatorio: igual para todos, cambia cada 10 minutos
-PB.modeOfTheMoment = (ids) => {
-  ids = ids || PB.MODE_ORDER;
-  const slot = Math.floor(((PB.Online && PB.Online.now ? PB.Online.now() : Date.now())) / 600000);
-  return ids[slot % ids.length];
-};
 })();

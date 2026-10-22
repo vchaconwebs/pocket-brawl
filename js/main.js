@@ -636,16 +636,15 @@
     if (r.mid) return joinAndStart(r.mid);
     startMatch();
   }
-  // Aleatorio: si alguien está buscando, a ese modo; si no, al "modo del momento", que es el mismo
-  // para todos y cambia cada 10 minutos (así los que eligen Aleatorio coinciden entre ellos).
-  // En grupo no vale Niebla Tóxica, que es todos contra todos.
+  // Aleatorio: si hay alguien buscando partida en algún modo, a ese (el que más gente busca);
+  // si no busca nadie, uno al azar. En grupo no vale Niebla Tóxica, que es todos contra todos.
   function pickRandomMode() {
     const p = PB.Online.party();
     const ids = PB.MODE_ORDER.filter((id) => !(p && p.members.length > 1 && PB.MODES[id].ffa));
     const L = PB.Online.live.modes || {};
     const s = ids.slice().sort((a, b) => ((L[b] || {}).search || 0) - ((L[a] || {}).search || 0))[0];
     if ((L[s] || {}).search) return s;
-    return PB.modeOfTheMoment(ids);
+    return ids[Math.floor(Math.random() * ids.length)];
   }
   async function joinAndStart(mid, fromParty) {
     if (mode === 'play') return;
