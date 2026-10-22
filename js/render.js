@@ -57,7 +57,7 @@ PB.Renderer = class {
     o.facing = f;
   }
 
-  // súper lanzada cerca: pequeño zoom de cámara y destello del color del tipo
+  // súper lanzada cerca: destello del color del tipo en los bordes
   superFx(type, mine) {
     const P = PB.VFX.PAL[type] || PB.VFX.PAL.normal;
     this.sfx = { t0: performance.now(), color: P[3], mine: !!mine };
@@ -106,13 +106,12 @@ PB.Renderer = class {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#2c5a3a';
     ctx.fillRect(0, 0, this.cv.width, this.cv.height);
-    let zk = 1, sfxK = -1;
+    let sfxK = -1;
     if (this.sfx) {
       sfxK = (performance.now() - this.sfx.t0) / 380;
       if (sfxK >= 1) this.sfx = null;
-      else zk = 1 + (this.sfx.mine ? 0.06 : 0.035) * Math.sin(Math.PI * sfxK);
     }
-    const sc = this.cam.scale * zk;
+    const sc = this.cam.scale;
     const s = sc * this.dpr;
     const sk = PB.Settings.get('shake') ? game.shake : 0;
     const shx = (Math.random() - 0.5) * sk, shy = (Math.random() - 0.5) * sk;
@@ -822,15 +821,15 @@ PB.Renderer = class {
       // evolución como en los juegos: silueta blanca que alterna entre la forma de antes y la nueva,
       // cada vez más deprisa, con un halo de luz y rayos
       const el = PB.EVO_ANIM - b.evoT, k = el / (PB.EVO_ANIM - PB.EVO_REVEAL);
-      const showNew = Math.sin(el * el * 22) > 0.2 && k > 0.15;
-      const sc = 2 * (1 + 0.08 * Math.sin(el * 18) * k);
+      const showNew = Math.sin(k * k * 30) > 0.2 && k > 0.12;
+      const sc = 2 * (1 + 0.08 * Math.sin(k * 25) * k);
       this.glow(b.x, b.y - 24, 50 + 40 * k, `rgba(255,255,255,${0.18 + 0.25 * k})`);
       ctx.save();
       ctx.globalAlpha = prev * 0.35 * k;
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 3;
       for (let i = 0; i < 8; i++) {
-        const a = i * (Math.PI / 4) + el * 1.5;
+        const a = i * (Math.PI / 4) + k * 2;
         ctx.beginPath();
         ctx.moveTo(b.x + Math.cos(a) * 30, b.y - 24 + Math.sin(a) * 30);
         ctx.lineTo(b.x + Math.cos(a) * (70 + 40 * k), b.y - 24 + Math.sin(a) * (70 + 40 * k));

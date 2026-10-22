@@ -243,9 +243,9 @@ PB.Audio = {
       case 'candy': [660, 880, 1320].forEach((f, i) => this.tone(f, 0.09, { vol: 0.12, delay: i * 0.05 })); break;
       case 'evolve': { // brillo que sube y vibra cada vez más rápido (dura lo que la animación)
         const v = o.far ? 0.45 : 1;
-        this.tone(300, 1.15, { to: 1400, type: 'sine', vol: 0.11 * v, vib: 9, vibAmt: 40, attack: 0.1 });
-        this.tone(450, 1.15, { to: 2100, type: 'triangle', vol: 0.05 * v, vib: 13, vibAmt: 60, attack: 0.2 });
-        this.noise(1.15, { filter: 'bandpass', freq: 800, to: 6000, q: 3, vol: 0.06 * v, attack: 0.6 });
+        this.tone(300, 0.5, { to: 1400, type: 'sine', vol: 0.11 * v, vib: 14, vibAmt: 40, attack: 0.05 });
+        this.tone(450, 0.5, { to: 2100, type: 'triangle', vol: 0.05 * v, vib: 18, vibAmt: 60, attack: 0.1 });
+        this.noise(0.5, { filter: 'bandpass', freq: 800, to: 6000, q: 3, vol: 0.06 * v, attack: 0.25 });
         break;
       }
       case 'evolved': { // la forma nueva: acorde brillante
