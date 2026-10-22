@@ -313,7 +313,8 @@ PB.Game = class {
     if (b.superQ) { b.superQ.t -= dt; if (b.superQ.t <= 0) b.superQ = null; }
     // el ataque también se guarda un poco: si pegas justo antes de que acabe el anterior, no se pierde
     if (b.atkQ) { b.atkQ.t -= dt; if (b.atkQ.t <= 0) b.atkQ = null; }
-    if (input.attack) b.atkQ = { aim: input.attack, t: b.ai ? 0 : 0.35 };
+    // (con el ratón mantenido llega un ataque en cada fotograma: ese no se guarda o un clic gastaría dos)
+    if (input.attack && !(input.attack.held && b.atkQ)) b.atkQ = { aim: input.attack, t: b.ai || input.attack.held ? 0 : 0.35 };
     if (b.stunT <= 0 && !b.dash && b.spawnT <= 0) {
       const atk = b.atkQ && b.atkQ.aim;
       if (b.superQ && b.superCharge >= 1) { const q = b.superQ.aim; b.superQ = null; this.doSuper(b, q); }
@@ -774,7 +775,7 @@ PB.Game = class {
         const d = Math.hypot(e.x - from.x, e.y - from.y);
         // el primero: hacia donde apuntas (o el más cercano)
         const off = i === 0 ? Math.abs(((Math.atan2(e.y - b.y, e.x - b.x) - ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI) : 0;
-        if (d < bd && off < 0.9 && this.world.los(from.x, from.y, e.x, e.y)) { bd = d; best = e; }
+        if (d - (i === 0 ? e.r : 0) < bd && off < 0.9 && this.world.los(from.x, from.y, e.x, e.y)) { bd = d; best = e; }
       }
       if (!best) break;
       hit.add(best.idx);

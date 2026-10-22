@@ -1064,6 +1064,8 @@ PB.Renderer = class {
     ctx.strokeStyle = color + Math.min(1, alpha * 2.2) + ')';
     ctx.lineWidth = 2;
     const ang = aim.ang;
+    // hasta dónde llega de verdad un disparo: sale 18 px por delante y golpea con su tamaño
+    const reach = a.range + 18 + (a.r || 12);
     if (!aim.isSuper && this.game && this.game.voltorb && this.game.voltorb.carrier === b) {
       // con el Voltorb: indicador de chut
       ctx.fillStyle = 'rgba(255,240,120,' + (aim.strong ? 0.4 : 0.2) + ')';
@@ -1079,7 +1081,7 @@ PB.Renderer = class {
       if ((a.count || 1) > 1) {
         ctx.beginPath();
         ctx.moveTo(b.x, b.y);
-        ctx.arc(b.x, b.y, a.range, ang - half, ang + half);
+        ctx.arc(b.x, b.y, reach, ang - half, ang + half);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
@@ -1088,8 +1090,8 @@ PB.Renderer = class {
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(ang);
-        ctx.fillRect(0, -w / 2, a.range, w);
-        ctx.strokeRect(0, -w / 2, a.range, w);
+        ctx.fillRect(0, -w / 2, reach, w);
+        ctx.strokeRect(0, -w / 2, reach, w);
         ctx.restore();
       }
     } else if (a.kind === 'lob' || a.kind === 'zone') {
@@ -1109,8 +1111,9 @@ PB.Renderer = class {
       ctx.save();
       ctx.translate(b.x, b.y);
       ctx.rotate(ang);
-      ctx.fillRect(0, -a.r, a.range, a.r * 2);
-      ctx.strokeRect(0, -a.r, a.range, a.r * 2);
+      // embestida: el cuerpo recorre el rango y golpea con su radio
+      ctx.fillRect(0, -a.r, a.range + a.r, a.r * 2);
+      ctx.strokeRect(0, -a.r, a.range + a.r, a.r * 2);
       ctx.restore();
     } else if (a.kind === 'slam' || a.kind === 'barrier' || a.kind === 'wish' || a.kind === 'nova') {
       ctx.beginPath();
@@ -1126,11 +1129,12 @@ PB.Renderer = class {
       ctx.stroke();
     } else if (a.kind === 'twin' || a.kind === 'beam' || a.kind === 'boomerang' || a.kind === 'chain') {
       const w = a.kind === 'twin' ? a.gap * 2 + 20 : a.kind === 'beam' ? a.width : 40;
+      const len = a.kind === 'twin' || a.kind === 'boomerang' ? reach : a.range;
       ctx.save();
       ctx.translate(b.x, b.y);
       ctx.rotate(ang);
-      ctx.fillRect(0, -w / 2, a.range, w);
-      ctx.strokeRect(0, -w / 2, a.range, w);
+      ctx.fillRect(0, -w / 2, len, w);
+      ctx.strokeRect(0, -w / 2, len, w);
       ctx.restore();
     } else if (a.kind === 'meteor' || a.kind === 'mines' || a.kind === 'turret') {
       const d = Math.min(aim.dist, a.kind === 'turret' ? a.place : a.range);

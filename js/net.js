@@ -195,8 +195,10 @@ PB.Net = (() => {
     // controles para el anfitrión: el movimiento siempre; ataque y súper solo cuando se pulsan
     input(inp) {
       const m = { seq: ++this.seq, mx: r1(inp.mx || 0), my: r1(inp.my || 0) };
-      if (inp.attack) m.attack = inp.attack.auto ? { auto: true } : { dx: r1(inp.attack.dx), dy: r1(inp.attack.dy), dist: r1(inp.attack.dist || 0) };
-      if (inp.super) m.super = inp.super.auto ? { auto: true } : { dx: r1(inp.super.dx), dy: r1(inp.super.dy), dist: r1(inp.super.dist || 0) };
+      // (toque rápido: al enemigo más cercano o hacia donde mira, según los ajustes)
+      const aimMsg = (a) => (a.auto ? { auto: true } : a.facing ? { facing: true } : { dx: r1(a.dx), dy: r1(a.dy), dist: r1(a.dist || 0) });
+      if (inp.attack) m.attack = Object.assign(aimMsg(inp.attack), inp.attack.held ? { held: 1 } : {});
+      if (inp.super) m.super = aimMsg(inp.super);
       this.pending.push(m);
       if (this.pending.length > 60) this.pending.shift();
       return m;
@@ -211,7 +213,8 @@ PB.Net = (() => {
       this.mx = m.mx || 0;
       this.my = m.my || 0;
       this.ack = m.seq;
-      if (m.attack) this.attack = m.attack;
+      // un clic (pulsación) no se pisa con el "sigue mantenido" que llega justo detrás
+      if (m.attack && !(m.attack.held && this.attack && !this.attack.held)) this.attack = m.attack;
       if (m.super) this.super = m.super;
     }
     take() {

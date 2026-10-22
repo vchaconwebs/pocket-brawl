@@ -80,7 +80,8 @@ PB.Input = class {
       this.touch = false;
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
-      if (e.button === 0) this.mouse.left = true;
+      // el clic cuenta como pulsación aunque sea tan rápido que no dure ni un fotograma
+      if (e.button === 0) { this.mouse.left = true; this.pending.attack = 'mouse'; }
       // clic derecho: lanza el súper; si estabas apuntándolo con E, lo cancela
       if (e.button === 2) {
         if (this.superKeyHeld) { this.superKeyHeld = false; this.superCancelled = performance.now(); }
@@ -203,7 +204,7 @@ PB.Input = class {
       const m = this.mouseAim(me, renderer);
       const showSuper = this.superKeyHeld && me.superCharge >= 1;
       if (PB.Settings.get('aimGuide') || this.mouse.left || showSuper) out.aim = { isSuper: showSuper, ang: Math.atan2(m.dy, m.dx), dist: m.dist, strong: this.mouse.left || showSuper };
-      if (this.mouse.left) inp.attack = m;
+      if (this.mouse.left) inp.attack = Object.assign({ held: true }, m);
     }
 
     if (this.pending.attack) inp.attack = fromFrac(this.pending.attack, false);
