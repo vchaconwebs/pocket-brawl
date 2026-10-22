@@ -620,18 +620,15 @@
     if (randomMode) gameMode = pickRandomMode();
     searchScreen('Buscando partida…', randomMode ? PB.MODES[gameMode].name : '', true);
     $('#ld-cancel').onclick = () => { PB.Online.cancelMatch(); };
-    $('#ld-bots').onclick = () => { PB.Audio.play('ui'); PB.Online.playNow(); };
     let r = { local: true };
     try {
       if (await PB.Online.start()) {
         PB.Online.setSearching(gameMode);
-        $('#ld-bots').classList.remove('hidden');
         r = await PB.Online.findMatch(gameMode, (st) => {
           $('#ld-sub').textContent = (randomMode ? PB.MODES[gameMode].name + ' · ' : '') + PB.T('{n} jugadores buscando · {s} s', { n: Math.max(1, st.players), s: Math.floor(st.waited) });
         });
       }
     } catch (e) { r = { local: true }; }
-    $('#ld-bots').classList.add('hidden');
     PB.Online.setSearching(null);
     searching = false;
     if (r.cancelled) { PB.Lobby.show('lobby'); return; }

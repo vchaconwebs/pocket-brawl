@@ -1855,4 +1855,3 @@ h1.lose { color: #ff8a7a; }
 .mode-card2.rnd { background: linear-gradient(#3a2a6a, #2a1f52); }
 .mode-card2.rnd.sel { background: linear-gradient(#ffd84a, #f0a81c); }
 .mode-card .mode-live { color: #7dff9f !important; }
-#loading #ld-bots { margin-right: 8px; }

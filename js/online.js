@@ -16,7 +16,7 @@ PB.Online = (() => {
   };
   const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
   const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
-  const WAIT = 12; // segundos buscando antes de rellenar con bots
+  const WAIT = 10; // segundos buscando antes de rellenar con bots
   const MAX = () => PB.META.clanMax;
 
   const listeners = {};
@@ -152,8 +152,7 @@ PB.Online = (() => {
   }
   const setPlaying = (on, mode) => setOnline(on && /^[a-z]+$/.test(mode || '') ? 'p:' + mode : 'm');
   const setSearching = (mode) => setOnline(mode ? 's:' + mode : 'm');
-  // "Jugar ya con bots": deja de buscar y empieza con bots
-  function playNow() { if (search) search.done({ local: true }); }
+
   function countMatch(mode) {
     bump('matches');
     if (/^[a-z]+$/.test(mode || '')) bump('modes/' + mode);
@@ -1117,7 +1116,7 @@ PB.Online = (() => {
     friends, requests, searchPlayers, addFriend, answerRequest, removeFriend,
     findMatch, cancelMatch, joinMatch, migrate,
     get searching() { return !!search; },
-    countMatch, setPlaying, setSearching, playNow,
+    countMatch, setPlaying, setSearching,
     get live() { return live; },
     trace,
   };
