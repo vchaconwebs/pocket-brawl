@@ -32,12 +32,12 @@
    "offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
   </script>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=82">
+  <link rel="stylesheet" href="css/style.css?v=83">
 </head>
 <body>
   <canvas id="game"></canvas>
 
-  <div id="loading" class="screen"><h1>Cargando…</h1><p id="ld-sub"></p><button class="act gray hidden" id="ld-cancel">Cancelar</button></div>
+  <div id="loading" class="screen"><h1>Cargando…</h1><p id="ld-sub"></p><button class="act gray hidden" id="ld-cancel">Cancelar</button><p id="ld-tip" class="ld-tip hidden">💜 ¿Te gusta PokéVersus? Compártelo con tus amigos o juégalo en directo</p></div>
   <noscript><h1>PokéVersus</h1><p>Fangame gratuito de combates 3v3 con Pokémon en el navegador. Activa JavaScript para jugar. / Free 3v3 Pokémon fan game. Enable JavaScript to play.</p></noscript>
 
   <!-- INICIO (la primera vez o al cerrar sesión) -->
@@ -145,8 +145,9 @@
 
       <footer class="lb-bottom">
         <p class="legal">
-          Fangame no oficial y sin ánimo de lucro ·
-          <a href="CREDITS.md" target="_blank">Créditos y licencias</a> ·
+          <span class="lg-x">Fangame no oficial y sin ánimo de lucro ·</span>
+          <span>Creado por</span> <button class="ver-link by-link" id="btn-about">Fl3xix</button> ·
+          <span class="lg-x"><a href="CREDITS.md" target="_blank">Créditos y licencias</a> ·</span>
           <button class="ver-link" id="btn-news">v<span id="game-ver"></span> · Novedades</button>
         </p>
       </footer>
@@ -159,6 +160,24 @@
       <div class="patch-head"><span class="patch-ver" id="patch-ver"></span><h2 id="patch-title"></h2><small id="patch-date"></small></div>
       <ul id="patch-list"></ul>
       <button class="big" id="patch-ok">¡A jugar!</button>
+    </div>
+  </div>
+
+  <!-- SOBRE EL CREADOR -->
+  <div id="about" class="patch hidden" role="dialog" aria-modal="true" aria-labelledby="ab-title">
+    <div class="panel patch-panel ab-panel">
+      <div class="patch-head"><h2 id="ab-title">Creado por Fl3xix</h2><button class="fb-close" id="ab-close" aria-label="Cerrar">✕</button></div>
+      <p class="ab-sub">PokéVersus es un fangame gratis hecho por una sola persona. Sígueme para ver lo que viene:</p>
+      <div class="ab-links">
+        <a class="ab-link" href="https://chacoon.itch.io/" target="_blank" rel="noopener"><b>itch.io</b><small>chacoon.itch.io</small></a>
+        <a class="ab-link" href="https://x.com/fl3xix" target="_blank" rel="noopener"><b>X</b><small>@fl3xix</small></a>
+        <a class="ab-link" href="https://www.tiktok.com/@chacoonstudio" target="_blank" rel="noopener"><b>TikTok</b><small>@chacoonstudio</small></a>
+      </div>
+      <div class="ab-share">
+        <p><b>📣 ¿Te gusta el juego?</b></p>
+        <p>Me ayudarías muchísimo compartiéndolo con tus amigos. Y si haces directos o vídeos, ¡juégalo en stream! Etiquétame para que lo vea.</p>
+      </div>
+      <button class="big" id="ab-share">Compartir el juego</button>
     </div>
   </div>
 
@@ -430,31 +449,31 @@
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=82"></script>
-  <script src="js/data.js?v=82"></script>
-  <script src="js/news.js?v=82"></script>
-  <script src="js/roster-data.js?v=82"></script>
-  <script src="js/i18n-data.js?v=82"></script>
-  <script src="js/i18n-names.js?v=82"></script>
-  <script src="js/i18n.js?v=82"></script>
-  <script src="js/sprites.js?v=82"></script>
-  <script src="js/vfx.js?v=82"></script>
-  <script src="js/roster.js?v=82"></script>
-  <script src="js/pokeball.js?v=82"></script>
-  <script src="js/tiles.js?v=82"></script>
-  <script src="js/world.js?v=82"></script>
-  <script src="js/game.js?v=82"></script>
-  <script src="js/net.js?v=82"></script>
-  <script src="js/modes.js?v=82"></script>
-  <script src="js/ai.js?v=82"></script>
-  <script src="js/audio.js?v=82"></script>
-  <script src="js/render.js?v=82"></script>
-  <script src="js/input.js?v=82"></script>
-  <script src="js/settings.js?v=82"></script>
-  <script src="js/pixui.js?v=82"></script>
-  <script src="js/save.js?v=82"></script>
-  <script src="js/online.js?v=82"></script>
-  <script src="js/lobby.js?v=82"></script>
-  <script src="js/main.js?v=82"></script>
+  <script src="js/sprite-data.js?v=83"></script>
+  <script src="js/data.js?v=83"></script>
+  <script src="js/news.js?v=83"></script>
+  <script src="js/roster-data.js?v=83"></script>
+  <script src="js/i18n-data.js?v=83"></script>
+  <script src="js/i18n-names.js?v=83"></script>
+  <script src="js/i18n.js?v=83"></script>
+  <script src="js/sprites.js?v=83"></script>
+  <script src="js/vfx.js?v=83"></script>
+  <script src="js/roster.js?v=83"></script>
+  <script src="js/pokeball.js?v=83"></script>
+  <script src="js/tiles.js?v=83"></script>
+  <script src="js/world.js?v=83"></script>
+  <script src="js/game.js?v=83"></script>
+  <script src="js/net.js?v=83"></script>
+  <script src="js/modes.js?v=83"></script>
+  <script src="js/ai.js?v=83"></script>
+  <script src="js/audio.js?v=83"></script>
+  <script src="js/render.js?v=83"></script>
+  <script src="js/input.js?v=83"></script>
+  <script src="js/settings.js?v=83"></script>
+  <script src="js/pixui.js?v=83"></script>
+  <script src="js/save.js?v=83"></script>
+  <script src="js/online.js?v=83"></script>
+  <script src="js/lobby.js?v=83"></script>
+  <script src="js/main.js?v=83"></script>
 </body>
 </html>

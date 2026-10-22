@@ -616,6 +616,7 @@
     $('#loading h1').textContent = PB.T(title);
     $('#ld-sub').textContent = sub || '';
     $('#ld-cancel').classList.toggle('hidden', !cancel);
+    $('#ld-tip').classList.toggle('hidden', title !== 'Buscando partida…');
     showScreen('loading');
   }
   async function play() {
@@ -655,6 +656,7 @@
   }
   async function joinAndStart(mid, fromParty) {
     if (mode === 'play') return;
+    if (partyWait) stopPartyWait();
     searchScreen('¡Partida encontrada!', PB.T('Conectando con los demás jugadores…'), false);
     let j = { local: true };
     try { j = await PB.Online.joinMatch(mid); } catch (e) { j = { local: true, failed: true }; }
@@ -672,7 +674,31 @@
   }
   // los de tu sala: el jefe ha encontrado partida
   PB.Online.on('matchFound', ({ mid }) => { if (mode !== 'play') joinAndStart(mid, true); });
-  PB.Online.on('partySearch', (on) => { if (on) PB.Lobby.toast(PB.T('Tu grupo está buscando partida…')); });
+  // los de tu sala: el jefe está buscando partida, así que a ti también te sale la pantalla de búsqueda
+  let partyWait = null, partySkip = null;
+  PB.Online.on('partySearch', (st) => {
+    if (st) {
+      if (partyWait || mode === 'play' || searching || starting || (st.t && st.t === partySkip)) return;
+      partySkip = st.t; // si la cierras, esta búsqueda ya no vuelve a salir
+      const t0 = Date.now(), m = st && PB.MODES[st.mode];
+      goLandscape();
+      PB.Audio.init();
+      searchScreen('Buscando partida…', '', true);
+      const sub = () => { $('#ld-sub').textContent = (m ? m.name + ' · ' : '') + PB.T('Tu grupo está buscando partida…') + ' ' + Math.floor((Date.now() - t0) / 1000) + ' s'; };
+      sub();
+      partyWait = setInterval(() => {
+        // si el jefe se ha quedado colgado, vuelve a la lobby
+        if (Date.now() - t0 > 40000) { stopPartyWait(); PB.Lobby.show('lobby'); } else sub();
+      }, 500);
+      // solo vuelve a la lobby; el jefe sigue buscando
+      $('#ld-cancel').onclick = () => { stopPartyWait(); PB.Lobby.show('lobby'); };
+    } else if (partyWait) {
+      // el jefe ha cancelado
+      stopPartyWait();
+      if (mode !== 'play') PB.Lobby.show('lobby');
+    }
+  });
+  function stopPartyWait() { clearInterval(partyWait); partyWait = null; }
 
   $('#play').onclick = () => { if (PB.Lobby.playPressed()) play(); };
 

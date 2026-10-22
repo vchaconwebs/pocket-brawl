@@ -141,13 +141,16 @@ PB.Tiles = (() => {
   }
 
   // Velas (Halloween): tres velas con su llama
+  // (con la vista girada del equipo rojo se pintan al revés para que se vean de pie)
+  let FLIP = false;
   function paintCandles(P, ox, oy, tx, ty) {
     for (let k = 0; k < 3; k++) {
       const x = ox + 3 + Math.floor(H(tx, ty, 200 + k) * 10), y = oy + 6 + Math.floor(H(tx, ty, 210 + k) * 7);
       const h = 3 + Math.floor(H(tx, ty, 220 + k) * 3);
-      for (let i = 0; i < h; i++) { P.set(x, y - i, '#efe6d2'); P.set(x + 1, y - i, '#cfc2a8'); }
-      P.set(x, y - h, '#ffd060'); P.set(x + 1, y - h, '#f8a030'); P.set(x, y - h - 1, '#fff2a0');
-      P.set(x - 1, y + 1, '#1e1a2c'); P.set(x + 2, y + 1, '#1e1a2c');
+      const set = FLIP ? (px, py, c) => P.set(2 * x + 1 - px, 2 * y - py, c) : (px, py, c) => P.set(px, py, c);
+      for (let i = 0; i < h; i++) { set(x, y - i, '#efe6d2'); set(x + 1, y - i, '#cfc2a8'); }
+      set(x, y - h, '#ffd060'); set(x + 1, y - h, '#f8a030'); set(x, y - h - 1, '#fff2a0');
+      set(x - 1, y + 1, '#1e1a2c'); set(x + 2, y + 1, '#1e1a2c');
     }
   }
 
@@ -255,8 +258,9 @@ PB.Tiles = (() => {
   }
 
   // Pinta el suelo de todo el mapa (a resolución de arte)
-  function floor(world) {
+  function floor(world, flip) {
     K = pal(world.theme);
+    FLIP = !!flip;
     const at = (c, r) => world.tile(c, r);
     const P = Pix(world.w * A, world.h * A);
     for (let r = 0; r < world.h; r++) for (let c = 0; c < world.w; c++) {

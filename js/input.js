@@ -93,14 +93,20 @@ PB.Input = class {
     const L = this.layout(window.innerWidth, window.innerHeight);
     const p = { x: e.clientX, y: e.clientY };
     const s = { id: e.pointerId, origin: p, pos: { ...p }, t0: performance.now() };
-    if (Math.hypot(p.x - L.super.x, p.y - L.super.y) < L.sr * 1.4 && !this.sticks.super) {
+    // si el joystick ya tenía un dedo (o el móvil no avisó de que lo levantaste), el dedo nuevo lo
+    // sustituye: el anterior cuenta como soltado y así nunca se queda bloqueado
+    const take = (name) => {
+      if (this.sticks[name]) this.release(name, this.sticks[name], L);
+      this.sticks[name] = s;
+    };
+    if (Math.hypot(p.x - L.super.x, p.y - L.super.y) < L.sr * 1.4) {
       s.origin = { ...L.super };
       s.pos = { ...p };
-      this.sticks.super = s;
+      take('super');
     } else if ((p.x < window.innerWidth / 2) !== L.left) {
-      if (!this.sticks.move) this.sticks.move = s;
-    } else if (!this.sticks.attack) {
-      this.sticks.attack = s;
+      take('move');
+    } else {
+      take('attack');
     }
   }
 
@@ -125,15 +131,21 @@ PB.Input = class {
       const s = this.sticks[name];
       if (!s || s.id !== e.pointerId) continue;
       this.sticks[name] = null;
-      if (name === 'move' || cancel) continue;
-      const v = this.stickVec(s, name === 'super' ? L.sr : L.r);
-      // súper: si lo arrastraste y lo devuelves al centro antes de soltar, se cancela
-      if (name === 'super' && (s.maxLen || 0) >= 0.5 && v.len < 0.3) { this.superCancelled = performance.now(); continue; }
-      // toque rápido o casi sin arrastrar = disparo automático al enemigo más cercano
-      const quick = performance.now() - s.t0 < 220;
-      if (v.len < 0.35 || (quick && v.len < 0.7)) this.pending[name] = PB.Settings.get('autoAim') ? { auto: true } : { facing: true };
-      else this.pending[name] = { dx: v.x, dy: v.y, frac: v.len };
+      if (!cancel) this.release(name, s, L);
     }
+  }
+
+  // Soltar un joystick: el de ataque o el de súper disparan
+  release(name, s, L) {
+    this.sticks[name] = null;
+    if (name === 'move') return;
+    const v = this.stickVec(s, name === 'super' ? L.sr : L.r);
+    // súper: si lo arrastraste y lo devuelves al centro antes de soltar, se cancela
+    if (name === 'super' && (s.maxLen || 0) >= 0.5 && v.len < 0.3) { this.superCancelled = performance.now(); return; }
+    // toque rápido o casi sin arrastrar = disparo automático al enemigo más cercano
+    const quick = performance.now() - s.t0 < 220;
+    if (v.len < 0.35 || (quick && v.len < 0.7)) this.pending[name] = PB.Settings.get('autoAim') ? { auto: true } : { facing: true };
+    else this.pending[name] = { dx: v.x, dy: v.y, frac: v.len };
   }
 
   stickVec(s, r) {

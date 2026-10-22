@@ -695,7 +695,7 @@ PB.Online = (() => {
       // el jefe ha encontrado partida: los demás se unen
       const fresh = v.state && v.state.mid && (!v.state.t || now() - v.state.t < 30000);
       if (fresh && v.leader !== uid && v.state.mid !== lastJoined) { lastJoined = v.state.mid; emit('matchFound', { mid: v.state.mid }); }
-      if (v.state && v.state.k === 'search' && v.leader !== uid) emit('partySearch', true);
+      if (v.state && v.state.k === 'search' && v.leader !== uid && (!v.state.t || now() - v.state.t < 30000)) emit('partySearch', v.state);
       if ((!v.state || v.state.k === 'idle') && v.leader !== uid) emit('partySearch', false);
     });
     partyOff = () => partyRef.off('value', cb);

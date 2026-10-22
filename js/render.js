@@ -69,8 +69,8 @@ PB.Renderer = class {
 
   // Suelo pintado en pixel art (PB.Tiles) y escalado ×4 una sola vez por mapa.
   // Rocas, árboles y hierba alta se dibujan aparte porque cambian (se rompen, se mueven).
-  buildFloor(world) {
-    const art = PB.Tiles.floor(world);
+  buildFloor(world, flip) {
+    const art = PB.Tiles.floor(world, flip);
     const cv = document.createElement('canvas');
     cv.width = world.pixelW;
     cv.height = world.pixelH;
@@ -79,17 +79,18 @@ PB.Renderer = class {
     c.drawImage(art, 0, 0, cv.width, cv.height);
     this.floor = cv;
     this.floorFor = world;
+    this.floorFlip = flip;
   }
 
   draw(game, view) {
     this.game = game;
     this.low = PB.Settings.get('quality') === 'baja';
     const ctx = this.ctx, T = PB.TILE, W = game.world;
-    if (this.floorFor !== W || !this.floor) this.buildFloor(W);
+    const flip = (this.flip = !!view.flip);
+    if (this.floorFor !== W || !this.floor || this.floorFlip !== flip) this.buildFloor(W, flip);
     const focus = view.focus;
     const team = view.team;
     const t = game.clock;
-    const flip = (this.flip = !!view.flip);
     const fk = flip ? -1 : 1;
 
     // cámara (con controles táctiles en vertical, el jugador más arriba para que no lo tapen los joysticks)
@@ -478,9 +479,12 @@ PB.Renderer = class {
     ctx.beginPath();
     ctx.ellipse(z.x + 2, z.y + 4, 18, 6, 0, 0, Math.PI * 2);
     ctx.fill();
-    if (z.owner && z.owner !== 'contested') this.glow(z.x + 20, z.y - 70, 46, z.owner === team ? 'rgba(80,150,255,0.35)' : 'rgba(255,80,70,0.35)');
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(PB.Tiles.flag(fc, frame), z.x - 14, z.y - 102, 66, 108);
+    // la bandera tiene altura: derecha también con la vista girada
+    this.up(z.x, z.y, () => {
+      if (z.owner && z.owner !== 'contested') this.glow(z.x + 20, z.y - 70, 46, z.owner === team ? 'rgba(80,150,255,0.35)' : 'rgba(255,80,70,0.35)');
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(PB.Tiles.flag(fc, frame), z.x - 14, z.y - 102, 66, 108);
+    });
   }
 
   // Portería de Voltorbol vista desde arriba (como un campo de fútbol real):

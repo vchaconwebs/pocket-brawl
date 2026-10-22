@@ -3,6 +3,7 @@ PB.Bot = class {
   constructor(game, b, skill) {
     this.g = game;
     this.b = b;
+    b.ai = true; // los bots no guardan el ataque para luego (apuntan en el momento)
     this.skill = skill == null ? 0.45 : skill; // 0 = torpe, 1 = muy bueno
     this.path = [];
     this.goal = null;

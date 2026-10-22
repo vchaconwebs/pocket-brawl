@@ -1672,6 +1672,15 @@ PB.Lobby = (() => {
     };
     $('#update-go').onclick = () => { PB.Audio.play('ui'); location.reload(); };
     $('#btn-news').onclick = () => { PB.Audio.play('ui'); showPatchNotes(); };
+    // sobre el creador
+    $('#btn-about').onclick = () => { PB.Audio.play('ui'); $('#about').classList.remove('hidden'); };
+    $('#ab-close').onclick = () => { PB.Audio.play('uiBack'); $('#about').classList.add('hidden'); };
+    $('#ab-share').onclick = () => {
+      PB.Audio.play('ui');
+      const url = 'https://pokeversus.com', text = PB.T('¡Prueba PokéVersus! Combates 3 contra 3 con Pokémon, gratis en el navegador');
+      if (navigator.share) navigator.share({ title: 'PokéVersus', text, url }).catch(() => {});
+      else { if (navigator.clipboard) navigator.clipboard.writeText(text + ' ' + url).catch(() => {}); toast(PB.T('Enlace copiado')); }
+    };
     $('#patch-ok').onclick = () => {
       PB.Audio.play('ui');
       $('#patch').classList.add('hidden');
