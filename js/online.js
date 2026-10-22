@@ -16,7 +16,7 @@ PB.Online = (() => {
   };
   const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
   const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
-  const WAIT = 7; // segundos buscando antes de rellenar con bots
+  const WAIT = 12; // segundos buscando antes de rellenar con bots
   const MAX = () => PB.META.clanMax;
 
   const listeners = {};
@@ -106,11 +106,28 @@ PB.Online = (() => {
     if (!rtdb || !uid || testing) return;
     rtdb.ref('statsSeen/' + day() + '/' + uid).set(true).then(() => bump('players')).catch(() => {});
   }
-  // gente conectada ahora mismo (para stats.html): una marca por pestaña, sin datos de la cuenta.
-  // 1 = en el menú, 2 = jugando. Se borra sola al cerrar la pestaña.
-  let onlineRef = null, onlineState = 1;
+  // gente conectada ahora mismo: una marca por pestaña, sin datos de la cuenta.
+  // 'm' = en el menú, 's:<modo>' = buscando partida, 'p:<modo>' = jugando. Se borra sola al cerrar.
+  // (las versiones viejas del juego ponen 1 = menú y 2 = jugando)
+  let onlineRef = null, onlineState = 'm';
+  let live = { total: 0, modes: {} };
   function goOnline() {
-    if (!rtdb || testing) return;
+    if (!rtdb) return;
+    // todos ven cuánta gente hay en cada modo (también en pruebas locales)
+    rtdb.ref('online').on('value', (s) => {
+      const all = Object.values(s.val() || {});
+      const modes = {};
+      for (const v of all) {
+        const m = typeof v === 'string' && /^[ps]:/.test(v) ? v.slice(2) : null;
+        if (!m) continue;
+        modes[m] = modes[m] || { play: 0, search: 0 };
+        modes[m][v[0] === 'p' ? 'play' : 'search']++;
+      }
+      live = { total: all.length, modes };
+      emit('live', live);
+      if (!testing) notePeak(all.length);
+    });
+    if (testing) return;
     const sid = Array.from({ length: 12 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
     onlineRef = rtdb.ref('online/' + sid);
     // al reconectar (móvil que vuelve de segundo plano) se vuelve a apuntar
@@ -119,10 +136,24 @@ PB.Online = (() => {
       onlineRef.onDisconnect().remove().then(() => onlineRef.set(onlineState)).catch(() => {});
     });
   }
-  function setPlaying(on) {
-    onlineState = on ? 2 : 1;
-    if (onlineRef) onlineRef.set(onlineState).catch(() => {});
+  // récord de jugadores a la vez (de siempre y de cada día): solo se escribe si se supera
+  let peakSeen = 0;
+  function notePeak(n) {
+    if (n <= peakSeen) return;
+    peakSeen = n;
+    const up = (cur) => (cur == null || n > cur ? n : undefined);
+    rtdb.ref('stats/' + day() + '/peak').transaction(up).catch(() => {});
+    rtdb.ref('statsPeak').transaction((cur) => (!cur || n > (cur.n || 0) ? { n, t: now() } : undefined)).catch(() => {});
   }
+  function setOnline(st) {
+    if (st === onlineState) return;
+    onlineState = st;
+    if (onlineRef) onlineRef.set(st).catch(() => {});
+  }
+  const setPlaying = (on, mode) => setOnline(on && /^[a-z]+$/.test(mode || '') ? 'p:' + mode : 'm');
+  const setSearching = (mode) => setOnline(mode ? 's:' + mode : 'm');
+  // "Jugar ya con bots": deja de buscar y empieza con bots
+  function playNow() { if (search) search.done({ local: true }); }
   function countMatch(mode) {
     bump('matches');
     if (/^[a-z]+$/.test(mode || '')) bump('modes/' + mode);
@@ -1086,7 +1117,8 @@ PB.Online = (() => {
     friends, requests, searchPlayers, addFriend, answerRequest, removeFriend,
     findMatch, cancelMatch, joinMatch, migrate,
     get searching() { return !!search; },
-    countMatch, setPlaying,
+    countMatch, setPlaying, setSearching, playNow,
+    get live() { return live; },
     trace,
   };
 })();

@@ -20,6 +20,8 @@
     try { localStorage.setItem(key, v); } catch (e) {}
   };
   let gameMode = load('pb.mode', (v) => PB.MODES[v], 'gems');
+  // "Aleatorio": al pulsar jugar se elige el modo donde hay más gente buscando (o jugando)
+  let randomMode = load('pb.modeRandom', (v) => v === '1', '0') === '1';
   let endTimer = 0;
   let heartT = 0;
   let spectate = 0;
@@ -174,7 +176,7 @@
     await PB.Sprites.ensure(spritesFor(opts, null));
     newGame(null, opts, myIdx);
     PB.Online.countMatch(opts.mode);
-    PB.Online.setPlaying(true);
+    PB.Online.setPlaying(true, opts.mode);
     if (net.role === 'host') net.host = new PB.Net.Host(game);
     else { net.client = new PB.Net.Client(game, myIdx); net.link.send(net.hostPeer, { k: 'hello' }); }
     // en red, la partida no se para aunque abras el menú
@@ -397,7 +399,7 @@
     starting = false;
     newGame(id, opts);
     PB.Online.countMatch(gameMode);
-    PB.Online.setPlaying(true);
+    PB.Online.setPlaying(true, gameMode);
     PB.Audio.music(SONG_OF[gameMode] || 'battle');
     mode = 'play';
     paused = false;
@@ -615,20 +617,39 @@
     searching = true;
     goLandscape();
     PB.Audio.init();
-    searchScreen('Buscando partida…', '', true);
+    if (randomMode) gameMode = pickRandomMode();
+    searchScreen('Buscando partida…', randomMode ? PB.MODES[gameMode].name : '', true);
     $('#ld-cancel').onclick = () => { PB.Online.cancelMatch(); };
+    $('#ld-bots').onclick = () => { PB.Audio.play('ui'); PB.Online.playNow(); };
     let r = { local: true };
     try {
       if (await PB.Online.start()) {
+        PB.Online.setSearching(gameMode);
+        $('#ld-bots').classList.remove('hidden');
         r = await PB.Online.findMatch(gameMode, (st) => {
-          $('#ld-sub').textContent = PB.T('{n} jugadores buscando · {s} s', { n: Math.max(1, st.players), s: Math.floor(st.waited) });
+          $('#ld-sub').textContent = (randomMode ? PB.MODES[gameMode].name + ' · ' : '') + PB.T('{n} jugadores buscando · {s} s', { n: Math.max(1, st.players), s: Math.floor(st.waited) });
         });
       }
     } catch (e) { r = { local: true }; }
+    $('#ld-bots').classList.add('hidden');
+    PB.Online.setSearching(null);
     searching = false;
     if (r.cancelled) { PB.Lobby.show('lobby'); return; }
     if (r.mid) return joinAndStart(r.mid);
     startMatch();
+  }
+  // modo con más gente buscando; si nadie busca, el que más juegan; si no hay nadie, uno al azar
+  // (en grupo no vale Niebla Tóxica, que es todos contra todos)
+  function pickRandomMode() {
+    const p = PB.Online.party();
+    const ids = PB.MODE_ORDER.filter((id) => !(p && p.members.length > 1 && PB.MODES[id].ffa));
+    const L = PB.Online.live.modes || {};
+    const by = (k) => ids.slice().sort((a, b) => ((L[b] || {})[k] || 0) - ((L[a] || {})[k] || 0))[0];
+    const s = by('search');
+    if ((L[s] || {}).search) return s;
+    const pl = by('play');
+    if ((L[pl] || {}).play) return pl;
+    return ids[Math.floor(Math.random() * ids.length)];
   }
   async function joinAndStart(mid, fromParty) {
     if (mode === 'play') return;
@@ -833,9 +854,17 @@
   PB.Lobby.init({
     backToPause: () => showScreen('pause'),
     getMode: () => gameMode,
+    isRandom: () => randomMode,
     start: () => play(),
     startNet: (o) => startNetMatch(o),
-    setMode: (id) => { gameMode = id; save('pb.mode', id); newGame(null); },
+    setMode: (id) => {
+      randomMode = id === 'random';
+      save('pb.modeRandom', randomMode ? '1' : '0');
+      if (randomMode) return;
+      gameMode = id;
+      save('pb.mode', id);
+      newGame(null);
+    },
   });
 
   try {

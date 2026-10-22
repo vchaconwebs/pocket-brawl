@@ -1847,3 +1847,12 @@ h1.lose { color: #ff8a7a; }
 @keyframes rowIn { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes mvpGlow { from { filter: none; } to { filter: drop-shadow(0 0 4px #ffe066) brightness(1.2); } }
 .end-vote { margin: 2px 0 6px; }
+
+/* gente en cada modo ahora mismo */
+.mode-card2 .mc-live { display: none; font-style: normal; font-size: 12.5px; color: #7dff9f; margin-top: 2px; }
+.mode-card2 .mc-live.on { display: block; }
+.mode-card2.sel .mc-live { color: #145a20; }
+.mode-card2.rnd { background: linear-gradient(#3a2a6a, #2a1f52); }
+.mode-card2.rnd.sel { background: linear-gradient(#ffd84a, #f0a81c); }
+.mode-card .mode-live { color: #7dff9f !important; }
+#loading #ld-bots { margin-right: 8px; }

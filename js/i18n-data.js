@@ -607,4 +607,10 @@ PB.I18N = {
   'No han votado todos a tiempo': ['Not everyone voted in time', 'Nem todos votaram a tempo', 'Tout le monde n’a pas voté à temps', 'Non tutti hanno votato in tempo', 'Nicht alle haben rechtzeitig abgestimmt'],
   '¡Todos listos! Buscando partida…': ['Everyone’s ready! Finding a match…', 'Todos prontos! Procurando partida…', 'Tout le monde est prêt ! Recherche d’une partie…', 'Tutti pronti! Cerco una partita…', 'Alle bereit! Suche ein Match…'],
   'Si todos pulsáis «Volver a jugar», buscáis otra partida juntos.': ['If everyone presses “Play again”, you’ll find another match together.', 'Se todos apertarem “Jogar de novo”, vocês procuram outra partida juntos.', 'Si tout le monde appuie sur « Rejouer », vous cherchez une autre partie ensemble.', 'Se tutti premete “Gioca ancora”, cercate un’altra partita insieme.', 'Wenn alle „Nochmal spielen“ drücken, sucht ihr gemeinsam ein neues Match.'],
+  'Aleatorio': ['Random', 'Aleatório', 'Aléatoire', 'Casuale', 'Zufällig'],
+  'Te mete en el modo donde más gente está buscando partida ahora mismo.': ['Puts you in the mode where most people are looking for a match right now.', 'Coloca você no modo onde mais gente está procurando partida agora.', 'Te place dans le mode où le plus de joueurs cherchent une partie en ce moment.', 'Ti mette nella modalità in cui più gente sta cercando una partita adesso.', 'Bringt dich in den Modus, in dem gerade die meisten ein Match suchen.'],
+  '{n} en línea': ['{n} online', '{n} online', '{n} en ligne', '{n} online', '{n} online'],
+  '{n} jugando': ['{n} playing', '{n} jogando', '{n} en jeu', '{n} in partita', '{n} spielen'],
+  '{n} buscando': ['{n} searching', '{n} procurando', '{n} en recherche', '{n} in cerca', '{n} suchen'],
+  'Jugar ya con bots': ['Play now with bots', 'Jogar já com bots', 'Jouer avec des bots', 'Gioca subito con i bot', 'Jetzt mit Bots spielen'],
 };

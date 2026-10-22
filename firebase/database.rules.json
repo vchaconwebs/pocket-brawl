@@ -79,6 +79,10 @@
             ".write": "$s.matches(/^(directo|tiktok|itch|minijuegos|google|youtube|instagram|x|reddit|facebook|otros)$/)",
             ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1"
           }
+        },
+        "peak": {
+          ".write": true,
+          ".validate": "newData.isNumber() && newData.val() > (data.exists() ? data.val() : 0) && newData.val() <= (data.exists() ? data.val() : 0) + 50"
         }
       }
     },
@@ -94,8 +98,13 @@
       ".read": true,
       "$sid": {
         ".write": "$sid.matches(/^[a-z0-9]{12}$/)",
-        ".validate": "newData.isNumber() && (newData.val() === 1 || newData.val() === 2)"
+        ".validate": "newData.isNumber() && (newData.val() === 1 || newData.val() === 2) || newData.isString() && newData.val().matches(/^(m|[ps]:(gems|showdown|heist|ball|zone))$/)"
       }
+    },
+    "statsPeak": {
+      ".read": true,
+      ".write": true,
+      ".validate": "newData.hasChildren(['n', 't']) && newData.child('n').isNumber() && newData.child('n').val() > (data.exists() ? data.child('n').val() : 0) && newData.child('n').val() <= (data.exists() ? data.child('n').val() : 0) + 50 && newData.child('t').isNumber()"
     }
   }
 }

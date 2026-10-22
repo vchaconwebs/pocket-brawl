@@ -93,6 +93,18 @@ PB.Lobby = (() => {
   });
   const candyIcon = () => pixIcon('candy', 18, (c) => c.drawImage(PB.Tiles.candy(), 0, 0));
   const modeIcon = (id) => {
+    if (id === 'random') return pixIcon('mode-random', 40, (c) => {
+      // dado: cuatro colores de los modos y una interrogación
+      c.imageSmoothingEnabled = false;
+      [['#3a7a3a', 0, 0], ['#5a2a78', 20, 0], ['#b8561a', 0, 20], ['#2a4a8a', 20, 20]].forEach(([col, x, y]) => { c.fillStyle = col; c.fillRect(x, y, 20, 20); });
+      c.font = '34px "Jersey 10", monospace';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillStyle = '#10131c';
+      c.fillText('?', 22, 23);
+      c.fillStyle = '#ffd84a';
+      c.fillText('?', 20, 21);
+    });
     if (id === 'heist') return window.SPRITE_DATA['0143'].portrait;
     if (id === 'ball') return window.SPRITE_DATA['0100'].portrait;
     return pixIcon('mode-' + id, 40, (c) => {
@@ -139,8 +151,10 @@ PB.Lobby = (() => {
     $('#hero-name').textContent = b.name;
     $('#hero-lvl').textContent = 'Nv. ' + PB.Save.level(b.id);
     const M = PB.MODES[api.getMode()];
-    $('#mode-ico').src = modeIcon(M.id);
-    $('#mode-name').textContent = M.name;
+    const rnd = api.isRandom && api.isRandom();
+    $('#mode-ico').src = modeIcon(rnd ? 'random' : M.id);
+    $('#mode-name').textContent = rnd ? PB.T('Aleatorio') : M.name;
+    renderModeLive();
     $('#pf-name').textContent = d.name;
     $('#pf-copas').textContent = PB.Save.totalCopas();
     $('#pf-avatar').src = PB.Sprites.portraitURL(d.avatarDex || b.dex);
@@ -420,18 +434,48 @@ PB.Lobby = (() => {
   }
 
   // ------------------------------------------------------------------ modos
+  // cuánta gente hay en cada modo ahora mismo (jugando / buscando)
+  const liveTxt = (id) => {
+    const L = PB.Online.live || { modes: {} };
+    if (id === 'random') {
+      const n = L.total || 0;
+      return n > 1 ? PB.T('{n} en línea', { n }) : '';
+    }
+    const m = L.modes[id] || {};
+    const parts = [];
+    if (m.play) parts.push(PB.T('{n} jugando', { n: m.play }));
+    if (m.search) parts.push(PB.T('{n} buscando', { n: m.search }));
+    return parts.join(' · ');
+  };
+  function renderModeLive() {
+    const rnd = api.isRandom && api.isRandom();
+    const t = liveTxt(rnd ? 'random' : api.getMode());
+    const el = $('#mode-live');
+    if (el) { el.textContent = t; el.classList.toggle('hidden', !t); }
+  }
   function showModes() {
     const grid = $('#mp-grid');
     grid.innerHTML = '';
-    for (const id of PB.MODE_ORDER) {
-      const M = PB.MODES[id];
+    const rnd = api.isRandom && api.isRandom();
+    for (const id of ['random'].concat(PB.MODE_ORDER)) {
+      const M = id === 'random' ? { name: PB.T('Aleatorio'), desc: PB.T('Te mete en el modo donde más gente está buscando partida ahora mismo.') } : PB.MODES[id];
       const el = document.createElement('button');
-      el.className = 'mode-card2' + (id === api.getMode() ? ' sel' : '');
-      el.innerHTML = `<img src="${modeIcon(id)}" alt=""><b>${M.name}</b><span>${M.desc}</span>`;
-      el.onclick = () => { api.setMode(id); showModes(); };
+      el.className = 'mode-card2' + ((id === 'random' ? rnd : !rnd && id === api.getMode()) ? ' sel' : '') + (id === 'random' ? ' rnd' : '');
+      el.dataset.mode = id;
+      el.innerHTML = `<img src="${modeIcon(id)}" alt=""><b>${M.name}</b><span>${M.desc}</span><em class="mc-live"></em>`;
+      el.onclick = () => { PB.Audio.play('ui'); api.setMode(id); showModes(); };
       grid.appendChild(el);
     }
+    renderModesLive();
     show('modepick');
+  }
+  function renderModesLive() {
+    for (const el of document.querySelectorAll('#mp-grid .mode-card2')) {
+      const t = liveTxt(el.dataset.mode);
+      const em = el.querySelector('.mc-live');
+      em.textContent = t ? '● ' + t : '';
+      em.classList.toggle('on', !!t);
+    }
   }
 
   // Icono y texto de un premio de misión
@@ -565,7 +609,7 @@ PB.Lobby = (() => {
       PB.Audio.play(meM.ready ? 'tick' : 'ready');
       return false;
     }
-    if (PB.MODES[api.getMode()].ffa && p.members.length > 1) {
+    if (!(api.isRandom && api.isRandom()) && PB.MODES[api.getMode()].ffa && p.members.length > 1) {
       modal('Niebla Tóxica es todos contra todos: no se puede jugar en grupo. Cambia de modo o sal de la sala.');
       return false;
     }
@@ -1578,6 +1622,7 @@ PB.Lobby = (() => {
     $('#nm-go').onclick = pickName;
     $('#nm-input').onkeydown = (e) => { if (e.key === 'Enter') pickName(); };
     PB.Online.on('chat', () => { if (current === 'clan') renderChat(); });
+    PB.Online.on('live', () => { if (current === 'modepick') renderModesLive(); if (current === 'lobby') renderModeLive(); });
     PB.Online.on('change', () => { if (current === 'clan') showClan(); if (current === 'friends') showFriends(); });
     for (const e of document.querySelectorAll('[data-back]')) e.onclick = () => show(e.dataset.back);
     $('#dt-back').onclick = showCollection;

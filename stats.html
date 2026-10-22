@@ -68,7 +68,10 @@
   .today .mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--edge); }
   .today .mini b { display: block; font-size: 30px; line-height: 1; font-weight: normal; }
   .today .mini span { font-size: 12px; color: var(--muted); }
-  .today .now { display: inline-flex; align-self: flex-start; align-items: center; gap: 8px; margin-bottom: 14px; padding: 6px 12px 6px 10px; border-radius: 999px; background: rgba(57,211,138,.12); border: 1px solid rgba(57,211,138,.35); color: var(--text-2); font-size: 13px; }
+  .today .nowrow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; padding-right: 100px; }
+  .today .rec { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 6px 10px; border-radius: 999px; background: rgba(255,207,46,.12); border: 1px solid rgba(255,207,46,.35); color: var(--text-2); font-size: 13px; }
+  .today .rec b { font-size: 24px; line-height: 1; color: var(--gold); font-weight: normal; }
+  .today .now { display: inline-flex; align-self: flex-start; align-items: center; gap: 8px; padding: 6px 12px 6px 10px; border-radius: 999px; background: rgba(57,211,138,.12); border: 1px solid rgba(57,211,138,.35); color: var(--text-2); font-size: 13px; }
   .today .now i { width: 9px; height: 9px; border-radius: 50%; background: var(--up); animation: ping 2s infinite; }
   .today .now b { font-size: 24px; line-height: 1; color: var(--text); font-weight: normal; }
   .today .mascot { position: absolute; right: 14px; top: 14px; width: 88px; height: 88px; image-rendering: pixelated; border-radius: 14px; border: 2px solid var(--edge); background: var(--panel-3); }
@@ -140,6 +143,7 @@
 
   @media (max-width: 980px) { .top { grid-template-columns: minmax(0, 1fr); } .grid3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .grid3 .funnel-panel { grid-column: 1 / -1; } }
   @media (max-width: 640px) {
+    .today .nowrow { padding-right: 76px; }
     .logo { font-size: 36px; } .logo small { font-size: 16px; } .ball { width: 38px; height: 38px; }
     .today .big { font-size: 76px; } .today .mascot { width: 66px; height: 66px; }
     .tiles { gap: 10px; } .tile { padding: 12px 12px 10px; } .tile .v { font-size: 40px; } .tile .spark { display: none; }
@@ -167,7 +171,10 @@
   <section class="top">
     <div class="panel today">
       <img class="mascot" src="assets/pokemon/25/p.png" alt="">
-      <div class="now" id="now"><i></i><b class="num" id="now-n">–</b><span id="now-txt">en línea ahora</span></div>
+      <div class="nowrow">
+        <div class="now" id="now"><i></i><b class="num" id="now-n">–</b><span id="now-txt">en línea ahora</span></div>
+        <div class="rec" id="rec" title="Récord de jugadores a la vez"><span>🏆</span><b class="num" id="rec-n">–</b><span id="rec-txt">récord a la vez</span></div>
+      </div>
       <div>
         <div class="lbl">Hoy han jugado</div>
         <div class="big num" id="today-big">–</div>
@@ -208,7 +215,7 @@
   <section class="panel">
     <div class="ph"><div><h2>Día a día</h2><p class="note">Del más reciente al más antiguo</p></div></div>
     <div class="pb"><div class="tbl"><table>
-      <thead><tr><th>Día</th><th>Visitas</th><th>Jugadores</th><th>Partidas</th><th>Partidas / jugador</th><th>Invitados nuevos</th><th>Registros</th></tr></thead>
+      <thead><tr><th>Día</th><th>Visitas</th><th>Jugadores</th><th>Partidas</th><th>Partidas / jugador</th><th>Máx. a la vez</th><th>Invitados nuevos</th><th>Registros</th></tr></thead>
       <tbody id="rows"></tbody>
     </table></div></div>
   </section>
@@ -216,7 +223,7 @@
   <footer>
     <b>Visitas:</b> veces que se abre el juego (una por sesión del navegador), también desde itch.io y otras webs.
     <b>Jugadores:</b> personas distintas que juegan al menos una partida ese día; en periodos de varios días se suman los de cada día.
-    <b>En línea:</b> pestañas con el juego abierto ahora mismo (se refresca cada 15 s). Días en hora de España · el resto se actualiza cada minuto.
+    <b>En línea:</b> pestañas con el juego abierto ahora mismo (se refresca cada 15 s). <b>Récord a la vez:</b> el máximo de gente conectada al mismo tiempo (se cuenta desde el 22/10/2026). Días en hora de España · el resto se actualiza cada minuto.
   </footer>
 </div>
 
@@ -428,7 +435,7 @@
     $('#rows').innerHTML = ks.map((k) => {
       const r = data[k] || {};
       return `<tr class="${k === t ? 'is-today' : ''}"><td>${weekday(k)} ${label(k, true)}${k === t ? '<span class="tag">HOY</span>' : ''}</td>${td(r.visits)}${td(r.players)}${td(r.matches)}` +
-        `<td class="${r.players ? '' : 'zero'}">${r.players ? dec(r.matches / r.players) : '–'}</td>${td(r.guests)}${td(r.signups)}</tr>`;
+        `<td class="${r.players ? '' : 'zero'}">${r.players ? dec(r.matches / r.players) : '–'}</td><td class="${r.peak ? '' : 'zero'}">${r.peak ? fmt(r.peak) : '–'}</td>${td(r.guests)}${td(r.signups)}</tr>`;
     }).join('');
   }
 
@@ -451,9 +458,19 @@
     try {
       const o = (await (await fetch(DB + '/online.json', { cache: 'no-store' })).json()) || {};
       if (o.error) return;
-      const all = Object.values(o), playing = all.filter((v) => v === 2).length;
+      const all = Object.values(o);
+      const playing = all.filter((v) => v === 2 || (typeof v === 'string' && v.startsWith('p:'))).length;
+      const searching = all.filter((v) => typeof v === 'string' && v.startsWith('s:')).length;
       $('#now-n').textContent = fmt(all.length);
-      $('#now-txt').textContent = all.length === 1 ? 'en línea ahora' + (playing ? ' · jugando' : ' · en el menú') : `en línea ahora · ${fmt(playing)} jugando`;
+      $('#now-txt').textContent = 'en línea · ' + fmt(playing) + ' jugando' + (searching ? ` · ${fmt(searching)} buscando` : '');
+    } catch (e) {}
+    try {
+      const pk = await (await fetch(DB + '/statsPeak.json', { cache: 'no-store' })).json();
+      if (pk && pk.n) {
+        $('#rec-n').textContent = fmt(pk.n);
+        const d = new Date(pk.t);
+        $('#rec-txt').textContent = 'récord a la vez · ' + d.toLocaleDateString('es-ES', { day: 'numeric', month: 'numeric', timeZone: 'Europe/Madrid' }) + ' ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' });
+      } else { $('#rec-n').textContent = '–'; $('#rec-txt').textContent = 'récord a la vez (aún sin datos)'; }
     } catch (e) {}
   }
 
