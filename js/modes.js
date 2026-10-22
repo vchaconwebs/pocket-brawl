@@ -31,6 +31,24 @@ function teamResult(g, me) {
   return g.winner === me.team ? { title: '¡VICTORIA!', cls: 'win' } : { title: 'DERROTA', cls: 'lose' };
 }
 
+// arbusto de su lado del mapa donde esconderse (ni pegado a la máquina ni en la base)
+function hideSpot(g, b, home) {
+  const W = g.world, T = PB.TILE;
+  if (!W._bushes) {
+    W._bushes = [];
+    for (let r = 0; r < W.h; r++) for (let c = 0; c < W.w; c++) if (W.tile(c, r) === 'b') W._bushes.push({ x: (c + 0.5) * T, y: (r + 0.5) * T });
+  }
+  const dm = dist(home, W.mine);
+  let best = null, bs = Infinity;
+  for (const p of W._bushes) {
+    const fromMine = dist(p, W.mine), fromHome = dist(p, home);
+    if (fromHome > dm * 0.85 || fromMine < 200 || fromHome < 220) continue; // en su mitad, sin irse a casa
+    const sc = dist(p, b) + Math.abs(fromMine - dm * 0.5) * 0.5;
+    if (sc < bs) { bs = sc; best = p; }
+  }
+  return best;
+}
+
 PB.MODES = {
   // ------------------------------------------------------------------ Atrapa Pokéballs
   gems: {
@@ -97,9 +115,19 @@ PB.MODES = {
       if (info.hpF < 0.25 && info.foe && info.fd < 400) {
         return { goal: b.balls >= 4 ? safe : guard, retreat: true };
       }
-      // con muchas Pokéballs (o ganando la cuenta atrás): juega tranquilo en el centro,
-      // coge las que caen cerca si nadie las tiene más a mano y se defiende sin perseguir
-      if ((winning && b.balls > 0) || (b.balls >= 5 && info.hpF < 0.6) || (teamBalls >= g.rules.ballsToWin - 2 && b.balls >= 3)) {
+      // su equipo ya tiene las 10 (cuenta atrás): los que llevan Pokéballs se esconden en un arbusto
+      // de su lado y se echan atrás; los demás defienden en su lado del centro
+      if (winning) {
+        if (b.balls > 0) {
+          if (!bot.hide || bot.hideFor !== g.countdown) { bot.hide = hideSpot(g, b, home); bot.hideFor = g.countdown; }
+          return { goal: bot.hide || safe, retreat: true };
+        }
+        return { goal: guard };
+      }
+      bot.hide = null;
+      // con muchas Pokéballs: juega tranquilo en el centro, coge las que caen cerca
+      // si nadie las tiene más a mano y se defiende sin perseguir
+      if ((b.balls >= 5 && info.hpF < 0.6) || (teamBalls >= g.rules.ballsToWin - 2 && b.balls >= 3)) {
         let near = null, nd = 340;
         for (const gm of g.balls) {
           const d = dist(gm, b);
@@ -108,6 +136,8 @@ PB.MODES = {
         if (near) return { goal: near };
         return { goal: guard };
       }
+      // con pocas Pokéballs: a por todas (se pelea más y persigue)
+      if (info.foe && b.balls <= 2 && info.fd < 750 && info.hpF > 0.4) return { goal: info.foe, aggressive: true };
       if (info.foe && (losing || (info.fd < 700 && info.hpF > 0.45))) return { goal: info.foe };
       let best = null, bd = Infinity;
       for (const gm of g.balls) {
