@@ -273,6 +273,8 @@
     perKOStage: 8,
     catchUp: 1.3, // si vas por detrás en evolución de algún rival, ganas EXP más rápido
   };
+  PB.EVO_ANIM = 1.6; // duración de la animación de evolución (s)
+  PB.EVO_REVEAL = 0.45; // cuando quedan estos segundos se ve la forma nueva
   PB.evoSteps = (def) => (def.line.length >= 3 ? PB.EVO.xp3 : def.line.length === 2 ? PB.EVO.xp2 : []);
   PB.stageMul = (def, stage) => (def.line.length >= 3 ? PB.EVO.mul3 : def.line.length === 2 ? PB.EVO.mul2 : PB.EVO.mul1)[stage] || 1;
   // `o` puede ser la ficha (def) o el luchador de la partida (b.line es la rama que eligió: Eevee -> Jolteon...)

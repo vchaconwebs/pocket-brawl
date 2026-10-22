@@ -1826,3 +1826,24 @@ h1.lose { color: #ff8a7a; }
 /* escudo elegido al crear un clan */
 .icons button.sel { outline: 3px solid #ffcf2e; outline-offset: 1px; }
 .pf-av-btn img#pf-big { width: 80px; height: 80px; image-rendering: pixelated; }
+
+/* revancha en grupo: votos debajo de los botones */
+.end-vote { margin: 8px 0 0; text-align: center; font-size: 14px; color: #c9d4f2; min-height: 18px; }
+.end-vote b { color: #ffe066; }
+.end-vote span { display: inline-block; margin: 0 4px; padding: 1px 8px; border-radius: 10px; background: rgba(255,255,255,0.08); }
+.end-vote span.ok { background: rgba(80,200,120,0.25); color: #b8ffcf; }
+#again.voted { filter: saturate(0.6) brightness(0.85); }
+#again:disabled { opacity: 0.6; }
+
+/* pantalla final: el resultado entra con un salto y las filas van apareciendo */
+#end:not(.hidden) #result { animation: endPop 0.45s cubic-bezier(.2,1.6,.4,1) both; }
+#end:not(.hidden) .end-row { animation: rowIn 0.3s ease-out both; }
+#end:not(.hidden) .end-row:nth-child(2) { animation-delay: 0.06s; }
+#end:not(.hidden) .end-row:nth-child(3) { animation-delay: 0.12s; }
+#end:not(.hidden) .end-row:nth-child(n+4) { animation-delay: 0.18s; }
+#end:not(.hidden) #end-rewards > * { animation: rowIn 0.35s ease-out 0.25s both; }
+#end:not(.hidden) .er-mvp { animation: mvpGlow 1.2s ease-in-out 0.4s infinite alternate; }
+@keyframes endPop { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes rowIn { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes mvpGlow { from { filter: none; } to { filter: drop-shadow(0 0 4px #ffe066) brightness(1.2); } }
+.end-vote { margin: 2px 0 6px; }

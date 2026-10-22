@@ -30,6 +30,9 @@
             ".write": "auth != null && (auth.uid === $uid || data.parent().parent().child('leader').val() === auth.uid)",
             ".validate": "!newData.exists() || newData.child('name').isString() && newData.child('name').val().length <= 16"
           }
+        },
+        "rematch": {
+          ".write": "auth != null && data.parent().child('members').child(auth.uid).exists()"
         }
       }
     },

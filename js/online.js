@@ -75,8 +75,9 @@ PB.Online = (() => {
   // ------------------------------------------------------------ contador (stats.html)
   // Solo números por día: visitas, partidas, jugadores distintos y cuentas nuevas. Nada personal.
   const day = () => new Date(Date.now() + offset).toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+  const testing = /^(localhost|127\.0\.0\.1)$/.test(location.hostname); // las pruebas en local no cuentan
   function bump(path) {
-    if (!rtdb) return;
+    if (!rtdb || testing) return;
     rtdb.ref('stats/' + day() + '/' + path).set(fb.database.ServerValue.increment(1)).catch(() => {});
   }
   function countVisit() {
@@ -85,7 +86,7 @@ PB.Online = (() => {
   }
   // el primer registro del día de cada jugador suma uno a "players" (la lista no se puede leer)
   function countPlayer() {
-    if (!rtdb || !uid) return;
+    if (!rtdb || !uid || testing) return;
     rtdb.ref('statsSeen/' + day() + '/' + uid).set(true).then(() => bump('players')).catch(() => {});
   }
   function countMatch(mode) {
@@ -609,6 +610,7 @@ PB.Online = (() => {
           return { id, name: clean(m.name, 16), fav: PB.brawlerById(m.fav) ? m.fav : PB.BRAWLERS[0].id, line: m.line, lvl: m.lvl | 0, shiny: !!m.shiny, copas: m.copas | 0, ready: !!m.ready || id === v.leader, me: id === uid };
         }),
         state: v.state || null,
+        rematch: v.rematch || null,
       };
       for (const id of ids) if (party.invited) delete party.invited[id];
       emit('party', info);
@@ -676,6 +678,33 @@ PB.Online = (() => {
       emit('invite', { from: s.key, name: clean(v.name, 16), code: clean(v.code, 6) });
     });
   }
+  // Revancha en grupo: al acabar, cada uno vota "Volver a jugar". El primer voto abre 10 s;
+  // si votan todos, el jefe busca partida. Si alguien vuelve a la sala, se cancela.
+  const REMATCH_S = 10;
+  function voteRematch() {
+    if (!partyRef) return;
+    partyRef.child('rematch').transaction((cur) => {
+      if (!cur || cur.go || now() - (cur.t || 0) > REMATCH_S * 1000 + 500) return { t: now(), votes: { [uid]: true } };
+      cur.votes = cur.votes || {};
+      cur.votes[uid] = true;
+      return cur;
+    }).catch(() => {});
+  }
+  function cancelRematch() {
+    if (partyRef) partyRef.child('rematch').remove().catch(() => {});
+  }
+  // todos han votado: el jefe lo marca (para que los demás vean "buscando") y lo borra al rato
+  function rematchGo() {
+    if (!partyRef) return;
+    const ref = partyRef.child('rematch');
+    ref.update({ go: true }).catch(() => {});
+    setTimeout(() => ref.remove().catch(() => {}), 20000);
+  }
+  function rematchLeft() {
+    const r = party && party.rematch;
+    return r && r.t ? Math.max(0, REMATCH_S - (now() - r.t) / 1000) : 0;
+  }
+
   function setReady(v) {
     if (!partyRef) return;
     partyRef.child('members/' + uid + '/ready').set(!!v);
@@ -1019,6 +1048,7 @@ PB.Online = (() => {
     searchClans, getClan, myClan, createClan, joinClan, leaveClan, clanRequests, answerClanRequest,
     chat, sendChat,
     party: () => party, createParty, invite, joinByCode, setReady, updateMe, kick, leaveParty,
+    voteRematch, cancelRematch, rematchGo, rematchLeft,
     friends, requests, searchPlayers, addFriend, answerRequest, removeFriend,
     findMatch, cancelMatch, joinMatch, migrate,
     get searching() { return !!search; },

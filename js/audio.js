@@ -27,7 +27,14 @@ PB.Audio = {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.master = this.ctx.createGain();
       this.master.gain.value = 0.42 * this.volume;
-      this.master.connect(this.ctx.destination);
+      // compresor: los golpes suenan con más cuerpo y nada satura cuando hay mucho jaleo
+      const comp = this.ctx.createDynamicsCompressor();
+      comp.threshold.value = -16;
+      comp.knee.value = 10;
+      comp.ratio.value = 4;
+      comp.attack.value = 0.003;
+      comp.release.value = 0.15;
+      this.master.connect(comp).connect(this.ctx.destination);
       this.sfx = this.ctx.createGain();
       this.sfx.connect(this.master);
       this.musicBus = this.ctx.createGain();
@@ -178,14 +185,45 @@ PB.Audio = {
     const o = opt || {};
     switch (type) {
       case 'shoot': this.typeSound(o.type, o.me ? 1 : 0.55, false); break;
-      case 'super':
-        this.tone(300, 0.3, { to: 1200, type: 'square', vol: 0.1 });
+      case 'super': { // carga que sube, golpe grave y el sonido del tipo a lo grande
+        const v = o.me ? 1 : 0.55;
+        this.noise(0.25, { filter: 'bandpass', freq: 400, to: 4000, q: 1.5, vol: 0.14 * v, attack: 0.15 });
+        this.tone(220, 0.22, { to: 880, type: 'square', vol: 0.07 * v });
+        this.tone(70, 0.4, { to: 40, type: 'sine', vol: 0.4 * v, delay: 0.18 });
+        this.noise(0.18, { filter: 'lowpass', freq: 1600, to: 300, vol: 0.2 * v, delay: 0.18 });
         this.typeSound(o.type, o.me ? 1.1 : 0.6, true);
         break;
-      case 'hit': this.tone(o.me ? 160 : 240, 0.08, { to: 90, vol: o.me ? 0.24 : 0.11 }); break;
+      }
+      case 'hit':
+        if (o.me) { // me pegan: golpe sordo y grave
+          this.tone(130, 0.12, { to: 55, type: 'sine', vol: 0.32 });
+          this.noise(0.07, { filter: 'lowpass', freq: 900, vol: 0.18 });
+        } else { // pego yo: chasquido seco y agudo, satisfactorio
+          this.tone(420, 0.06, { to: 160, type: 'square', vol: 0.09 });
+          this.noise(0.045, { filter: 'bandpass', freq: 3200, q: 1.2, vol: 0.16 });
+          this.tone(95, 0.07, { to: 60, type: 'sine', vol: 0.16 });
+        }
+        break;
       case 'ko':
-        this.tone(600, 0.45, { to: 70, type: 'sawtooth', vol: 0.2 });
-        this.tone(900, 0.3, { to: 300, vol: 0.08, delay: 0.05 });
+        if (o.mine) { // lo he debilitado yo: golpe + campanita
+          this.noise(0.2, { filter: 'lowpass', freq: 2200, to: 300, vol: 0.28 });
+          this.tone(110, 0.25, { to: 50, type: 'sine', vol: 0.35 });
+          [1319, 1760].forEach((f, i) => this.tone(f, 0.18, { type: 'triangle', vol: 0.12, delay: 0.08 + i * 0.07 }));
+        } else if (o.me) { // me han debilitado a mí
+          this.tone(440, 0.6, { to: 90, type: 'sawtooth', vol: 0.16 });
+          this.tone(330, 0.6, { to: 70, type: 'triangle', vol: 0.12, delay: 0.08 });
+          this.noise(0.3, { filter: 'lowpass', freq: 800, to: 150, vol: 0.18 });
+        } else {
+          this.tone(600, 0.35, { to: 90, type: 'sawtooth', vol: 0.1 });
+          this.noise(0.12, { filter: 'lowpass', freq: 1500, vol: 0.08 });
+        }
+        break;
+      case 'alarm': // el rival tiene 10 Pokéballs: aviso de dos notas
+        [0, 0.22].forEach((d) => { this.tone(740, 0.12, { type: 'square', vol: 0.09, delay: d }); this.tone(587, 0.12, { type: 'square', vol: 0.09, delay: d + 0.11 }); });
+        break;
+      case 'heart': // poca vida: latido
+        this.tone(70, 0.12, { to: 45, type: 'sine', vol: 0.32 });
+        this.tone(65, 0.12, { to: 42, type: 'sine', vol: 0.24, delay: 0.17 });
         break;
       case 'ball': // recoger Pokéball
         this.tone(988, 0.08, { vol: 0.14 });
@@ -203,10 +241,20 @@ PB.Audio = {
       case 'go': this.tone(1320, 0.35, { vol: 0.16 }); this.tone(400, 0.25, { to: 1600, type: 'sine', vol: 0.12 }); break;
       case 'tick': this.tone(880, 0.07, { vol: 0.1 }); break;
       case 'candy': [660, 880, 1320].forEach((f, i) => this.tone(f, 0.09, { vol: 0.12, delay: i * 0.05 })); break;
-      case 'evolve': // arpegio que sube, como al evolucionar en los juegos
-        [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.11, { vol: 0.11, delay: i * 0.08 }));
-        this.tone(400, 0.6, { to: 1800, type: 'sine', vol: 0.1, delay: 0.1 });
+      case 'evolve': { // brillo que sube y vibra cada vez más rápido (dura lo que la animación)
+        const v = o.far ? 0.45 : 1;
+        this.tone(300, 1.15, { to: 1400, type: 'sine', vol: 0.11 * v, vib: 9, vibAmt: 40, attack: 0.1 });
+        this.tone(450, 1.15, { to: 2100, type: 'triangle', vol: 0.05 * v, vib: 13, vibAmt: 60, attack: 0.2 });
+        this.noise(1.15, { filter: 'bandpass', freq: 800, to: 6000, q: 3, vol: 0.06 * v, attack: 0.6 });
         break;
+      }
+      case 'evolved': { // la forma nueva: acorde brillante
+        const v = o.far ? 0.45 : 1;
+        this.noise(0.5, { filter: 'highpass', freq: 4000, vol: 0.12 * v });
+        [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.5 - i * 0.04, { type: i % 2 ? 'triangle' : 'square', vol: 0.08 * v, delay: i * 0.05 }));
+        this.tone(1568, 0.6, { type: 'sine', vol: 0.07 * v, delay: 0.25 });
+        break;
+      }
       case 'gas': this.tone(200, 0.8, { to: 120, type: 'sawtooth', vol: 0.09 }); this.noise(0.8, { filter: 'lowpass', freq: 500, vol: 0.12 }); break;
       case 'thump': this.tone(110, 0.15, { to: 60, type: 'sine', vol: 0.3 }); break;
       case 'kick': this.tone(320, 0.1, { to: 140, vol: 0.2 }); this.noise(0.08, { filter: 'lowpass', freq: 2000, vol: 0.16 }); break;

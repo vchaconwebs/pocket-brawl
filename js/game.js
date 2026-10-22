@@ -90,6 +90,7 @@ PB.Game = class {
   evolve(b) {
     const before = PB.stageMul(b.def, b.stage);
     const oldName = PB.stageName(b, b.stage);
+    b.evoFrom = b.dex; // para la animación: alterna entre la forma de antes y la nueva
     b.stage++;
     const after = PB.stageMul(b.def, b.stage);
     b.dex = b.line[b.stage];
@@ -104,13 +105,10 @@ PB.Game = class {
     // más vida máxima y se cura una parte
     b.maxHp = Math.round((b.maxHp * after) / before);
     b.hp = Math.min(b.maxHp, (b.hp * after) / before + b.maxHp * 0.25);
-    b.evoT = 1;
-    b.shieldT = Math.max(b.shieldT, 0.6);
-    const pal = PB.VFX.PAL[b.def.atkType] || PB.VFX.PAL.normal;
-    this.ring(b.x, b.y - 20, 10, 110, '#ffffff', 0.5, 6);
-    this.ring(b.x, b.y - 20, 10, 80, pal[3], 0.4, 5);
-    this.flash(b.x, b.y - 24, 120, '#ffffff', 0.35);
-    for (let i = 0; i < 22; i++) this.px(b.x, b.y - 24, i % 2 ? '#ffffff' : pal[3], { speed: 260, vy: -60, life: 0.6, size: 5 });
+    b.evoT = PB.EVO_ANIM;
+    b.shieldT = Math.max(b.shieldT, PB.EVO_ANIM + 0.2); // no se le puede dañar mientras evoluciona
+    this.ring(b.x, b.y - 20, 10, 80, '#ffffff', 0.5, 5);
+    for (let i = 0; i < 10; i++) this.px(b.x, b.y - 24, '#ffffff', { speed: 120, vy: -40, life: 0.5, size: 4 });
     this.text(b.x, b.y - 110, PB.T('¡Evoluciona!'), '#ffe066', 18);
     this.events.push({ type: 'evolve', b, from: oldName, to: PB.stageName(b, b.stage) });
   }
@@ -193,7 +191,9 @@ PB.Game = class {
       if (b.respawnT <= 0) this.respawn(b);
       return;
     }
-    b.animT += dt;
+    // con el golpe, la animación se para un instante
+    if (b.hitStopT > 0) b.hitStopT -= dt;
+    else b.animT += dt;
     b.shotCd -= dt;
     b.hurtT -= dt;
     b.flashT -= dt;
@@ -201,7 +201,19 @@ PB.Game = class {
     b.shieldT -= dt;
     b.stunT -= dt;
     b.spawnT -= dt;
-    if (b.evoT > 0) b.evoT -= dt;
+    if (b.evoT > 0) {
+      const before = b.evoT;
+      b.evoT -= dt;
+      // final de la evolución: se ve la forma nueva con un estallido de luz
+      if (before > PB.EVO_REVEAL && b.evoT <= PB.EVO_REVEAL) {
+        const pal = PB.VFX.PAL[b.def.atkType] || PB.VFX.PAL.normal;
+        this.ring(b.x, b.y - 20, 10, 130, '#ffffff', 0.5, 6);
+        this.ring(b.x, b.y - 20, 10, 90, pal[3], 0.45, 5);
+        this.flash(b.x, b.y - 24, 140, '#ffffff', 0.4);
+        for (let i = 0; i < 26; i++) this.px(b.x, b.y - 24, i % 2 ? '#ffffff' : pal[3], { speed: 280, vy: -60, life: 0.7, size: 5 });
+        this.events.push({ type: 'evolved', b });
+      }
+    }
     if (b.barrierT > 0) b.barrierT -= dt;
     this.gainXp(b, PB.EVO.passive * dt);
     if (b.stealthT > 0) b.stealthT -= dt;
@@ -244,6 +256,8 @@ PB.Game = class {
       const len = Math.hypot(mx, my);
       if (len > 1) { mx /= len; my /= len; }
       if (b.stunT > 0) { mx = 0; my = 0; }
+      // parón del golpe: casi quieto durante unas centésimas
+      if (b.hitStopT > 0) { mx *= 0.15; my *= 0.15; }
       const sp = b.def.speed * (b.stealthT > 0 ? b.def.super.speedMul || 1 : 1);
       this.world.moveCircle(b, mx * sp * dt + b.kx * dt, my * sp * dt + b.ky * dt);
       b.moving = len > 0.15 && b.stunT <= 0;
@@ -959,8 +973,30 @@ PB.Game = class {
       this.vfx('impact', atkType, hx, hy, { scale: opts.big ? 2.2 : 1.4, life: 0.16, frameRate: 14 });
       for (let i = 0; i < (opts.big ? 10 : 5); i++) this.px(hx, hy, pal[2 + (i % 3)], { speed: opts.big ? 220 : 140, life: 0.3, size: 4 });
     }
-    const col = eff > 1 ? '#ffcf3a' : eff < 1 ? '#c9c9c9' : '#ffffff';
-    this.text(target.x + (Math.random() - 0.5) * 24, target.y - 64, String(amt), col, eff > 1 ? 26 : opts.quiet ? 15 : 20, true);
+    // número de daño: pequeño y por colores (amarillo = muy eficaz, gris = poco eficaz).
+    // Los golpes seguidos al mismo Pokémon se suman en un solo número para no llenar la pantalla.
+    const col = eff > 1 ? '#ffcf3a' : eff < 1 ? '#b8b8b8' : target.isPlayer ? '#ff8a80' : '#ffffff';
+    const prevTxt = this.fx.find((f) => f.kind === 'text' && f.dmg && f.tid === target.idx && !f._s && f.t < 0.3);
+    if (prevTxt) {
+      prevTxt.val += amt;
+      prevTxt.text = String(prevTxt.val);
+      prevTxt.t = Math.min(prevTxt.t, 0.06);
+      if (eff > 1) { prevTxt.color = col; prevTxt.size = 19; }
+    } else {
+      this.text(target.x + (Math.random() - 0.5) * 20, target.y - 62, String(amt), col, eff > 1 ? 19 : opts.quiet ? 12 : 15, true);
+      const f = this.fx[this.fx.length - 1];
+      f.tid = target.idx;
+      f.val = amt;
+    }
+    // golpe que "pesa": el objetivo se queda quieto un instante y retrocede un poco
+    if (!opts.quiet && source && amt > 0) {
+      target.hitStopT = Math.max(target.hitStopT || 0, opts.big || eff > 1 ? 0.07 : 0.04);
+      if (!opts.knockback) {
+        const a = Math.atan2(target.y - source.y, target.x - source.x);
+        target.kx += Math.cos(a) * 140;
+        target.ky += Math.sin(a) * 140;
+      }
+    }
     if (eff > 1 && opts.shotId && this._lastEffShot !== opts.shotId) {
       this._lastEffShot = opts.shotId;
       this.text(target.x, target.y - 92, PB.T('¡Muy eficaz!'), '#ffcf3a', 16);

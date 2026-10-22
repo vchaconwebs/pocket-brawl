@@ -120,8 +120,8 @@ PB.MODES = {
     },
     update(g, dt) {
       const gas = g.gas;
-      // la niebla empieza a cerrarse a los 15 s y llega al mínimo a los 1:35
-      const k = Math.max(0, Math.min(1, (g.time - 15) / 80));
+      // la niebla empieza a cerrarse a los 15 s y llega al mínimo a los 1:15
+      const k = Math.max(0, Math.min(1, (g.time - 15) / 60));
       gas.r = gas.maxR + (gas.minR - gas.maxR) * k;
       if (k > 0 && !gas.warn) { gas.warn = true; g.events.push({ type: 'gas' }); }
       gas.tickT -= dt;
@@ -360,9 +360,36 @@ PB.MODES = {
       if (v.carrier === b) {
         const d = dist(b, goal);
         const shootX = goalR.x0 + 30 + Math.random() * (goalR.x1 - goalR.x0 - 60);
-        if ((d < 460 && W.los(b.x, b.y, shootX, goal.y)) || v.holdT > 7.5) {
+        // el chute llega a unos 320 px: desde más lejos se queda corto, mejor acercarse o pasarla
+        if ((d < 290 && W.los(b.x, b.y, shootX, goal.y)) || v.holdT > 7.5) {
           const ang = Math.atan2(goal.y - b.y, shootX - b.x);
           return { goal, kick: { dx: Math.cos(ang), dy: Math.sin(ang) } };
+        }
+        // pase: si me agobian, no veo la portería o llevo un rato con el balón,
+        // se lo paso a un compañero que esté más adelantado y con el camino libre
+        const foes = g.enemiesOf(b).filter((e) => !e.dead);
+        const pressed = foes.some((e) => dist(e, b) < 230);
+        if ((pressed || v.holdT > 1.5 || !W.los(b.x, b.y, goal.x, goal.y)) && !(bot.passT > g.time)) {
+          const blocked = (o) => foes.some((e) => {
+            // ¿hay un rival cerca de la línea del pase?
+            const lx = o.x - b.x, ly = o.y - b.y, l2 = lx * lx + ly * ly || 1;
+            const k = Math.max(0, Math.min(1, ((e.x - b.x) * lx + (e.y - b.y) * ly) / l2));
+            return Math.hypot(b.x + lx * k - e.x, b.y + ly * k - e.y) < 42;
+          });
+          let best = null;
+          for (const o of g.brawlers) {
+            if (o === b || o.team !== b.team || o.dead || o.spawnT > 0) continue;
+            const od = dist(o, b), gd = dist(o, goal);
+            if (od < 90 || od > 300 || gd > d - (pressed ? 0 : 60) || !W.los(b.x, b.y, o.x, o.y) || blocked(o)) continue;
+            if (!best || gd < best.gd) best = { o, gd };
+          }
+          if (best) {
+            bot.passT = g.time + 1.2;
+            // un poco por delante de hacia donde corre el compañero
+            const tx = best.o.x + (best.o.vx || 0) * 0.25, ty = best.o.y + (best.o.vy || 0) * 0.25;
+            const ang = Math.atan2(ty - b.y, tx - b.x);
+            return { goal, kick: { dx: Math.cos(ang), dy: Math.sin(ang) } };
+          }
         }
         return { goal, avoidFight: true };
       }
@@ -371,7 +398,8 @@ PB.MODES = {
       if (v.carrier && v.carrier.team === b.team) {
         // escoltar al compañero que lleva el balón
         const c = v.carrier, d = dist(c, goal) || 1;
-        return { goal: { x: c.x + ((goal.x - c.x) / d) * 180 + ((b.idx % 3) - 1) * 120, y: c.y + ((goal.y - c.y) / d) * 180 } };
+        const side = (b.idx % 2 ? 1 : -1) * 150;
+        return { goal: { x: c.x + ((goal.x - c.x) / d) * 220 - ((goal.y - c.y) / d) * side, y: c.y + ((goal.y - c.y) / d) * 220 + ((goal.x - c.x) / d) * side } };
       }
       if (v.carrier) return { goal: v.carrier }; // quitárselo al rival
       // balón suelto: los dos más cercanos van a por él, el otro defiende

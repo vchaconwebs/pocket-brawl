@@ -57,6 +57,12 @@ PB.Renderer = class {
     o.facing = f;
   }
 
+  // súper lanzada cerca: pequeño zoom de cámara y destello del color del tipo
+  superFx(type, mine) {
+    const P = PB.VFX.PAL[type] || PB.VFX.PAL.normal;
+    this.sfx = { t0: performance.now(), color: P[3], mine: !!mine };
+  }
+
   announce(text, color, sub, life) {
     this.banner = { text: PB.T(text), color: color || '#ffffff', sub: sub ? PB.T(sub) : '', t: 0, life: life || 1.4 };
   }
@@ -100,10 +106,17 @@ PB.Renderer = class {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#2c5a3a';
     ctx.fillRect(0, 0, this.cv.width, this.cv.height);
-    const s = this.cam.scale * this.dpr;
+    let zk = 1, sfxK = -1;
+    if (this.sfx) {
+      sfxK = (performance.now() - this.sfx.t0) / 380;
+      if (sfxK >= 1) this.sfx = null;
+      else zk = 1 + (this.sfx.mine ? 0.06 : 0.035) * Math.sin(Math.PI * sfxK);
+    }
+    const sc = this.cam.scale * zk;
+    const s = sc * this.dpr;
     const sk = PB.Settings.get('shake') ? game.shake : 0;
     const shx = (Math.random() - 0.5) * sk, shy = (Math.random() - 0.5) * sk;
-    ctx.setTransform(fk * s, 0, 0, fk * s, (this.cw / 2 - fk * this.cam.x * this.cam.scale + shx) * this.dpr, (this.ch / 2 - fk * this.cam.y * this.cam.scale + shy) * this.dpr);
+    ctx.setTransform(fk * s, 0, 0, fk * s, (this.cw / 2 - fk * this.cam.x * sc + shx) * this.dpr, (this.ch / 2 - fk * this.cam.y * sc + shy) * this.dpr);
     ctx.imageSmoothingEnabled = false;
 
     const vx0 = this.cam.x - halfW - T, vx1 = this.cam.x + halfW + T;
@@ -289,21 +302,32 @@ PB.Renderer = class {
       if (f.kind !== 'text') continue;
       if (f.dmg && !PB.Settings.get('dmgNumbers')) continue;
       const k = f.t / f.life;
-      const pop = k < 0.15 ? 0.6 + (k / 0.15) * 0.7 : 1.3 - Math.min(0.3, (k - 0.15) * 1.5);
+      // los números de daño saltan un poco y suben mientras se desvanecen
+      const pop = f.dmg ? (k < 0.12 ? 0.7 + (k / 0.12) * 0.45 : 1.15 - Math.min(0.15, (k - 0.12) * 0.8)) : k < 0.15 ? 0.6 + (k / 0.15) * 0.7 : 1.3 - Math.min(0.3, (k - 0.15) * 1.5);
+      const fy = f.dmg ? f.y - k * 22 : f.y;
       ctx.globalAlpha = 1 - k * k;
       ctx.font = `${Math.round(f.size * pop)}px "Jersey 10", system-ui, sans-serif`;
-      ctx.lineWidth = 5;
+      ctx.lineWidth = f.dmg ? 4 : 5;
       ctx.lineJoin = 'round';
       ctx.strokeStyle = '#000';
-      this.up(f.x, f.y, () => {
-        ctx.strokeText(f.text, f.x, f.y);
+      this.up(f.x, fy, () => {
+        ctx.strokeText(f.text, f.x, fy);
         ctx.fillStyle = f.color;
-        ctx.fillText(f.text, f.x, f.y);
+        ctx.fillText(f.text, f.x, fy);
       });
     }
     ctx.globalAlpha = 1;
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    // destello de la súper: borde de pantalla del color del tipo
+    if (this.sfx && sfxK >= 0) {
+      const a = (1 - sfxK) * (this.sfx.mine ? 0.65 : 0.35);
+      const gr = ctx.createRadialGradient(this.cw / 2, this.ch / 2, Math.min(this.cw, this.ch) * 0.22, this.cw / 2, this.ch / 2, Math.max(this.cw, this.ch) * 0.7);
+      gr.addColorStop(0, 'rgba(0,0,0,0)');
+      gr.addColorStop(1, this.hexA(this.sfx.color, a));
+      ctx.fillStyle = gr;
+      ctx.fillRect(0, 0, this.cw, this.ch);
+    }
     if (view.hud !== false) this.drawHud(game, view);
   }
 
@@ -794,10 +818,35 @@ PB.Renderer = class {
     const prev = ctx.globalAlpha;
     if (b.stealthT > 0) ctx.globalAlpha = prev * 0.35;
     if (b.shieldT > 0) ctx.globalAlpha *= 0.75 + Math.sin(t * 20) * 0.25;
-    if (b.evoT > 0) {
-      // evolución: brilla en blanco y se va desvaneciendo el brillo
-      if (b.evoT > 0.5) this.glow(b.x, b.y - 24, 70 * (b.evoT - 0.3), `rgba(255,255,255,${b.evoT - 0.3})`);
-      PB.Sprites.drawTint(ctx, b.dex, 'Idle', b.facing, at, b.x, b.y + 4, 2, 0, '#ffffff', Math.min(1, b.evoT * 1.2), b.shiny);
+    if (b.evoT > PB.EVO_REVEAL && b.evoFrom) {
+      // evolución como en los juegos: silueta blanca que alterna entre la forma de antes y la nueva,
+      // cada vez más deprisa, con un halo de luz y rayos
+      const el = PB.EVO_ANIM - b.evoT, k = el / (PB.EVO_ANIM - PB.EVO_REVEAL);
+      const showNew = Math.sin(el * el * 22) > 0.2 && k > 0.15;
+      const sc = 2 * (1 + 0.08 * Math.sin(el * 18) * k);
+      this.glow(b.x, b.y - 24, 50 + 40 * k, `rgba(255,255,255,${0.18 + 0.25 * k})`);
+      ctx.save();
+      ctx.globalAlpha = prev * 0.35 * k;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 8; i++) {
+        const a = i * (Math.PI / 4) + el * 1.5;
+        ctx.beginPath();
+        ctx.moveTo(b.x + Math.cos(a) * 30, b.y - 24 + Math.sin(a) * 30);
+        ctx.lineTo(b.x + Math.cos(a) * (70 + 40 * k), b.y - 24 + Math.sin(a) * (70 + 40 * k));
+        ctx.stroke();
+      }
+      ctx.restore();
+      // contorno del color del tipo detrás de la silueta blanca, para que se vea bien la forma
+      const evDex = showNew ? b.dex : b.evoFrom;
+      const pal = PB.VFX.PAL[b.def.atkType] || PB.VFX.PAL.normal;
+      ctx.globalAlpha = prev * 0.85;
+      for (const [ox, oy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) PB.Sprites.drawTint(ctx, evDex, 'Idle', b.facing, at, b.x + ox, b.y + 4 + oy, sc, 0, pal[1] || '#3060c0', 1, b.shiny);
+      ctx.globalAlpha = prev;
+      PB.Sprites.drawTint(ctx, evDex, 'Idle', b.facing, at, b.x, b.y + 4, sc, 0, '#ffffff', 1, b.shiny);
+    } else if (b.evoT > 0) {
+      // forma nueva: el brillo blanco se va apagando
+      PB.Sprites.drawTint(ctx, b.dex, 'Idle', b.facing, at, b.x, b.y + 4, 2, 0, '#ffffff', Math.min(1, (b.evoT / PB.EVO_REVEAL) * 0.9), b.shiny);
     } else if (b.flashT > 0) PB.Sprites.drawTint(ctx, b.dex, anim, b.facing, at, b.x, b.y + 4, 2, len, '#ffffff', 0.85, b.shiny);
     else PB.Sprites.draw(ctx, b.dex, anim, b.facing, at, b.x, b.y + 4, 2, len, b.shiny);
     ctx.globalAlpha = prev;
@@ -1098,7 +1147,7 @@ PB.Renderer = class {
     this.drawModeHud(game, view);
 
     // registro de K.O. con retratos: [quien] ➜ [a quién]
-    let fy = W < 760 ? 112 : game.mode.id === 'gems' ? 56 : 10; // en pantallas estrechas, debajo del marcador
+    let fy = W < 760 ? 112 : game.mode.id === 'gems' ? 74 : 10; // en pantallas estrechas, debajo del marcador
     for (const f of game.feed) {
       const age = game.time - f.t;
       if (age > 5) continue;
@@ -1224,15 +1273,23 @@ PB.Renderer = class {
       const mine = game.teamBalls(team), theirs = game.teamBalls(foe);
       const R = game.rules.ballsToWin;
       const S = PB.safe ? PB.safe() : { l: 0, r: 0 };
-      const counter = (x, n, fill, right) => {
+      const counter = (x, n, fill, right, ours) => {
         const w = 98, h = 40, bx = right ? x - w : x;
+        // con 10 o más, el marcador brilla en dorado y avisa debajo (sin tapar el centro)
+        const full = n >= R;
+        if (full) {
+          const p = 0.5 + Math.sin(game.clock * 7) * 0.5;
+          ctx.fillStyle = `rgba(255,214,58,${0.35 + p * 0.5})`;
+          ctx.fillRect(bx - 3, 5, w + 6, h + 6);
+        }
         UI.panel(ctx, bx, 8, w, h, { p: 2, fill });
         PB.Pokeball.draw(ctx, bx + 22, 28, 1.3, {});
-        this.outlined(String(n), bx + 42, 39, 30, '#ffffff', 'left');
+        this.outlined(String(n), bx + 42, 39, 30, full ? '#ffe066' : '#ffffff', 'left');
         this.outlined('/' + R, bx + 44 + (n >= 10 ? 30 : 16), 39, 16, 'rgba(255,255,255,0.75)', 'left');
+        if (full) this.outlined(PB.T(ours ? '¡Tenéis {n}!' : '¡Tienen {n}!', { n }), bx + w / 2, h + 24, 13, ours ? '#9fd0ff' : '#ffb0a8');
       };
-      counter(10 + S.l + 58, mine, 'rgba(30,70,150,0.9)', false);
-      counter(W - 10 - S.r, theirs, 'rgba(150,30,40,0.9)', true);
+      counter(10 + S.l + 58, mine, 'rgba(30,70,150,0.9)', false, true);
+      counter(W - 10 - S.r, theirs, 'rgba(150,30,40,0.9)', true, false);
       clock(28);
       if (game.countdown) {
         const ours = game.countdown.team === team;

@@ -21,6 +21,7 @@
   };
   let gameMode = load('pb.mode', (v) => PB.MODES[v], 'gems');
   let endTimer = 0;
+  let heartT = 0;
   let spectate = 0;
   // Partida en red (null = partida normal en este navegador):
   // { role: 'host'|'client', link, seats: { peerId: idx }, myIdx, host|client, remotes, sendT, inT, lastIn }
@@ -503,12 +504,96 @@
         pend.missions ? (pend.missions > 1 ? PB.T('{n} misiones para reclamar', { n: pend.missions }) : PB.T('1 misión para reclamar')) : '',
         pend.achievements ? (pend.achievements > 1 ? PB.T('{n} logros nuevos', { n: pend.achievements }) : PB.T('1 logro nuevo')) : '',
       ].filter(Boolean).join(' · ')}</p>`;
+    setupEndButtons();
     showScreen('end');
+    // las recompensas suben contando
+    for (const el of document.querySelectorAll('#end-rewards b')) {
+      const m = /^([+-]?)(\d+)(.*)$/.exec(el.textContent);
+      if (!m || +m[2] < 2) continue;
+      const to = +m[2], t0 = performance.now();
+      const stepN = () => {
+        const k = Math.min(1, (performance.now() - t0) / 700);
+        el.textContent = m[1] + Math.round(to * (1 - Math.pow(1 - k, 3))) + m[3];
+        if (k < 1) requestAnimationFrame(stepN);
+      };
+      stepN();
+    }
     help().classList.add('hidden');
     PB.Online.saveCloud(true);
     PB.Online.updateMe();
     PB.Audio.play(res.cls === 'win' ? 'win' : 'lose');
   }
+
+  // ------------------------------------------------------------ fin de partida: otra / revancha en grupo
+  // Solo: "Buscar otra". En una sala con amigos: "Volver a jugar" es una votación de 10 s;
+  // cuando votan todos, el jefe busca partida; si alguien vuelve a la sala, se cancela.
+  let rematchSeen = null, rematchMsg = '', rematchStarting = false, voteIv = null;
+  const inGroup = () => { const p = PB.Online.party(); return p && p.members.length > 1 ? p : null; };
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  function setupEndButtons() {
+    rematchSeen = null;
+    rematchMsg = '';
+    rematchStarting = false;
+    const again = $('#again'), back = $('#back');
+    again.disabled = false;
+    again.classList.remove('voted');
+    if (inGroup()) {
+      back.textContent = PB.T('Volver a la sala');
+      again.onclick = () => { PB.Audio.play('ready'); PB.Online.voteRematch(); };
+      back.onclick = () => { PB.Online.cancelRematch(); toMenu(); };
+    } else {
+      again.textContent = PB.T('Buscar otra');
+      back.textContent = PB.T('Volver al lobby');
+      again.onclick = () => play();
+      back.onclick = toMenu;
+    }
+    clearInterval(voteIv);
+    voteIv = setInterval(() => { if (mode !== 'end') { clearInterval(voteIv); return; } checkRematch(); renderVote(); }, 250);
+    renderVote();
+  }
+  function checkRematch() {
+    const p = inGroup();
+    if (!p) return;
+    const r = p.rematch && !p.rematch.go && PB.Online.rematchLeft() > 0 ? p.rematch : null;
+    // había votación y ya no está (sin haber empezado): alguien ha vuelto a la sala o se acabó el tiempo
+    if (rematchSeen && !p.rematch) rematchMsg = PB.T('Votación cancelada');
+    rematchSeen = p.rematch || null;
+    if (!r) {
+      // se acabó el tiempo sin que votaran todos: el jefe la quita
+      if (p.rematch && !p.rematch.go && p.leader === 'me') { rematchMsg = PB.T('No han votado todos a tiempo'); PB.Online.cancelRematch(); }
+      return;
+    }
+    const votes = r.votes || {};
+    if (p.leader === 'me' && !rematchStarting && p.members.every((m) => votes[m.id])) {
+      rematchStarting = true;
+      PB.Online.rematchGo();
+      play();
+    }
+  }
+  function renderVote() {
+    const box = $('#end-vote'), again = $('#again');
+    const p = mode === 'end' ? inGroup() : null;
+    if (!p) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    const r = p.rematch, votes = (r && r.votes) || {};
+    if (r && r.go) {
+      again.disabled = true;
+      box.textContent = PB.T('¡Todos listos! Buscando partida…');
+      return;
+    }
+    const live = r && PB.Online.rematchLeft() > 0;
+    const n = live ? p.members.filter((m) => votes[m.id]).length : 0;
+    const mine = live && p.members.some((m) => m.me && votes[m.id]);
+    again.textContent = PB.T('Volver a jugar') + (live ? ` (${n}/${p.members.length})` : '');
+    again.classList.toggle('voted', !!mine);
+    if (!live) {
+      box.textContent = rematchMsg || PB.T('Si todos pulsáis «Volver a jugar», buscáis otra partida juntos.');
+      return;
+    }
+    box.innerHTML = `<b>${Math.ceil(PB.Online.rematchLeft())} s</b> · ` +
+      p.members.map((m) => `<span class="${votes[m.id] ? 'ok' : ''}">${votes[m.id] ? '✔ ' : ''}${esc(m.me ? PB.T('Tú') : m.name)}</span>`).join(' ');
+  }
+  PB.Online.on('party', () => { if (mode === 'end') { checkRematch(); renderVote(); } });
 
   // ------------------------------------------------------------ buscar partida online
   // Si hay más gente buscando el mismo modo, partida en red; si no, en unos segundos, con bots.
@@ -563,8 +648,7 @@
   PB.Online.on('partySearch', (on) => { if (on) PB.Lobby.toast(PB.T('Tu grupo está buscando partida…')); });
 
   $('#play').onclick = () => { if (PB.Lobby.playPressed()) play(); };
-  $('#again').onclick = () => { if (PB.Online.party() && PB.Online.party().leader !== 'me') { toMenu(); return; } play(); };
-  $('#back').onclick = toMenu;
+
   window.addEventListener('keydown', (e) => {
     if (e.target && e.target.tagName === 'INPUT') return;
     if (e.key === 'Escape' && mode === 'play') (paused ? resume() : pause());
@@ -592,21 +676,34 @@
         case 'ballspawn': PB.Audio.play('ballspawn'); break;
         case 'ko':
           // los K.O. ya salen en el registro de arriba a la derecha: aquí solo suena
-          PB.Audio.play('ko');
+          if (ev.killer === me) PB.Audio.play('ko', { mine: true });
+          else if (ev.b === me) PB.Audio.play('ko', { me: true });
+          else if (near(ev.b)) PB.Audio.play('ko');
           break;
         case 'evolve':
-          if (ev.b === me) {
-            PB.Audio.play('evolve');
-            PB.vibrate(60);
-            renderer.announce(PB.T('¡{a} ha evolucionado a {b}!', { a: ev.from, b: ev.to }), '#ffe066', '', 1.6);
-          } else if (near(ev.b)) PB.Audio.play('ready');
+          // empieza la evolución: brillo que sube; el aviso sale al verse la forma nueva
+          if (ev.b === me) { PB.Audio.play('evolve'); ev.b.evoMsg = PB.T('¡{a} ha evolucionado a {b}!', { a: ev.from, b: ev.to }); }
+          else if (near(ev.b)) PB.Audio.play('evolve', { far: true });
           break;
-        case 'super': if (ev.b === me || near(ev.b)) PB.Audio.play('super', { type: ev.b.def.super.type || ev.b.def.atkType, me: ev.b === me }); break;
+        case 'evolved':
+          if (ev.b === me) {
+            PB.Audio.play('evolved');
+            PB.vibrate(60);
+            renderer.announce(ev.b.evoMsg || PB.T('¡Evoluciona!'), '#ffe066', '', 1.8);
+          } else if (near(ev.b)) PB.Audio.play('evolved', { far: true });
+          break;
+        case 'super':
+          if (ev.b === me || near(ev.b)) {
+            const st = ev.b.def.super.type || ev.b.def.atkType;
+            PB.Audio.play('super', { type: st, me: ev.b === me });
+            renderer.superFx(st, ev.b === me);
+          }
+          break;
         case 'superReady': if (ev.b === me) { PB.Audio.play('ready'); PB.vibrate(30); } break;
         case 'boom': PB.Audio.play('boom', { big: ev.big }); break;
         case 'wall': PB.Audio.play('wall'); break;
         case 'respawn': if (ev.b === me) PB.Audio.play('release'); break;
-        case 'countdown': break; // la cuenta atrás ya se ve en el marcador de arriba
+        case 'countdown': PB.Audio.play(ev.team === myTeam ? 'ready' : 'alarm'); break; // la cuenta atrás se ve arriba
         case 'tick': PB.Audio.play('tick'); break;
         case 'gas': PB.Audio.play('gas'); renderer.announce('¡La niebla avanza!', '#d58cff', '', 1.6); break;
         case 'structHit': if (ev.st.team === myTeam) PB.Audio.play('thump'); break;
@@ -671,6 +768,12 @@
       if (net && net.host) netStep(dt, read);
       handleEvents();
     }
+
+    // con poca vida se oye el latido
+    if (mode === 'play' && me && !me.dead && !game.winner && me.hp < me.maxHp * 0.3) {
+      heartT -= dt;
+      if (heartT <= 0) { heartT = 0.85; PB.Audio.play('heart'); }
+    } else heartT = 0;
 
     if (endTimer > 0) {
       endTimer -= dt;
