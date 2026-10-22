@@ -141,6 +141,23 @@ PB.Lobby = (() => {
     if (id === 'lobby') { refreshLobby(); setTimeout(checkPatchNotes, 400); }
   }
 
+  // ------------------------------------------------------------------ aviso de versión nueva
+  // Cada 2 minutos (y al volver a la pestaña) mira si la página publicada carga una versión
+  // más nueva de los scripts que la que tenemos. Si es así, avisa en la lobby con un botón para recargar.
+  const loadedV = (() => { const m = /main\.js\?v=(\d+)/.exec([...document.scripts].map((x) => x.src).join(' ')); return m ? +m[1] : 0; })();
+  let newVersion = false;
+  async function checkUpdate() {
+    if (newVersion || !loadedV || /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
+    try {
+      const html = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
+      const m = /main\.js\?v=(\d+)/.exec(html);
+      if (m && +m[1] > loadedV) { newVersion = true; $('#update-bar').classList.remove('hidden'); }
+    } catch (e) {}
+  }
+  setInterval(checkUpdate, 120000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
+  setTimeout(checkUpdate, 15000);
+
   // ------------------------------------------------------------------ notas de parche
   // La nota de la versión nueva sale una sola vez al entrar a la lobby.
   // Los jugadores nuevos no la ven (no tienen nada con qué comparar).
@@ -1628,6 +1645,7 @@ PB.Lobby = (() => {
     }
     $('#btn-settings').onclick = () => openSettings('lobby');
     $('#game-ver').textContent = PB.VERSION;
+    $('#update-go').onclick = () => { PB.Audio.play('ui'); location.reload(); };
     $('#btn-news').onclick = () => { PB.Audio.play('ui'); showPatchNotes(); };
     $('#patch-ok').onclick = () => {
       PB.Audio.play('ui');

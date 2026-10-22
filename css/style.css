@@ -1873,3 +1873,10 @@ h1.lose { color: #ff8a7a; }
 #patch-list li { font-size: 14px; padding: 7px 10px; }
 #patch-ok { flex: none; }
 @media (max-height: 500px) { .patch-head h2 { font-size: 21px; } #patch-list { gap: 6px; } #patch-list li { font-size: 13px; padding: 6px 9px; } }
+
+/* aviso de versión nueva (arriba en la columna central de la lobby, sin tapar botones) */
+.lb-center { position: relative; }
+.update-bar { position: absolute; left: 0; right: 0; top: 0; margin: 0 auto; z-index: 20; display: flex; align-items: center; gap: 10px; width: fit-content; max-width: 100%; padding: 7px 8px 7px 14px; border-radius: 12px; background: #1a2242; box-shadow: 0 0 0 3px #141824, 0 0 0 6px #ffd84a, 0 8px 22px rgba(0,0,0,.4); color: #fff6c8; font-size: 14px; line-height: 1.25; animation: rowIn .3s ease-out both; }
+.update-bar span { min-width: 0; }
+.update-bar .act { flex: none; padding: 7px 14px; }
+@media (max-width: 760px), (max-height: 500px) { .update-bar { font-size: 12px; gap: 8px; padding: 5px 6px 5px 10px; } .update-bar .act { padding: 5px 10px; } }

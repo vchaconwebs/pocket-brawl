@@ -615,4 +615,6 @@ PB.I18N = {
   'Jugar ya con bots': ['Play now with bots', 'Jogar já com bots', 'Jouer avec des bots', 'Gioca subito con i bot', 'Jetzt mit Bots spielen'],
   'Ahora: {m}': ['Now: {m}', 'Agora: {m}', 'Maintenant : {m}', 'Ora: {m}', 'Jetzt: {m}'],
   'Todos los que eligen Aleatorio van al mismo modo, así es más fácil jugar con gente.': ['Everyone who picks Random goes to the same mode, so it’s easier to play with real people.', 'Todos que escolhem Aleatório vão para o mesmo modo, assim é mais fácil jogar com pessoas.', 'Tous ceux qui choisissent Aléatoire vont dans le même mode : plus facile de jouer avec du monde.', 'Tutti quelli che scelgono Casuale vanno nella stessa modalità, così è più facile giocare con altri.', 'Alle, die Zufällig wählen, landen im selben Modus – so spielst du leichter mit echten Leuten.'],
+  '¡Hay una versión nueva del juego! Recarga para jugar con la última.': ['A new version of the game is out! Reload to play the latest one.', 'Há uma nova versão do jogo! Recarregue para jogar a mais recente.', 'Une nouvelle version du jeu est disponible ! Recharge pour jouer à la dernière.', 'C’è una nuova versione del gioco! Ricarica per giocare all’ultima.', 'Es gibt eine neue Version des Spiels! Lade neu, um die neueste zu spielen.'],
+  'Recargar': ['Reload', 'Recarregar', 'Recharger', 'Ricarica', 'Neu laden'],
 };

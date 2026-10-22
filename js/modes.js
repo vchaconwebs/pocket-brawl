@@ -239,7 +239,7 @@ PB.MODES = {
       let id = 0;
       for (const team of ['red', 'blue']) {
         const p = g.world.snorlax[team];
-        g.structures.push({ id: id++, kind: 'snorlax', team, x: p.x, y: p.y, r: 46, hp: 30000, maxHp: 30000, flashT: 0, zT: 0 });
+        g.structures.push({ id: id++, kind: 'snorlax', team, x: p.x, y: p.y, r: 46, hp: 50000, maxHp: 50000, flashT: 0, zT: 0 });
         g.world.blockCircle(p.x, p.y, 40);
       }
     },

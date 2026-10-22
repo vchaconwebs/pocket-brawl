@@ -255,9 +255,11 @@ PB.Bot = class {
   aimAt(foe, dist, atk) {
     const b = this.b;
     const t = atk.speed ? dist / atk.speed : atk.flight || atk.time || 0;
-    const lead = this.skill * 0.85;
+    // no adivinan perfecto hacia dónde vas: a veces se quedan cortos y a veces se pasan
+    const lead = this.skill * 0.85 * (0.45 + Math.random() * 0.8);
     const px = foe.x + foe.vx * t * lead, py = foe.y + foe.vy * t * lead;
-    const err = (Math.random() - 0.5) * 0.7 * (1 - this.skill);
+    // y fallan algo de puntería (menos cuanto mejores son)
+    const err = (Math.random() - 0.5) * (0.25 + 0.55 * (1 - this.skill));
     const ang = Math.atan2(py - b.y, px - b.x) + err;
     return { dx: Math.cos(ang), dy: Math.sin(ang), dist: Math.hypot(px - b.x, py - b.y) * (0.9 + Math.random() * 0.2) };
   }
