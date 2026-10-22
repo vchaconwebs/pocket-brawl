@@ -136,7 +136,13 @@
       b.maxHp = b.hp = Math.round(b.def.hp * b.lvlMul);
     });
     const me = game.brawlers[myIdx];
-    game.brawlers.forEach((b, i) => { b.friend = !!opts.humans[i] && i !== myIdx && !game.mode.ffa && b.team === me.team; });
+    // "AMIGO" solo si de verdad es tu amigo o está en tu sala (no cualquier persona de tu equipo)
+    const party = PB.Online.party();
+    const inParty = (u) => !!(party && party.members.some((m) => m.id === u));
+    game.brawlers.forEach((b, i) => {
+      const h = opts.humans[i];
+      b.friend = !!h && i !== myIdx && !!h.uid && (PB.Online.isFriend(h.uid) || inParty(h.uid));
+    });
     // los bots solo piensan en el anfitrión (los demás ven lo que él les manda)
     const skill = Math.min(0.85, 0.6 + (opts.copas || 0) / 4000);
     bots = net && net.role === 'host' ? game.brawlers.filter((b) => !opts.humans[b.idx]).map((b) => new PB.Bot(game, b, skill)) : [];

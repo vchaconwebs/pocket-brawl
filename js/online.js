@@ -153,6 +153,20 @@ PB.Online = (() => {
   const setPlaying = (on, mode) => setOnline(on && /^[a-z]+$/.test(mode || '') ? 'p:' + mode : 'm');
   const setSearching = (mode) => setOnline(mode ? 's:' + mode : 'm');
 
+  // Ideas y bugs: se guardan en feedback/ (solo el administrador puede leerlas, en buzon.html)
+  async function sendFeedback(kind, text) {
+    if (!(await start())) return err('Sin conexión.');
+    text = String(text || '').trim().slice(0, 600);
+    if (text.length < 5) return err('Escribe un poco más.');
+    const d = PB.Save.get();
+    await rtdb.ref('feedback').push({
+      kind: kind === 'idea' ? 'idea' : 'bug', text, name: clean(d.name || '', 16), uid,
+      v: PB.VERSION || '', lang: PB.lang || '', mobile: !!(window.matchMedia && matchMedia('(pointer: coarse)').matches),
+      t: fb.database.ServerValue.TIMESTAMP,
+    });
+    return { ok: true };
+  }
+
   function countMatch(mode) {
     bump('matches');
     if (/^[a-z]+$/.test(mode || '')) bump('modes/' + mode);
@@ -1091,7 +1105,7 @@ PB.Online = (() => {
     slots.forEach((u, i) => {
       if (!u) return;
       const p = m.players[u];
-      opts.humans[i] = { name: clean(p.name, 16), lvl: Math.max(1, Math.min(PB.META.maxLevel, p.lvl | 0 || 1)), shiny: !!p.shiny };
+      opts.humans[i] = { name: clean(p.name, 16), lvl: Math.max(1, Math.min(PB.META.maxLevel, p.lvl | 0 || 1)), shiny: !!p.shiny, uid: u };
       opts.shiny[i] = !!p.shiny;
       copas += p.copas | 0;
       if (u === uid) myIdx = i; else seats[u] = i;
@@ -1116,7 +1130,7 @@ PB.Online = (() => {
     friends, requests, searchPlayers, addFriend, answerRequest, removeFriend,
     findMatch, cancelMatch, joinMatch, migrate,
     get searching() { return !!search; },
-    countMatch, setPlaying, setSearching,
+    countMatch, setPlaying, setSearching, sendFeedback,
     get live() { return live; },
     trace,
   };

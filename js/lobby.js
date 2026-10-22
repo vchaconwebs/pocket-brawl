@@ -1645,6 +1645,31 @@ PB.Lobby = (() => {
     }
     $('#btn-settings').onclick = () => openSettings('lobby');
     $('#game-ver').textContent = PB.VERSION;
+    // ideas y bugs
+    let fbKind = 'bug', fbLast = 0;
+    $('#btn-feedback').onclick = () => {
+      PB.Audio.play('ui');
+      $('#fb-msg').textContent = '';
+      $('#feedback').classList.remove('hidden');
+      setTimeout(() => $('#fb-text').focus(), 50);
+    };
+    $('#fb-close').onclick = () => { PB.Audio.play('uiBack'); $('#feedback').classList.add('hidden'); };
+    document.querySelectorAll('#fb-kind button').forEach((b) => (b.onclick = () => {
+      fbKind = b.dataset.k;
+      document.querySelectorAll('#fb-kind button').forEach((x) => x.classList.toggle('on', x === b));
+    }));
+    $('#fb-send').onclick = async () => {
+      if (Date.now() - fbLast < 60000) { $('#fb-msg').textContent = PB.T('Espera un minuto antes de enviar otro.'); return; }
+      $('#fb-send').disabled = true;
+      const r = await PB.Online.sendFeedback(fbKind, $('#fb-text').value).catch(() => ({ error: 'No se ha podido enviar.' }));
+      $('#fb-send').disabled = false;
+      if (r.error) { $('#fb-msg').textContent = PB.T(r.error); return; }
+      fbLast = Date.now();
+      $('#fb-text').value = '';
+      PB.Audio.play('ready');
+      $('#feedback').classList.add('hidden');
+      toast(PB.T('¡Gracias! Lo hemos recibido.'));
+    };
     $('#update-go').onclick = () => { PB.Audio.play('ui'); location.reload(); };
     $('#btn-news').onclick = () => { PB.Audio.play('ui'); showPatchNotes(); };
     $('#patch-ok').onclick = () => {

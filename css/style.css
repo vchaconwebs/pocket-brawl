@@ -1880,3 +1880,20 @@ h1.lose { color: #ff8a7a; }
 .update-bar span { min-width: 0; }
 .update-bar .act { flex: none; padding: 7px 14px; }
 @media (max-width: 760px), (max-height: 500px) { .update-bar { font-size: 12px; gap: 8px; padding: 5px 6px 5px 10px; } .update-bar .act { padding: 5px 10px; } }
+
+/* botón de ideas y bugs (al lado de Donar) y su ventana */
+.fb-btn { border-image-source: var(--sk-teal); text-shadow: 2px 2px 0 #0c4a46; margin-left: auto; }
+.fb-btn .pxi { animation: none; }
+.fb-btn + .donate-btn { margin-left: 0; }
+.fb-close { margin-left: auto; background: none; border: 0; color: #a9b6d8; font-size: 22px; cursor: pointer; padding: 0 4px; }
+.fb-sub { margin: 0 0 10px; color: #c9d4f2; font-size: 14px; }
+.fb-kind { display: flex; gap: 8px; margin-bottom: 10px; }
+.fb-kind button { flex: 1; font: inherit; font-size: 15px; padding: 8px; border-radius: 10px; border: 2px solid #33416a; background: #1a2242; color: #c9d4f2; cursor: pointer; }
+.fb-kind button.on { border-color: #ffd84a; color: #fff6c8; background: #2a3358; }
+#fb-text { width: 100%; resize: vertical; min-height: 90px; font: 15px/1.4 system-ui, sans-serif; color: #f1f4fb; background: #11152a; border: 2px solid #33416a; border-radius: 10px; padding: 10px; flex: none; }
+#fb-text:focus { outline: none; border-color: #ffd84a; }
+.fb-foot { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.fb-foot small { flex: 1; color: #ffb0a8; font-size: 13px; }
+@media (max-height: 500px) { #fb-text { min-height: 56px; } .fb-sub { font-size: 12px; margin-bottom: 6px; } .fb-kind button { padding: 5px; } }
+.fb-btn span { white-space: nowrap; }
+@media (max-width: 720px) { .fb-btn { font-size: 11px; } }

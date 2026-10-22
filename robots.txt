@@ -3,5 +3,6 @@ Allow: /
 Disallow: /tools/
 Disallow: /docs/
 Disallow: /stats.html
+Disallow: /buzon.html
 
 Sitemap: https://pokeversus.com/sitemap.xml

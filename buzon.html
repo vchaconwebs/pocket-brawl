@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0e1220">
+<title>PokéVersus · Buzón</title>
+<link rel="icon" href="assets/icons/icon-192.png">
+<style>
+  @font-face { font-family: 'Jersey10'; src: url('assets/fonts/Jersey10.ttf'); }
+  :root { color-scheme: dark; --bg: #0e1220; --panel: #182036; --panel-2: #1f2943; --edge: #33416a; --text: #f1f4fb; --text-2: #b9c3dc; --muted: #7d89a8; --gold: #ffcf2e; --bug: #ff7a7a; --idea: #39d38a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 22px 16px 48px; }
+  h1 { font-family: 'Jersey10', sans-serif; font-weight: normal; font-size: 42px; line-height: 1; margin: 0; color: var(--gold); }
+  .sub { color: var(--muted); font-size: 13px; margin: 6px 0 18px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+  .seg button { border: 1px solid var(--edge); background: var(--panel); color: var(--text-2); font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+  .seg button.on { border-color: var(--gold); color: var(--text); background: var(--panel-2); font-weight: 600; }
+  .count { color: var(--muted); font-size: 13px; margin-left: auto; }
+  .msg { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .msg .top { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+  .tag { font-weight: 700; font-size: 11px; border-radius: 6px; padding: 1px 7px; color: #10131c; }
+  .tag.bug { background: var(--bug); } .tag.idea { background: var(--idea); }
+  .msg .who { color: var(--text-2); font-weight: 600; }
+  .msg p { margin: 0; white-space: pre-wrap; word-break: break-word; }
+  .msg .del { margin-left: auto; background: none; border: 1px solid var(--edge); color: var(--muted); border-radius: 8px; padding: 2px 9px; cursor: pointer; font: inherit; font-size: 12px; }
+  .msg .del:hover { color: var(--bug); border-color: var(--bug); }
+  .empty, .lock { text-align: center; color: var(--muted); padding: 40px 10px; }
+  .lock a { color: var(--gold); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Buzón de ideas y bugs</h1>
+  <p class="sub" id="sub">Comprobando tu cuenta…</p>
+  <div class="bar hidden" id="bar">
+    <div class="seg" id="filter"><button data-f="all" class="on">Todo</button> <button data-f="bug">🐞 Fallos</button> <button data-f="idea">💡 Ideas</button></div>
+    <span class="count" id="count"></span>
+  </div>
+  <div id="list"></div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script>
+  // Solo el administrador (su cuenta del juego) puede leer los mensajes: lo aseguran las reglas de Firebase.
+  const OWNER = 'ULFnTGBapaaIUhxmHKgCh9TIm6G3';
+  firebase.initializeApp({
+    apiKey: 'AIzaSyA6C_hWt0VOhk1pzsN8NuYeqx_IhP2cRf0',
+    authDomain: 'pokeversus-9ed3a.firebaseapp.com',
+    databaseURL: 'https://pokeversus-9ed3a-default-rtdb.europe-west1.firebasedatabase.app',
+    projectId: 'pokeversus-9ed3a',
+    appId: '1:329495817613:web:b9e8dcb3387b0dbb0421c4',
+  });
+  const $ = (s) => document.querySelector(s);
+  let items = [], filter = 'all';
+  const esc = (t) => String(t || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  function render() {
+    const list = items.filter((m) => filter === 'all' || m.kind === filter);
+    $('#count').textContent = `${list.length} mensaje${list.length === 1 ? '' : 's'}`;
+    if (!list.length) { $('#list').innerHTML = '<div class="empty">No hay mensajes por aquí todavía.</div>'; return; }
+    $('#list').innerHTML = list.map((m) => {
+      const d = new Date(m.t || 0);
+      const when = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      return `<div class="msg"><div class="top"><span class="tag ${m.kind}">${m.kind === 'idea' ? 'IDEA' : 'FALLO'}</span>` +
+        `<span class="who">${esc(m.name) || 'Sin nombre'}</span><span>${when}</span><span>v${esc(m.v)}</span><span>${m.mobile ? 'móvil' : 'PC'}</span><span>${esc(m.lang)}</span>` +
+        `<button class="del" data-id="${esc(m.id)}">Borrar</button></div><p>${esc(m.text)}</p></div>`;
+    }).join('');
+    document.querySelectorAll('.del').forEach((b) => (b.onclick = () => {
+      if (confirm('¿Borrar este mensaje?')) firebase.database().ref('feedback/' + b.dataset.id).remove();
+    }));
+  }
+  document.querySelectorAll('#filter button').forEach((b) => (b.onclick = () => {
+    filter = b.dataset.f;
+    document.querySelectorAll('#filter button').forEach((x) => x.classList.toggle('on', x === b));
+    render();
+  }));
+  firebase.auth().onAuthStateChanged((u) => {
+    if (!u || u.uid !== OWNER) {
+      $('#sub').textContent = '';
+      $('#list').innerHTML = '<div class="lock">🔒 Este buzón solo lo puede ver el administrador.<br>Entra primero en <a href="/">pokeversus.com</a> con la cuenta de administrador y vuelve a abrir esta página.</div>';
+      return;
+    }
+    $('#sub').textContent = 'Lo que te mandan los jugadores desde el botón «Ideas y bugs». Se actualiza solo.';
+    $('#bar').classList.remove('hidden');
+    firebase.database().ref('feedback').on('value', (s) => {
+      const v = s.val() || {};
+      items = Object.entries(v).map(([id, m]) => Object.assign({ id }, m)).sort((a, b) => (b.t || 0) - (a.t || 0));
+      render();
+    });
+  });
+</script>
+</body>
+</html>

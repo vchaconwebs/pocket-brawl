@@ -32,7 +32,7 @@
    "offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
   </script>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=81">
+  <link rel="stylesheet" href="css/style.css?v=82">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -83,6 +83,7 @@
         </button>
         <div class="lb-title">Poké<span>Versus</span></div>
         <div class="lb-top-icons" id="lb-top-icons"></div>
+        <button class="donate-btn fb-btn" id="btn-feedback" title="Reportar un fallo o proponer una idea"><img class="pxi" data-icon="scroll" alt=""><span>Ideas y bugs</span></button>
         <button class="donate-btn" id="btn-donate" title="Apoyar el juego"><img class="pxi" data-icon="heart" alt=""><span>Donar</span></button>
         <div class="lb-money">
           <span class="pill"><img id="ico-coin" alt=""><b id="coins">0</b></span>
@@ -158,6 +159,17 @@
       <div class="patch-head"><span class="patch-ver" id="patch-ver"></span><h2 id="patch-title"></h2><small id="patch-date"></small></div>
       <ul id="patch-list"></ul>
       <button class="big" id="patch-ok">¡A jugar!</button>
+    </div>
+  </div>
+
+  <!-- IDEAS Y BUGS -->
+  <div id="feedback" class="patch hidden" role="dialog" aria-modal="true" aria-labelledby="fb-title">
+    <div class="panel patch-panel fb-panel">
+      <div class="patch-head"><h2 id="fb-title">Ideas y bugs</h2><button class="fb-close" id="fb-close" aria-label="Cerrar">✕</button></div>
+      <p class="fb-sub">¿Has encontrado un fallo o se te ocurre algo para las próximas actualizaciones? Cuéntanoslo: lo leemos todo.</p>
+      <div class="fb-kind" id="fb-kind"><button data-k="bug" class="on">🐞 Fallo</button><button data-k="idea">💡 Idea</button></div>
+      <textarea id="fb-text" maxlength="600" rows="5" placeholder="Explica qué ha pasado o qué te gustaría ver…"></textarea>
+      <div class="fb-foot"><small id="fb-msg"></small><button class="act gold" id="fb-send">Enviar</button></div>
     </div>
   </div>
 
@@ -418,31 +430,31 @@
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=81"></script>
-  <script src="js/data.js?v=81"></script>
-  <script src="js/news.js?v=81"></script>
-  <script src="js/roster-data.js?v=81"></script>
-  <script src="js/i18n-data.js?v=81"></script>
-  <script src="js/i18n-names.js?v=81"></script>
-  <script src="js/i18n.js?v=81"></script>
-  <script src="js/sprites.js?v=81"></script>
-  <script src="js/vfx.js?v=81"></script>
-  <script src="js/roster.js?v=81"></script>
-  <script src="js/pokeball.js?v=81"></script>
-  <script src="js/tiles.js?v=81"></script>
-  <script src="js/world.js?v=81"></script>
-  <script src="js/game.js?v=81"></script>
-  <script src="js/net.js?v=81"></script>
-  <script src="js/modes.js?v=81"></script>
-  <script src="js/ai.js?v=81"></script>
-  <script src="js/audio.js?v=81"></script>
-  <script src="js/render.js?v=81"></script>
-  <script src="js/input.js?v=81"></script>
-  <script src="js/settings.js?v=81"></script>
-  <script src="js/pixui.js?v=81"></script>
-  <script src="js/save.js?v=81"></script>
-  <script src="js/online.js?v=81"></script>
-  <script src="js/lobby.js?v=81"></script>
-  <script src="js/main.js?v=81"></script>
+  <script src="js/sprite-data.js?v=82"></script>
+  <script src="js/data.js?v=82"></script>
+  <script src="js/news.js?v=82"></script>
+  <script src="js/roster-data.js?v=82"></script>
+  <script src="js/i18n-data.js?v=82"></script>
+  <script src="js/i18n-names.js?v=82"></script>
+  <script src="js/i18n.js?v=82"></script>
+  <script src="js/sprites.js?v=82"></script>
+  <script src="js/vfx.js?v=82"></script>
+  <script src="js/roster.js?v=82"></script>
+  <script src="js/pokeball.js?v=82"></script>
+  <script src="js/tiles.js?v=82"></script>
+  <script src="js/world.js?v=82"></script>
+  <script src="js/game.js?v=82"></script>
+  <script src="js/net.js?v=82"></script>
+  <script src="js/modes.js?v=82"></script>
+  <script src="js/ai.js?v=82"></script>
+  <script src="js/audio.js?v=82"></script>
+  <script src="js/render.js?v=82"></script>
+  <script src="js/input.js?v=82"></script>
+  <script src="js/settings.js?v=82"></script>
+  <script src="js/pixui.js?v=82"></script>
+  <script src="js/save.js?v=82"></script>
+  <script src="js/online.js?v=82"></script>
+  <script src="js/lobby.js?v=82"></script>
+  <script src="js/main.js?v=82"></script>
 </body>
 </html>
