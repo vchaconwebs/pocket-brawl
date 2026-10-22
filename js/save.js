@@ -11,8 +11,8 @@ PB.META = {
   tokensPerChest: 100,
   // premio de cada partida (en Niebla Tóxica cuenta como victoria quedar entre los 4 primeros)
   matchReward: {
-    win: { coins: 25, points: 16, rainbow: 3 },
-    lose: { coins: 10, points: 7, rainbow: 1 },
+    win: { coins: 25, points: 24, rainbow: 3 },
+    lose: { coins: 10, points: 11, rainbow: 1 },
   },
   bonusWins: 3, // las 3 primeras victorias del día dan el doble de fichas
   // cofres (Pokéballs): tiradas de premio y probabilidad de Pokémon nuevo en cada tirada
@@ -53,12 +53,13 @@ PB.statsAt = (def, lvl) => {
 PB.copasDelta = (copas, result, rank) => {
   if (rank) {
     // Niebla Tóxica: según el puesto (1 a 10)
-    const table = copas < 100 ? [10, 8, 7, 6, 4, 2, 0, 0, 0, 0] : copas < 400 ? [9, 7, 5, 4, 2, 0, -2, -3, -4, -5] : [8, 6, 4, 2, 0, -2, -4, -5, -6, -7];
+    const table = copas < 100 ? [10, 8, 7, 6, 4, 2, 0, -1, -2, -3] : copas < 400 ? [9, 7, 5, 4, 2, 0, -2, -3, -4, -5] : [8, 6, 4, 2, 0, -2, -4, -5, -6, -7];
     return table[Math.max(0, Math.min(9, rank - 1))];
   }
   if (result === 'draw') return 0;
   if (result === 'win') return copas < 100 ? 10 : copas < 400 ? 8 : copas < 800 ? 7 : 6;
-  return copas < 50 ? 0 : copas < 150 ? -3 : copas < 400 ? -5 : copas < 800 ? -6 : -7;
+  // perder siempre quita algo (nunca se baja de 0)
+  return copas < 30 ? -2 : copas < 100 ? -4 : copas < 400 ? -5 : copas < 800 ? -6 : -7;
 };
 
 PB.Save = (() => {
@@ -389,7 +390,7 @@ PB.Save = (() => {
         continue;
       }
       if (Math.random() < 0.55) res.coins += 20 + Math.floor(Math.random() * 26);
-      else res.points += 15 + Math.floor(Math.random() * 26);
+      else res.points += 25 + Math.floor(Math.random() * 36);
     }
     if (!res.coins && !res.points && !res.pokemon.length) res.coins = 20;
     if (!res.pokemon.length) d.pity = (d.pity || 0) + 1;

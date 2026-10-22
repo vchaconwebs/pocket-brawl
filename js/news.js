@@ -60,4 +60,28 @@ PB.PATCH_NOTES = [
       ],
     },
   },
+  {
+    v: '1.0',
+    date: '21/10/2026',
+    es: {
+      title: '¡Lanzamiento de PokéVersus!',
+      items: [
+        ['🎉', 'Combates 3 contra 3 con Pokémon, gratis en el navegador, en PC y en móvil.'],
+        ['🎮', 'Cinco modos: Atrapa Pokéballs, Niebla Tóxica, Despierta a Snorlax, Voltorbol y Territorio.'],
+        ['⭐', 'Casi 500 Pokémon que evolucionan durante la partida, con niveles, copas y skins shiny.'],
+        ['🌐', 'Partidas online con gente real, salas con amigos, clanes y ranking.'],
+        ['🎁', 'Pokéballs con premios, misiones diarias y un pase de temporada gratis.'],
+      ],
+    },
+    en: {
+      title: 'PokéVersus is out!',
+      items: [
+        ['🎉', '3v3 Pokémon battles, free in your browser, on PC and mobile.'],
+        ['🎮', 'Five modes: Catch Pokéballs, Toxic Fog, Wake Snorlax, Voltorb Ball and Territory.'],
+        ['⭐', 'Almost 500 Pokémon that evolve during the match, with levels, trophies and shiny skins.'],
+        ['🌐', 'Online matches with real people, rooms with friends, clans and rankings.'],
+        ['🎁', 'Pokéball rewards, daily missions and a free season pass.'],
+      ],
+    },
+  },
 ];

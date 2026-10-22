@@ -173,8 +173,14 @@ PB.Lobby = (() => {
     if (!seen && !(d.stats && d.stats.played)) { try { localStorage.setItem(SEEN, PB.VERSION); } catch (e) {} return; }
     showPatchNotes();
   }
-  function showPatchNotes() {
-    const n = PB.PATCH_NOTES[0];
+  // i: qué versión enseñar (0 = la última). Arriba salen todas para ver las anteriores.
+  function showPatchNotes(i) {
+    i = Math.max(0, Math.min(PB.PATCH_NOTES.length - 1, i | 0));
+    const n = PB.PATCH_NOTES[i];
+    const vers = $('#patch-vers');
+    vers.innerHTML = PB.PATCH_NOTES.map((x, k) => `<button data-k="${k}" class="${k === i ? 'on' : ''}">v${x.v}</button>`).join('');
+    vers.querySelectorAll('button').forEach((b) => (b.onclick = () => { PB.Audio.play('ui'); showPatchNotes(+b.dataset.k); }));
+    $('#patch-list').scrollTop = 0;
     const t = n[PB.lang === 'es' ? 'es' : 'en'] || n.es;
     $('#patch-ver').textContent = 'v' + n.v;
     $('#patch-title').textContent = t.title;
@@ -188,8 +194,8 @@ PB.Lobby = (() => {
       li.appendChild(document.createTextNode(txt));
       $('#patch-list').appendChild(li);
     }
+    if ($('#patch').classList.contains('hidden')) PB.Audio.play('ready');
     $('#patch').classList.remove('hidden');
-    PB.Audio.play('ready');
   }
 
   function refreshLobby() {
@@ -1150,6 +1156,31 @@ PB.Lobby = (() => {
   // ------------------------------------------------------------------ cofres
   // Fases: idle (flota) -> shake (tiembla al tocar) -> burst (revienta) -> reward (premios uno a uno) -> summary
   const CHEST_COL = { poke: [255, 90, 60], great: [80, 150, 255], ultra: [255, 210, 60] };
+  // Escalones de color al abrir una bola con Pokémon (cada toque sube uno hasta su rareza)
+  const RARITY_STEPS = [
+    { col: [90, 230, 120], label: '¡Hay un Pokémon!' },
+    { col: [80, 160, 255], label: '¡RARO!', rar: 'rare' },
+    { col: [190, 110, 255], label: '¡ÉPICO!', rar: 'epic' },
+    { col: [255, 205, 50], label: '¡LEGENDARIO!', rar: 'legendary' },
+  ];
+  const RARITY_RANK = { starter: 0, common: 0, rare: 1, epic: 2, legendary: 3 };
+  // la bola teñida del color del escalón (se pinta aparte para no teñir el fondo)
+  let tintCv = null;
+  function tintedBall(px, opts, col, k) {
+    const S = PB.Pokeball.SIZE * px, size = Math.ceil(S * 1.6);
+    if (!tintCv) tintCv = document.createElement('canvas');
+    if (tintCv.width !== size) { tintCv.width = size; tintCv.height = size; }
+    const c = tintCv.getContext('2d');
+    c.clearRect(0, 0, size, size);
+    c.imageSmoothingEnabled = false;
+    c.globalCompositeOperation = 'source-over';
+    PB.Pokeball.draw(c, size / 2, size / 2, px, opts);
+    c.globalCompositeOperation = 'source-atop';
+    c.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${k})`;
+    c.fillRect(0, 0, size, size);
+    c.globalCompositeOperation = 'source-over';
+    return tintCv;
+  }
   let fx = []; // partículas de la apertura
 
   // Si el premio que se acaba de reclamar es un cofre, se abre en ese momento
@@ -1173,7 +1204,7 @@ PB.Lobby = (() => {
     const kind = PB.Save.get().chests[index];
     if (!kind) return;
     if (from !== undefined) chestReturn = from || 'lobby';
-    chest = { kind, index, state: 'idle', res: null, t: 0, items: [], cur: -1 };
+    chest = { kind, index, state: 'idle', res: null, t: 0, items: [], cur: -1, steps: [], step: -1, flash: 0, col: CHEST_COL[kind], label: '', labelT: 0 };
     fx = [];
     $('#chest-name').textContent = PB.META.chests[kind].name;
     $('#chest-reward').innerHTML = '';
@@ -1200,10 +1231,15 @@ PB.Lobby = (() => {
   function chestTap(e) {
     if (!chest || (e && e.target.closest('button'))) return;
     if (chest.state === 'idle') {
-      chest.state = 'shake';
-      chest.t = 0;
-      $('#chest-hint').textContent = '';
-      PB.Audio.play('tick');
+      // se abre ya (para saber qué trae); si hay Pokémon, la bola va subiendo de color con cada toque
+      chest.res = PB.Save.openChest(chest.index);
+      let best = -1;
+      for (const id of chest.res.pokemon) { const b = PB.brawlerById(id); if (b) best = Math.max(best, RARITY_RANK[b.rarity] || 0); }
+      chest.steps = best >= 0 ? RARITY_STEPS.slice(0, best + 1) : [];
+      if (chest.steps.length) { chest.state = 'charge'; chest.step = -1; chestStep(); }
+      else startShake();
+    } else if (chest.state === 'charge') {
+      if (chest.step < chest.steps.length - 1) chestStep(); else startShake();
     } else if (chest.state === 'reward') {
       nextReward();
     } else if (chest.state === 'summary' && !PB.Save.get().chests.length) {
@@ -1211,10 +1247,36 @@ PB.Lobby = (() => {
     }
   }
 
+  function startShake() {
+    chest.state = 'shake';
+    chest.t = 0;
+    $('#chest-hint').textContent = '';
+    PB.Audio.play('tick');
+  }
+  // un escalón más: la bola y el fondo cambian de color, con destello y chispas
+  function chestStep() {
+    chest.step++;
+    const s = chest.steps[chest.step];
+    chest.col = s.col;
+    chest.flash = 1;
+    chest.t = 0;
+    chest.label = PB.T(s.label);
+    chest.labelT = 0;
+    const last = chest.step === chest.steps.length - 1;
+    $('#chest-hint').textContent = PB.T(last ? 'Toca para abrir' : 'Toca otra vez…');
+    PB.Audio.play(s.rar === 'legendary' ? 'win' : s.rar ? 'ready' : 'candy');
+    PB.vibrate(30 + chest.step * 20);
+    const W = window.innerWidth, H = window.innerHeight;
+    for (let i = 0; i < 30 + chest.step * 15; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 120 + Math.random() * (260 + chest.step * 90);
+      fx.push({ x: W / 2, y: H * 0.42, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 80, t: 0, life: 0.6 + Math.random() * 0.6, size: 3 + Math.random() * 6, col: i % 3 ? `rgb(${s.col[0]},${s.col[1]},${s.col[2]})` : '#ffffff', star: i % 3 === 0 });
+    }
+  }
+
   function burst() {
     chest.state = 'burst';
     chest.t = 0;
-    chest.res = PB.Save.openChest(chest.index);
+    if (!chest.res) chest.res = PB.Save.openChest(chest.index);
     const res = chest.res;
     const items = [];
     if (res.coins) items.push({ icon: coinIcon(), title: '+' + res.coins, sub: 'monedas' });
@@ -1231,7 +1293,7 @@ PB.Lobby = (() => {
     PB.vibrate(60);
     // chispas y estrellas
     const W = window.innerWidth, H = window.innerHeight;
-    const [r, g, bb] = CHEST_COL[chest.kind];
+    const [r, g, bb] = chest.col;
     for (let i = 0; i < 70; i++) {
       const a = Math.random() * Math.PI * 2, sp = 150 + Math.random() * 520;
       fx.push({ x: W / 2, y: H * 0.42, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120, t: 0, life: 0.8 + Math.random() * 0.9, size: 4 + Math.random() * 7, col: i % 3 ? `rgb(${r},${g},${bb})` : '#ffffff', star: i % 4 === 0 });
@@ -1285,13 +1347,19 @@ PB.Lobby = (() => {
     c.clearRect(0, 0, W, H);
     c.imageSmoothingEnabled = false;
     const cx = W / 2, cy = H * 0.42;
-    const [r, g, bb] = CHEST_COL[chest.kind];
+    const [r, g, bb] = chest.col;
     const px = Math.max(6, Math.min(12, Math.min(W, H) / 40));
     chest.t += dt;
     const st = chest.state;
+    // el fondo se tiñe del color del escalón (más fuerte cuanto más raro)
+    if (chest.step >= 0) {
+      c.fillStyle = `rgba(${r},${g},${bb},${0.12 + chest.step * 0.07})`;
+      c.fillRect(0, 0, W, H);
+    }
+    chest.flash = Math.max(0, chest.flash - dt * 2.5);
 
     // rayos de luz girando detrás
-    const power = st === 'idle' ? 0.35 : st === 'shake' ? 0.35 + chest.t : st === 'burst' ? 1 : 0.55;
+    const power = st === 'idle' ? 0.35 : st === 'charge' ? 0.6 + chest.step * 0.2 + chest.flash : st === 'shake' ? 0.35 + chest.t : st === 'burst' ? 1 : 0.55;
     c.save();
     c.translate(cx, cy);
     c.rotate(t * 0.4);
@@ -1317,9 +1385,14 @@ PB.Lobby = (() => {
     c.fillRect(cx - px * 20, cy - px * 20, px * 40, px * 40);
 
     const S = PB.Pokeball.SIZE * px;
-    if (st === 'idle' || st === 'shake') {
+    if (st === 'idle' || st === 'shake' || st === 'charge') {
       let ang = 0, oy = Math.sin(t * 2.5) * px * 1.2, ox = 0;
-      if (st === 'idle') {
+      if (st === 'charge') {
+        // salto y temblor al cambiar de color
+        const k = Math.max(0, 1 - chest.t / 0.35);
+        oy -= Math.sin(Math.min(1, chest.t / 0.35) * Math.PI) * px * 3;
+        ang = Math.sin(chest.t * 50) * 0.25 * k;
+      } else if (st === 'idle') {
         const w = (t % 2) < 0.5 ? Math.sin((t % 2) * 25) * 0.18 : 0; // se balancea de vez en cuando
         ang = w;
       } else {
@@ -1334,7 +1407,28 @@ PB.Lobby = (() => {
       c.beginPath();
       c.ellipse(cx, cy + S * 0.62, S * 0.4, S * 0.08, 0, 0, Math.PI * 2);
       c.fill();
-      PB.Pokeball.draw(c, cx + ox, cy + oy, px, { kind: chest.kind, angle: ang, variant: st === 'shake' && Math.floor(chest.t * 12) % 2 ? 'glow' : undefined });
+      const bopts = { kind: chest.kind, angle: ang, variant: st === 'shake' && Math.floor(chest.t * 12) % 2 ? 'glow' : undefined };
+      if (chest.step >= 0) {
+        const img = tintedBall(px, bopts, chest.col, 0.45 + chest.flash * 0.4);
+        c.drawImage(img, Math.round(cx + ox - img.width / 2), Math.round(cy + oy - img.height / 2));
+      } else PB.Pokeball.draw(c, cx + ox, cy + oy, px, bopts);
+      // nombre del escalón (¡RARO!, ¡ÉPICO!...)
+      if (st === 'charge' && chest.label) {
+        chest.labelT += dt;
+        const sc = 1 + Math.max(0, 0.4 - chest.labelT) * 1.2;
+        c.save();
+        c.translate(cx, cy + S * 0.95);
+        c.scale(sc, sc);
+        c.font = `${Math.round(px * 3.4)}px "Jersey 10", system-ui, sans-serif`;
+        c.textAlign = 'center';
+        c.lineJoin = 'round';
+        c.lineWidth = px * 0.9;
+        c.strokeStyle = '#141824';
+        c.strokeText(chest.label, 0, 0);
+        c.fillStyle = `rgb(${r},${g},${bb})`;
+        c.fillText(chest.label, 0, 0);
+        c.restore();
+      }
     } else {
       // las dos mitades salen volando y se desvanecen
       const k = Math.min(1, chest.t / 0.6);
@@ -1674,7 +1768,7 @@ PB.Lobby = (() => {
       toast(PB.T('¡Gracias! Lo hemos recibido.'));
     };
     $('#update-go').onclick = () => { PB.Audio.play('ui'); location.reload(); };
-    $('#btn-news').onclick = () => { PB.Audio.play('ui'); showPatchNotes(); };
+    $('#btn-news').onclick = () => { PB.Audio.play('ui'); showPatchNotes(0); };
     // sobre el creador
     $('#btn-about').onclick = () => { PB.Audio.play('ui'); $('#about').classList.remove('hidden'); };
     $('#ab-close').onclick = () => { PB.Audio.play('uiBack'); $('#about').classList.add('hidden'); };

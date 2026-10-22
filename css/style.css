@@ -1975,3 +1975,8 @@ h1.lose { color: #ff8a7a; }
 @media (max-height: 500px) { .mchat { top: 112px; } .mchat-quick button { font-size: 13px; padding: 3px 7px; } }
 /* móviles estrechos: con el botón del chat no cabe todo arriba, "Ideas y bugs" queda solo con su icono */
 @media (max-width: 760px) and (max-height: 500px) { .fb-btn span { display: none; } .fb-btn { padding-left: 8px; padding-right: 8px; } }
+
+/* notas de parche: todas las versiones */
+.patch-vers { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 10px; flex: none; }
+.patch-vers button { font: inherit; font-size: 14px; padding: 3px 10px; border-radius: 8px; border: 2px solid #33416a; background: #1a2242; color: #c9d4f2; cursor: pointer; }
+.patch-vers button.on { border-color: #ffd84a; color: #fff6c8; background: #2a3358; }

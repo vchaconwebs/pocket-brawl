@@ -676,4 +676,9 @@ PB.I18N = {
   'Gente jugando': ['People playing', 'Gente jogando', 'Des joueurs jouent', 'Gente che gioca', 'Spieler spielen'],
   'Buscando jugadores · {s} s': ['Looking for players · {s} s', 'Procurando jogadores · {s} s', 'Recherche de joueurs · {s} s', 'Cerco giocatori · {s} s', 'Suche Spieler · {s} s'],
   'En directo': ['Live', 'Ao vivo', 'En direct', 'Dal vivo', 'Live'],
+  '¡Hay un Pokémon!': ['There’s a Pokémon!', 'Tem um Pokémon!', 'Il y a un Pokémon !', 'C’è un Pokémon!', 'Da ist ein Pokémon!'],
+  '¡RARO!': ['RARE!', 'RARO!', 'RARE !', 'RARO!', 'SELTEN!'],
+  '¡ÉPICO!': ['EPIC!', 'ÉPICO!', 'ÉPIQUE !', 'EPICO!', 'EPISCH!'],
+  '¡LEGENDARIO!': ['LEGENDARY!', 'LENDÁRIO!', 'LÉGENDAIRE !', 'LEGGENDARIO!', 'LEGENDÄR!'],
+  'Toca otra vez…': ['Tap again…', 'Toque de novo…', 'Touche encore…', 'Tocca ancora…', 'Nochmal tippen…'],
 };

@@ -174,6 +174,7 @@
       <div class="nowrow">
         <div class="now" id="now"><i></i><b class="num" id="now-n">–</b><span id="now-txt">en línea ahora</span></div>
         <div class="rec" id="rec" title="Récord de jugadores a la vez"><span>🏆</span><b class="num" id="rec-n">–</b><span id="rec-txt">récord a la vez</span></div>
+        <div class="rec" id="avg" title="Media de gente en línea hoy (se mide cada 10 minutos)"><span>📊</span><b class="num" id="avg-n">–</b><span id="avg-txt">media en línea hoy</span></div>
       </div>
       <div>
         <div class="lbl">Hoy han jugado</div>
@@ -215,7 +216,7 @@
   <section class="panel">
     <div class="ph"><div><h2>Día a día</h2><p class="note">Del más reciente al más antiguo</p></div></div>
     <div class="pb"><div class="tbl"><table>
-      <thead><tr><th>Día</th><th>Visitas</th><th>Jugadores</th><th>Partidas</th><th>Partidas / jugador</th><th>Máx. a la vez</th><th>Invitados nuevos</th><th>Registros</th></tr></thead>
+      <thead><tr><th>Día</th><th>Visitas</th><th>Jugadores</th><th>Partidas</th><th>Partidas / jugador</th><th>Máx. a la vez</th><th>Media en línea</th><th>Invitados nuevos</th><th>Registros</th></tr></thead>
       <tbody id="rows"></tbody>
     </table></div></div>
   </section>
@@ -428,14 +429,22 @@
       `<div class="avg"><span>Partidas por jugador</span><b class="num">${p ? dec(m / p) : '0'}</b></div>`;
   }
 
+  // media de gente en línea de un día (fotos cada 10 minutos)
+  const avgOn = (r) => { const v = Object.values((r && r.online) || {}).filter((x) => typeof x === 'number'); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
+  function avgToday() {
+    const r = data[dayKey(new Date())] || {}, n = Object.keys(r.online || {}).length;
+    $('#avg-n').textContent = n ? dec(avgOn(r)) : '–';
+    $('#avg-txt').textContent = n ? 'media en línea hoy · ' + n + (n === 1 ? ' medición' : ' mediciones') : 'media en línea hoy (empieza a medirse)';
+  }
   function table() {
+    avgToday();
     const t = dayKey(new Date());
     const ks = days(range ? Math.max(range, 7) : 0).reverse();
     const td = (n) => `<td class="${n ? '' : 'zero'}">${fmt(n)}</td>`;
     $('#rows').innerHTML = ks.map((k) => {
       const r = data[k] || {};
       return `<tr class="${k === t ? 'is-today' : ''}"><td>${weekday(k)} ${label(k, true)}${k === t ? '<span class="tag">HOY</span>' : ''}</td>${td(r.visits)}${td(r.players)}${td(r.matches)}` +
-        `<td class="${r.players ? '' : 'zero'}">${r.players ? dec(r.matches / r.players) : '–'}</td><td class="${r.peak ? '' : 'zero'}">${r.peak ? fmt(r.peak) : '–'}</td>${td(r.guests)}${td(r.signups)}</tr>`;
+        `<td class="${r.players ? '' : 'zero'}">${r.players ? dec(r.matches / r.players) : '–'}</td><td class="${r.peak ? '' : 'zero'}">${r.peak ? fmt(r.peak) : '–'}</td><td class="${avgOn(r) ? '' : 'zero'}">${avgOn(r) ? dec(avgOn(r)) : '–'}</td>${td(r.guests)}${td(r.signups)}</tr>`;
     }).join('');
   }
 

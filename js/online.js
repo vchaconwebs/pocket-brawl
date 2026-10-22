@@ -128,6 +128,16 @@ PB.Online = (() => {
       if (!testing) notePeak(all.length);
     });
     if (testing) return;
+    // media diaria: cada 10 minutos (hora de Madrid) se apunta cuánta gente hay; solo vale la primera foto
+    let lastSlot = -1;
+    setInterval(() => {
+      const [h, m] = new Date(Date.now() + offset).toLocaleTimeString('en-GB', { timeZone: 'Europe/Madrid', hour12: false }).split(':').map(Number);
+      const slot = h * 6 + Math.floor(m / 10);
+      if (slot === lastSlot || !live.total) return;
+      lastSlot = slot;
+      const ref = rtdb.ref('stats/' + day() + '/online/' + slot);
+      ref.once('value').then((s) => { if (!s.exists()) return ref.set(live.total); }).catch(() => {});
+    }, 30000);
     const sid = Array.from({ length: 12 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
     onlineRef = rtdb.ref('online/' + sid);
     // al reconectar (móvil que vuelve de segundo plano) se vuelve a apuntar
