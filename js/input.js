@@ -11,6 +11,7 @@ PB.Input = class {
     this.enabled = false;
 
     window.addEventListener('keydown', (e) => {
+      if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return; // escribiendo en el chat
       const k = e.key.toLowerCase();
       if (this.enabled && [' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
       if (k === 'e' && !this.keys.has('e')) this.superKeyHeld = true;

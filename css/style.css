@@ -1914,3 +1914,64 @@ h1.lose { color: #ff8a7a; }
 #ab-share { width: 100%; }
 .ld-tip { margin-top: 18px; font-size: 14px; color: #c9b8ff; opacity: 0.85; text-align: center; padding: 0 16px; }
 @media (max-height: 500px) { .ab-sub, .ab-share p { font-size: 13px; } .ab-links { margin-bottom: 10px; } .ab-link { padding: 6px 4px; } }
+
+/* ---------- chat general y del grupo (lobby) ---------- */
+.lb-icons { grid-template-columns: repeat(4, 1fr) !important; }
+.gchat { position: fixed; inset: 0; z-index: 55; display: flex; justify-content: flex-start; background: rgba(8, 10, 20, 0.45); padding: 10px; padding-left: calc(10px + var(--sal, 0px)); }
+.gc-panel { width: min(400px, 100%); height: 100%; display: flex; flex-direction: column; padding: 12px 12px 10px; animation: gcIn 0.22s ease-out both; }
+@keyframes gcIn { from { transform: translateX(-30px); opacity: 0; } to { transform: none; opacity: 1; } }
+.gc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.gc-head b { font-weight: 400; font-size: 24px; color: #ffe066; }
+.gc-head small { color: #7dff8f; font-size: 13px; }
+.gc-head .fb-close { margin-left: auto; }
+.gc-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.gc-tabs button { flex: 1; font: inherit; font-size: 15px; padding: 5px; border-radius: 9px; border: 2px solid #33416a; background: #1a2242; color: #c9d4f2; cursor: pointer; position: relative; }
+.gc-tabs button.on { border-color: #ffd84a; color: #fff6c8; background: #2a3358; }
+.gc-tabs .badge { position: absolute; top: -8px; right: -6px; }
+.gc-log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px 2px; overscroll-behavior: contain; }
+.gc-m { display: flex; gap: 8px; align-items: flex-start; }
+.gc-m > img { width: 32px; height: 32px; image-rendering: pixelated; background: #1a2242; border-radius: 8px; flex: none; }
+.gc-b { flex: 1; min-width: 0; text-align: left; background: rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 4px 9px 6px; }
+.gc-m.mine .gc-b { background: rgba(125, 255, 143, 0.1); }
+.gc-m.owner .gc-b { background: rgba(255, 207, 46, 0.12); box-shadow: inset 0 0 0 1px rgba(255, 207, 46, 0.4); }
+.gc-n { background: none; border: 0; padding: 0; font: inherit; font-size: 15px; color: #7ab4fa; cursor: pointer; }
+.gc-n:hover { text-decoration: underline; }
+.gc-m.mine .gc-n { color: #7dff8f; }
+.gc-m.owner .gc-n { color: #ffd23a; }
+.gc-tag { margin-left: 6px; font-size: 10px; padding: 0 5px; border-radius: 4px; background: #ffd23a; color: #3a2400; vertical-align: 2px; }
+.gc-b small { margin-left: 6px; color: #6a7aa0; font-size: 11px; }
+.gc-b p { margin: 1px 0 0; color: #e8eefc; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+.gc-menu { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.gc-menu button { font: inherit; font-size: 13px; padding: 4px 9px; border-radius: 8px; border: 1px solid #33416a; background: #1a2242; color: #e8eefc; cursor: pointer; }
+.gc-menu button:hover { border-color: #ffd84a; }
+.gc-empty { color: #8a96b0; text-align: center; margin: auto 0; font-size: 14px; }
+.gc-rules { margin: 6px 0; font-size: 11.5px; color: #8a96b0; }
+.gc-in { display: flex; gap: 6px; }
+.gc-in input { flex: 1; min-width: 0; font: 15px system-ui, sans-serif; color: #f1f4fb; background: #11152a; border: 2px solid #33416a; border-radius: 10px; padding: 8px 10px; }
+.gc-in input:focus { outline: none; border-color: #ffd84a; }
+#btn-chat { position: relative; }
+@media (max-height: 500px) { .gc-panel { padding: 8px 10px; } .gc-head b { font-size: 20px; } .gc-rules { display: none; } .gc-m > img { width: 26px; height: 26px; } }
+
+/* ---------- chat de la partida ---------- */
+/* debajo de la pausa (arriba a la izquierda va el marcador de algunos modos) */
+#btn-mchat { position: fixed; top: 66px; left: calc(10px + var(--sal, 0px)); z-index: 20; }
+#btn-mchat.on { filter: brightness(1.3); }
+.mchat { position: fixed; left: calc(10px + var(--sal, 0px)); top: 122px; z-index: 22; width: min(340px, 46vw); pointer-events: none; }
+.mchat-log { display: flex; flex-direction: column; gap: 3px; }
+.mchat-log p { margin: 0; align-self: flex-start; max-width: 100%; padding: 3px 8px; border-radius: 8px; background: rgba(10, 14, 30, 0.72); color: #fff; font-family: system-ui, sans-serif; font-size: 13px; line-height: 1.3; overflow-wrap: anywhere; transition: opacity 1s; }
+.mchat-log p b { font-weight: 600; }
+.mchat-log p.me b { color: #7dff8f; }
+.mchat-log p.ally b { color: #8ec2ff; }
+.mchat-log p.foe b { color: #ff9a9a; }
+.mchat-log p.old { opacity: 0; }
+.mchat-bar { pointer-events: auto; margin-top: 8px; background: rgba(16, 22, 46, 0.94); border: 2px solid #33416a; border-radius: 12px; padding: 8px; }
+.mchat-quick { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 7px; }
+.mchat-quick button { font: inherit; font-size: 14px; padding: 4px 9px; border-radius: 8px; border: 1px solid #33416a; background: #1f2a50; color: #fff; cursor: pointer; }
+.mchat-quick button:active { background: #2e3d72; }
+.mchat-in { display: flex; gap: 6px; }
+.mchat-in input { flex: 1; min-width: 0; font: 15px system-ui, sans-serif; color: #f1f4fb; background: #0d1124; border: 2px solid #33416a; border-radius: 9px; padding: 6px 9px; }
+.mchat-in input:focus { outline: none; border-color: #ffd84a; }
+.mchat-mute { margin-top: 6px; background: none; border: 0; color: #8a96b0; font: inherit; font-size: 13px; cursor: pointer; padding: 0; }
+@media (max-height: 500px) { .mchat { top: 112px; } .mchat-quick button { font-size: 13px; padding: 3px 7px; } }
+/* móviles estrechos: con el botón del chat no cabe todo arriba, "Ideas y bugs" queda solo con su icono */
+@media (max-width: 760px) and (max-height: 500px) { .fb-btn span { display: none; } .fb-btn { padding-left: 8px; padding-right: 8px; } }

@@ -196,6 +196,26 @@
     endTimer = 0;
     hideScreens();
     $('#btn-pause').classList.remove('hidden');
+    // chat de la partida: solo si hay más personas (contra bots no hace falta)
+    if (Object.keys(net.humans || {}).length > 1) PB.Chat.matchStart(sendMatchChat);
+  }
+
+  // ------------------------------------------------------------ chat de la partida
+  // Va por la misma conexión que la partida: quien escribe se lo manda al anfitrión y este lo
+  // reparte a todos como un evento más (así llega en orden, incluso después de cambiar de anfitrión).
+  const chatT = {};
+  function sendMatchChat(text) {
+    if (!net || !game || !game.player) return;
+    if (net.role === 'host') pushMatchChat(game.player.idx, text);
+    else if (net.client) net.link.send(net.hostPeer, { k: 'chat', text });
+  }
+  function pushMatchChat(idx, text) {
+    const b = game.brawlers[idx], t = PB.Chat.filter(text, 80);
+    if (!b || !t) return;
+    // como mucho un mensaje por segundo y jugador
+    if (performance.now() - (chatT[idx] || 0) < 900) return;
+    chatT[idx] = performance.now();
+    game.events.push({ type: 'chat', b, text: t });
   }
 
   function onNetMessage(peer, m) {
@@ -204,6 +224,7 @@
       const idx = net.seats[peer];
       if (idx === undefined) return;
       if (m.k === 'i') net.remotes[idx] && net.remotes[idx].push(m);
+      else if (m.k === 'chat') pushMatchChat(idx, m.text);
       else if (m.k === 'hello' && net.host) net.link.send(peer, Object.assign({ k: 's', ack: 0 }, net.host.snapshot(true)));
       else if (m.k === 'bye') onNetLeave(peer);
     } else {
@@ -327,6 +348,7 @@
   }
 
   function endNet() {
+    PB.Chat.matchEnd();
     if (!net) return;
     if (bgTimer) bgTimer.postMessage(false);
     try { net.link.send(null, { k: 'bye' }); } catch (e) {}
@@ -769,6 +791,12 @@
           PB.Audio.play('wall');
           renderer.announce(PB.T('¡GOL DE ORO!'), '#ffd23a', PB.T('Quien marque gana'), 2.2);
           break;
+        case 'chat': {
+          const rel = ev.b === me ? 'me' : me && ev.b.team === me.team ? 'ally' : 'foe';
+          const t = PB.Chat.matchLine(ev.b, ev.text, rel);
+          if (t) { ev.b.say = { text: t, t: game.clock }; if (ev.b !== me) PB.Audio.play('ui'); }
+          break;
+        }
         case 'goal':
           PB.Audio.play('goal');
           renderer.announce(PB.T('¡Gol! {a} - {b}', { a: game.score[myTeam], b: game.score[otherOf(myTeam)] }), tc(ev.team), '', 1.6);
@@ -874,7 +902,7 @@
   let lastDraw = 0;
 
   // acceso para depurar desde la consola: PB.debug.game
-  PB.debug = { get game() { return game; }, get net() { return net; }, input, renderer };
+  PB.debug = { get game() { return game; }, get net() { return net; }, input, renderer, startNet: (o) => startNetMatch(o) };
   PB.Match = { startNet: (o) => startNetMatch(o), get busy() { return mode === 'play'; } };
 
   // Esperar a la fuente pixel (si tarda más de 2 s, se sigue igualmente)
@@ -884,6 +912,7 @@
 
   PB.Settings.apply();
   PB.I18nStart(); // traduce la página (si el idioma no es español)
+  PB.Chat.initMatch();
   PB.Lobby.init({
     backToPause: () => showScreen('pause'),
     getMode: () => gameMode,

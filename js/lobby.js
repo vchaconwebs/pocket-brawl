@@ -137,6 +137,8 @@ PB.Lobby = (() => {
     if (id === 'lobby' && PB.Save.needsStarters()) id = 'starters';
     if (id === 'starters') renderStarters();
     current = id;
+    // el chat general se escucha desde que entras a la lobby; al cambiar de pantalla se cierra
+    if (id === 'lobby') PB.Chat.startGlobal(); else PB.Chat.closeGlobal();
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('hidden', s.id !== id);
     if (id === 'lobby') { refreshLobby(); setTimeout(checkPatchNotes, 400); }
   }
@@ -1561,6 +1563,7 @@ PB.Lobby = (() => {
   function init(a) {
     api = a;
     PB.Save.load();
+    PB.Chat.initLobby();
     $('#ico-coin').src = coinIcon();
     $('#ico-star').src = starIcon();
     $('#ico-rainbow').src = rainbowIcon();

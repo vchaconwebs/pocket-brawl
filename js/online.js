@@ -648,6 +648,86 @@ PB.Online = (() => {
     return { ok: true };
   }
 
+  // ------------------------------------------------------------ chat general y chat del grupo (Realtime Database)
+  // Solo llegan los mensajes nuevos (child_added): así gasta muy poco aunque haya mucha gente.
+  // Cada mensaje: { uid, name, text, t, av }. Las reglas obligan a esperar entre mensajes y
+  // dejan borrar los propios, los de más de un día (limpieza) y todos al administrador.
+  const ADMIN = 'ULFnTGBapaaIUhxmHKgCh9TIm6G3';
+  const DAY = 86400000;
+  let gMsgs = [], gWatch = null, banned = false;
+  let pMsgs = [], pWatch = null, pCode = null, pSince = 0;
+  const avatar = () => { const d = PB.Save.get(), b = PB.brawlerById(d.selected); return String(d.avatarDex || (b ? b.dex : '')).slice(0, 16); };
+  const chatMsg = (key, m) => ({ id: key, uid: String(m.uid || ''), name: clean(m.name, 16) || 'Entrenador', text: String(m.text || '').slice(0, 120), t: +m.t || 0, av: String(m.av || ''), mine: m.uid === uid });
+  function listen(ref, list, ev) {
+    const q = ref.orderByChild('t').limitToLast(40);
+    const add = q.on('child_added', (s) => {
+      const m = chatMsg(s.key, s.val() || {});
+      if (ev === 'pchat' && m.t < pSince) return;
+      list.push(m);
+      list.sort((a, b) => a.t - b.t);
+      if (list.length > 60) list.shift();
+      emit(ev, m);
+    });
+    const del = q.on('child_removed', (s) => {
+      const i = list.findIndex((m) => m.id === s.key);
+      if (i >= 0) list.splice(i, 1);
+      emit(ev);
+    });
+    return () => { q.off('child_added', add); q.off('child_removed', del); };
+  }
+  async function watchChat() {
+    if (gWatch) return true;
+    if (!(await start())) return false;
+    gWatch = listen(rtdb.ref('chat'), gMsgs, 'gchat');
+    rtdb.ref('chatBan/' + uid).on('value', (s) => { banned = !!s.val(); }, () => {});
+    // limpieza: los mensajes de hace más de un día se borran (cualquiera puede, poco a poco)
+    rtdb.ref('chat').orderByChild('t').endAt(now() - DAY).limitToFirst(25).once('value')
+      .then((s) => s.forEach((c) => { c.ref.remove().catch(() => {}); })).catch(() => {});
+    return true;
+  }
+  async function sendGlobalChat(text) {
+    if (!(await start())) return err('Sin conexión.');
+    if (banned) return err('No puedes escribir en el chat.');
+    text = String(text || '').slice(0, 120);
+    if (!text) return err('Escribe algo.');
+    const TS = fb.database.ServerValue.TIMESTAMP;
+    const key = rtdb.ref('chat').push().key;
+    try {
+      await rtdb.ref().update({ ['chat/' + key]: { uid, name: myName(), text, t: TS, av: avatar() }, ['chatLast/' + uid]: TS });
+    } catch (e) { return err('Espera un poco antes de enviar otro mensaje.'); }
+    return { ok: true };
+  }
+  const deleteChat = (id) => rtdb.ref('chat/' + id).remove().catch(() => {});
+  const banChat = (id) => rtdb.ref('chatBan/' + id).set(true).catch(() => {});
+  // chat del grupo: se engancha a la sala en la que estés (solo ven los mensajes desde que entraste)
+  function watchPartyChat() {
+    const code = party ? party.code : null;
+    if (code === pCode) return;
+    if (pWatch) pWatch();
+    pWatch = null;
+    pMsgs.length = 0;
+    pCode = code;
+    if (code) {
+      pSince = now() - 2 * 60 * 1000;
+      pWatch = listen(rtdb.ref('partyChat/' + code), pMsgs, 'pchat');
+    }
+    emit('pchat');
+  }
+  async function sendPartyChat(text) {
+    if (!party || !(await start())) return err('No estás en ningún grupo.');
+    text = String(text || '').slice(0, 120);
+    if (!text) return err('Escribe algo.');
+    try {
+      await rtdb.ref('partyChat/' + party.code).push({ uid, name: myName(), text, t: fb.database.ServerValue.TIMESTAMP, av: avatar() });
+    } catch (e) { return err('No se ha podido enviar.'); }
+    return { ok: true };
+  }
+  // invitar a jugar a alguien del chat: si no tienes sala, se crea
+  async function inviteToPlay(id) {
+    if (!party) { const r = await createParty(); if (r && r.error) return r; }
+    return invite(id);
+  }
+
   // ------------------------------------------------------------ sala de amigos (Realtime Database)
   // La sala no existe hasta que la creas; al cerrar la página sales de ella.
   let party = null, partyRef = null, partyOff = null;
@@ -691,6 +771,7 @@ PB.Online = (() => {
         rematch: v.rematch || null,
       };
       for (const id of ids) if (party.invited) delete party.invited[id];
+      watchPartyChat();
       emit('party', info);
       // el jefe ha encontrado partida: los demás se unen
       const fresh = v.state && v.state.mid && (!v.state.t || now() - v.state.t < 30000);
@@ -705,8 +786,11 @@ PB.Online = (() => {
     if (partyOff) partyOff();
     partyOff = null;
     if (partyRef) partyRef.child('members/' + uid).onDisconnect().cancel();
+    // si era el último del grupo, se borra su chat
+    if (party && party.members.length <= 1) rtdb.ref('partyChat/' + party.code).remove().catch(() => {});
     partyRef = null;
     party = null;
+    watchPartyChat();
   }
 
   async function createParty() {
@@ -1125,6 +1209,8 @@ PB.Online = (() => {
     topPlayers, topClans,
     searchClans, getClan, myClan, createClan, joinClan, leaveClan, clanRequests, answerClanRequest,
     chat, sendChat,
+    watchChat, sendGlobalChat, deleteChat, banChat, sendPartyChat, inviteToPlay,
+    chatMsgs: () => gMsgs, partyMsgs: () => pMsgs, isAdmin: () => uid === ADMIN, get myUid() { return uid; },
     party: () => party, createParty, invite, joinByCode, setReady, updateMe, kick, leaveParty,
     voteRematch, cancelRematch, rematchGo, rematchLeft,
     friends, requests, searchPlayers, addFriend, answerRequest, removeFriend,

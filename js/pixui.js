@@ -197,6 +197,23 @@ PB.PixUI = (() => {
         '............',
       ],
     },
+    chat: {
+      pal: { o: '#141824', W: '#ffffff', S: '#b8c8e8', k: '#3a78e0' },
+      art: [
+        '............',
+        '.oooooooooo.',
+        'oWWWWWWWWWWo',
+        'oWWWWWWWWWWo',
+        'oWkkWkkWkkWo',
+        'oWkkWkkWkkWo',
+        'oWWWWWWWWWSo',
+        '.oSSWWSSSSo.',
+        '..ooWSoooo..',
+        '...oSo......',
+        '...oo.......',
+        '............',
+      ],
+    },
     pause: {
       pal: { o: '#141632', w: '#ffffff', g: '#c8d0e8' },
       art: [

@@ -1012,6 +1012,8 @@ PB.Renderer = class {
       ctx.drawImage(PB.Tiles.candy(), x - w / 2 - 38, y - 8, 22, 22);
       this.outlined(String(b.power), x - w / 2 - 14, y + 9, 13, '#ffffff');
     }
+    // lo que acaba de escribir en el chat
+    if (b.say && game.clock - b.say.t < 3.5 && !(PB.Chat && PB.Chat.matchMuted)) this.drawSay(b.say.text, x, b.balls > 0 ? y - 46 : y - 28, game.clock - b.say.t);
     // Pokéballs que lleva encima
     if (b.balls > 0) {
       const n = Math.min(b.balls, 5);
@@ -1019,6 +1021,26 @@ PB.Renderer = class {
       for (let i = 0; i < n; i++) PB.Pokeball.draw(ctx, bx + i * 13, y - 30, 1, {});
       if (b.balls > 1) this.outlined('×' + b.balls, x + (n * 13) / 2 + 14, y - 24, 15, '#ffffff');
     }
+  }
+
+  // Bocadillo de chat (pixel): se recorta si es muy largo y se desvanece al final
+  drawSay(text, x, y, age) {
+    const ctx = this.ctx;
+    const t = text.length > 28 ? text.slice(0, 27) + '…' : text;
+    ctx.font = '14px "Jersey 10", system-ui, sans-serif';
+    const w = Math.ceil(ctx.measureText(t).width) + 16, h = 22;
+    const bx = Math.round(x - w / 2), by = Math.round(y - h);
+    ctx.globalAlpha = Math.max(0, Math.min(1, (3.5 - age) / 0.5));
+    ctx.fillStyle = '#141824';
+    ctx.fillRect(bx - 2, by - 2, w + 4, h + 4);
+    ctx.fillRect(x - 4, by + h, 8, 6);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(bx, by, w, h);
+    ctx.fillRect(x - 2, by + h, 4, 4);
+    ctx.fillStyle = '#141824';
+    ctx.textAlign = 'center';
+    ctx.fillText(t, x, by + 16);
+    ctx.globalAlpha = 1;
   }
 
   drawShot(p, t) {

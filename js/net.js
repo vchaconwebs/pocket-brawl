@@ -7,7 +7,7 @@
 PB.Net = (() => {
   const SKIP_GAME = new Set(['mode', 'rules', 'world', 'fx', 'events', 'timers', 'brawlers', 'nextShotId']);
   // campos de cada luchador que no se copian: cada uno sabe quién es él
-  const SKIP_B = new Set(['def', 'isPlayer', 'friend', 'idx', 'hit', 'animT', 'dustT', 'trainer', 'name', 'isBot', 'shiny', 'superQ', 'atkQ', 'ai', 'evoMsg']);
+  const SKIP_B = new Set(['def', 'isPlayer', 'friend', 'idx', 'hit', 'animT', 'dustT', 'trainer', 'name', 'isBot', 'shiny', 'superQ', 'atkQ', 'ai', 'evoMsg', 'say']);
   const r1 = (n) => Math.round(n * 10) / 10;
 
   // ------------------------------------------------------------ convertir a datos

@@ -32,7 +32,7 @@
    "offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
   </script>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=85">
+  <link rel="stylesheet" href="css/style.css?v=86">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -102,6 +102,7 @@
             <button class="tile icon sec-orange" id="btn-achievements" title="Logros"><span class="ib"><img class="pxi" data-icon="medal" alt=""></span><span class="badge hidden" id="ach-badge">0</span></button>
             <button class="tile icon sec-pink" id="btn-friends" title="Amigos"><span class="ib"><img class="pxi" data-icon="friends" alt=""></span><span class="badge hidden" id="fr-badge">0</span></button>
             <button class="tile icon sec-teal" id="btn-ranking" title="Ranking"><span class="ib"><img class="pxi" data-icon="cup" alt=""></span></button>
+            <button class="tile icon sec-blue" id="btn-chat" title="Chat"><span class="ib"><img class="pxi" data-icon="chat" alt=""></span><span class="badge hidden" id="chat-badge">0</span></button>
           </div>
         </div>
         <button class="chest-widget" id="chest-widget">
@@ -160,6 +161,17 @@
       <div class="patch-head"><span class="patch-ver" id="patch-ver"></span><h2 id="patch-title"></h2><small id="patch-date"></small></div>
       <ul id="patch-list"></ul>
       <button class="big" id="patch-ok">¡A jugar!</button>
+    </div>
+  </div>
+
+  <!-- CHAT GENERAL Y DEL GRUPO (lobby) -->
+  <div id="gchat" class="gchat hidden" role="dialog" aria-labelledby="gc-title">
+    <div class="panel gc-panel">
+      <div class="gc-head"><b id="gc-title">Chat general</b><small id="gc-online"></small><button class="fb-close" id="gc-close" aria-label="Cerrar">✕</button></div>
+      <div class="gc-tabs hidden" id="gc-tabs"><button data-t="global" class="on">General</button><button data-t="party">Grupo <span class="badge hidden" id="gc-pbadge">0</span></button></div>
+      <div class="gc-log" id="gc-log"></div>
+      <p class="gc-rules">Toca un nombre para añadirle o invitarle a jugar. Sé respetuoso y no compartas datos personales.</p>
+      <div class="gc-in"><input id="gc-q" maxlength="120" autocomplete="off" enterkeyhint="send" placeholder="Escribe a todos…"><button class="act blue" id="gc-send">Enviar</button></div>
     </div>
   </div>
 
@@ -443,37 +455,48 @@
     <span class="mobile">Izquierda: moverte · Derecha: arrastra para apuntar, toque rápido = automático · Botón amarillo: súper</span>
   </div>
   <button class="icon-btn hidden" id="btn-pause" title="Pausa (Esc)"><img class="pxi" data-icon="pause" alt=""></button>
+  <!-- CHAT DE LA PARTIDA (solo si juegas con más personas) -->
+  <button class="icon-btn hidden" id="btn-mchat" title="Chat (Enter)"><img class="pxi" data-icon="chat" alt=""></button>
+  <div id="mchat" class="mchat hidden">
+    <div class="mchat-log" id="mchat-log"></div>
+    <div class="mchat-bar hidden" id="mchat-bar">
+      <div class="mchat-quick" id="mchat-quick"></div>
+      <div class="mchat-in"><input id="mchat-q" maxlength="80" autocomplete="off" enterkeyhint="send" placeholder="Escribe…"><button class="act blue" id="mchat-send">Enviar</button></div>
+      <button class="mchat-mute" id="mchat-mute">🔊 Silenciar chat</button>
+    </div>
+  </div>
 
   <div id="rotate">
     <div class="phone"></div>
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=85"></script>
-  <script src="js/data.js?v=85"></script>
-  <script src="js/news.js?v=85"></script>
-  <script src="js/roster-data.js?v=85"></script>
-  <script src="js/i18n-data.js?v=85"></script>
-  <script src="js/i18n-names.js?v=85"></script>
-  <script src="js/i18n.js?v=85"></script>
-  <script src="js/sprites.js?v=85"></script>
-  <script src="js/vfx.js?v=85"></script>
-  <script src="js/roster.js?v=85"></script>
-  <script src="js/pokeball.js?v=85"></script>
-  <script src="js/tiles.js?v=85"></script>
-  <script src="js/world.js?v=85"></script>
-  <script src="js/game.js?v=85"></script>
-  <script src="js/net.js?v=85"></script>
-  <script src="js/modes.js?v=85"></script>
-  <script src="js/ai.js?v=85"></script>
-  <script src="js/audio.js?v=85"></script>
-  <script src="js/render.js?v=85"></script>
-  <script src="js/input.js?v=85"></script>
-  <script src="js/settings.js?v=85"></script>
-  <script src="js/pixui.js?v=85"></script>
-  <script src="js/save.js?v=85"></script>
-  <script src="js/online.js?v=85"></script>
-  <script src="js/lobby.js?v=85"></script>
-  <script src="js/main.js?v=85"></script>
+  <script src="js/sprite-data.js?v=86"></script>
+  <script src="js/data.js?v=86"></script>
+  <script src="js/news.js?v=86"></script>
+  <script src="js/roster-data.js?v=86"></script>
+  <script src="js/i18n-data.js?v=86"></script>
+  <script src="js/i18n-names.js?v=86"></script>
+  <script src="js/i18n.js?v=86"></script>
+  <script src="js/sprites.js?v=86"></script>
+  <script src="js/vfx.js?v=86"></script>
+  <script src="js/roster.js?v=86"></script>
+  <script src="js/pokeball.js?v=86"></script>
+  <script src="js/tiles.js?v=86"></script>
+  <script src="js/world.js?v=86"></script>
+  <script src="js/game.js?v=86"></script>
+  <script src="js/net.js?v=86"></script>
+  <script src="js/modes.js?v=86"></script>
+  <script src="js/ai.js?v=86"></script>
+  <script src="js/audio.js?v=86"></script>
+  <script src="js/render.js?v=86"></script>
+  <script src="js/input.js?v=86"></script>
+  <script src="js/settings.js?v=86"></script>
+  <script src="js/pixui.js?v=86"></script>
+  <script src="js/save.js?v=86"></script>
+  <script src="js/online.js?v=86"></script>
+  <script src="js/chat.js?v=86"></script>
+  <script src="js/lobby.js?v=86"></script>
+  <script src="js/main.js?v=86"></script>
 </body>
 </html>
