@@ -1,9 +1,39 @@
 // Versión del juego y notas de parche. Al publicar una actualización con novedades:
 // sube PB.VERSION y añade su nota ARRIBA del todo en PB.PATCH_NOTES (la primera es la que se enseña).
 // Cada jugador la ve una sola vez al entrar a la lobby (se guarda en localStorage 'pb.seenVersion').
-PB.VERSION = '1.2';
+PB.VERSION = '1.3';
 
 PB.PATCH_NOTES = [
+  {
+    v: '1.3',
+    date: '23/10/2026',
+    es: {
+      title: 'Novedades de la versión 1.3',
+      items: [
+        ['👯', '¡Nuevo modo Niebla Tóxica Dúo! 5 parejas, la niebla cierra el mapa y gana la última pareja en pie. Puedes jugarlo con un amigo de tu sala.'],
+        ['⚔️', '¡Nuevo modo Duelo de Equipos! 3 contra 3 a lo bestia: gana el primer equipo en llegar a 15 K.O.'],
+        ['☠️', '¡Nuevo modo Eliminación! 3 contra 3 sin reaparecer, al mejor de 3 rondas.'],
+        ['🎤', 'Notas de voz en el chat general: graba hasta 6 segundos y mándalo a todos.'],
+        ['🎁', 'Las Pokéballs cambian de color con cada toque según lo raro que sea el Pokémon que traen.'],
+        ['⚖️', 'Súper más equilibradas, más Puntos Pokémon, y perder ya quita copas.'],
+        ['📜', 'En «Novedades» ahora puedes ver las notas de todas las versiones.'],
+        ['🔧', 'Si alguien de tu grupo vuelve a la sala al acabar, volvéis todos juntos.'],
+      ],
+    },
+    en: {
+      title: "What's new in version 1.3",
+      items: [
+        ['👯', 'New mode: Toxic Fog Duo! 5 pairs, the fog closes in and the last pair standing wins. Play it with a friend from your room.'],
+        ['⚔️', 'New mode: Team Duel! All-out 3v3: first team to 15 KOs wins.'],
+        ['☠️', 'New mode: Knockout! 3v3 with no respawns, best of 3 rounds.'],
+        ['🎤', 'Voice notes in the global chat: record up to 6 seconds and send it to everyone.'],
+        ['🎁', 'Pokéballs change color with every tap depending on how rare the Pokémon inside is.'],
+        ['⚖️', 'More balanced supers, more Pokémon Points, and losing now costs trophies.'],
+        ['📜', 'In «What’s new» you can now read the notes of every version.'],
+        ['🔧', 'If someone in your group goes back to the room after a match, everyone goes back together.'],
+      ],
+    },
+  },
   {
     v: '1.2',
     date: '22/10/2026',

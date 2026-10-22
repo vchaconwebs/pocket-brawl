@@ -109,10 +109,21 @@ PB.Lobby = (() => {
     if (id === 'ball') return window.SPRITE_DATA['0100'].portrait;
     return pixIcon('mode-' + id, 40, (c) => {
       c.imageSmoothingEnabled = false;
-      c.fillStyle = { gems: '#3a7a3a', showdown: '#5a2a78', zone: '#2a4a8a' }[id] || '#333';
+      c.fillStyle = { gems: '#3a7a3a', showdown: '#5a2a78', duo: '#7a2a6a', zone: '#2a4a8a', brawl: '#8a2a2a', knockout: '#3a3a3a' }[id] || '#333';
       c.fillRect(0, 0, 40, 40);
       if (id === 'gems') PB.Pokeball.draw(c, 20, 20, 2, {});
       else if (id === 'showdown') c.drawImage(PB.Tiles.candy(), 2, 2, 36, 36);
+      else if (id === 'duo') { c.drawImage(PB.Tiles.candy(), 0, 6, 26, 26); c.drawImage(PB.Tiles.candy(), 14, 10, 26, 26); }
+      else if (id === 'brawl' || id === 'knockout') {
+        // dos espadas cruzadas (Duelo) o una calavera de pixel (Eliminación)
+        const P = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+        if (id === 'brawl') {
+          for (let i = 0; i < 22; i++) { P(8 + i, 8 + i, 4, 4, '#e8eefc'); P(28 - i, 8 + i, 4, 4, '#e8eefc'); }
+          P(6, 26, 10, 4, '#c08a10'); P(24, 26, 10, 4, '#c08a10');
+        } else {
+          P(10, 6, 20, 18, '#f2f2ea'); P(13, 24, 14, 8, '#f2f2ea'); P(13, 12, 5, 6, '#141824'); P(22, 12, 5, 6, '#141824'); P(19, 19, 2, 3, '#141824'); P(15, 28, 2, 4, '#141824'); P(19, 28, 2, 4, '#141824'); P(23, 28, 2, 4, '#141824');
+        }
+      }
       else c.drawImage(PB.Tiles.flag('blue', 0), 6, 0, 26, 42);
     });
   };
@@ -669,7 +680,8 @@ PB.Lobby = (() => {
       PB.Audio.play(meM.ready ? 'tick' : 'ready');
       return false;
     }
-    if (!(api.isRandom && api.isRandom()) && PB.MODES[api.getMode()].ffa && p.members.length > 1) {
+    const pm = PB.MODES[api.getMode()];
+    if (!(api.isRandom && api.isRandom()) && pm.ffa && p.members.length > (pm.duo ? 2 : 1)) {
       modal('Niebla Tóxica es todos contra todos: no se puede jugar en grupo. Cambia de modo o sal de la sala.');
       return false;
     }

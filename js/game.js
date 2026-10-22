@@ -55,7 +55,14 @@ PB.Game = class {
         kills: 0, deaths: 0, ballsTaken: 0, dmgDone: 0,
       });
     };
-    if (this.mode.ffa) {
+    if (this.mode.duo) {
+      // dúo: parejas (0-1, 2-3...) que salen juntas
+      const spots = this.world.spawns.free.slice().sort(() => Math.random() - 0.5);
+      opts.ffa.forEach((id, i) => {
+        const sp = spots[Math.floor(i / 2) % spots.length];
+        add(id, 'p' + Math.floor(i / 2), { x: sp.x + (i % 2 ? 34 : -34), y: sp.y }, i === 0 && opts.playerInBlue);
+      });
+    } else if (this.mode.ffa) {
       const spots = this.world.spawns.free.slice().sort(() => Math.random() - 0.5);
       opts.ffa.forEach((id, i) => add(id, 'p' + i, spots[i % spots.length], i === 0 && opts.playerInBlue));
     } else {

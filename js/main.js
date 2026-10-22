@@ -48,6 +48,11 @@
       const list = [];
       for (let i = 0; i < n; i++) list.push(ids[Math.floor(Math.random() * ids.length)]);
       if (playerId) list[0] = playerId;
+      if (M.duo && playerId) {
+        const party = PB.Online.party();
+        const mate = party ? party.members.find((m) => !m.me) : null;
+        if (mate && PB.brawlerById(mate.fav)) { list[1] = mate.fav; opts.partyNames = [mate.name]; }
+      }
       opts.ffa = list;
     } else if (playerId) {
       // los de tu sala juegan contigo; los huecos que falten, bots
@@ -90,7 +95,7 @@
     // nombre del entrenador de cada uno (para la pantalla final)
     const names = shuffle(PB.TRAINER_NAMES.slice());
     game.brawlers.forEach((b, i) => {
-      const friend = !game.mode.ffa && opts.partyNames && b.team === (game.player || {}).team && i >= 1 && i <= opts.partyNames.length;
+      const friend = (!game.mode.ffa || game.mode.duo) && opts.partyNames && b.team === (game.player || {}).team && i >= 1 && i <= opts.partyNames.length;
       b.trainer = b.isPlayer ? PB.Save.get().name : friend ? opts.partyNames[i - 1] : names[i % names.length];
       b.friend = !!friend;
       b.isBot = !b.isPlayer && !friend; // los que rellenan la partida
@@ -442,7 +447,7 @@
   }
 
   // música de cada modo
-  const SONG_OF = { gems: 'battle', heist: 'battle', showdown: 'showdown', ball: 'arena', zone: 'arena' };
+  const SONG_OF = { gems: 'battle', heist: 'battle', showdown: 'showdown', duo: 'showdown', ball: 'arena', zone: 'arena', brawl: 'battle', knockout: 'battle' };
 
   function toMenu() {
     // salir a mitad de una partida en red cuenta como abandono (derrota)
@@ -493,7 +498,7 @@
     const res = M.result(game, me);
     $('#result').textContent = res.title;
     $('#result').className = res.cls;
-    const statTxt = (b) => (M.id === 'zone' ? Math.round(b.stat) + ' s' : M.id === 'heist' ? short(b.stat) : Math.round(b.stat));
+    const statTxt = (b) => (M.id === 'zone' ? Math.round(b.stat) + ' s' : M.id === 'heist' ? short(b.stat) : M.id === 'brawl' || M.id === 'knockout' ? b.kills : Math.round(b.stat));
     const short = (n) => (n >= 1000 ? (Math.round(n / 100) / 10).toString().replace('.', ',') + 'k' : String(Math.round(n)));
     // el mejor de la partida (MVP): más K.O. y daño
     const score = (b) => b.kills * 2500 + b.dmgDone + (b.stat || 0) * (M.id === 'heist' ? 0.5 : M.id === 'zone' ? 40 : 800);
@@ -524,8 +529,10 @@
     }
     $('#end-mode').textContent = M.name;
     // recompensas: fichas, cofres nuevos y misiones
-    const win = M.ffa ? (me.rank || 99) <= 4 : game.winner === me.team;
-    const reward = PB.Save.applyMatch({ win, draw: game.winner === 'draw', rank: me.rank, mode: M.id, me });
+    // en el dúo el puesto es de la pareja (1 a 5): para las copas cuenta como el puesto equivalente de 10
+    const rank = M.duo ? Math.min(10, (me.rank || 5) * 2 - 1) : me.rank;
+    const win = M.ffa ? (rank || 99) <= 4 : game.winner === me.team;
+    const reward = PB.Save.applyMatch({ win, draw: game.winner === 'draw', rank, mode: M.id, me });
     const d = PB.Save.get();
     const pct = Math.round((100 * d.tokens) / PB.META.tokensPerChest);
     const pend = PB.Save.pending();
@@ -688,7 +695,7 @@
   // si no busca nadie, uno al azar. En grupo no vale Niebla Tóxica, que es todos contra todos.
   function pickRandomMode() {
     const p = PB.Online.party();
-    const ids = PB.MODE_ORDER.filter((id) => !(p && p.members.length > 1 && PB.MODES[id].ffa));
+    const ids = PB.MODE_ORDER.filter((id) => !(p && p.members.length > (PB.MODES[id].duo ? 2 : 1) && PB.MODES[id].ffa));
     const L = PB.Online.live.modes || {};
     const s = ids.slice().sort((a, b) => ((L[b] || {}).search || 0) - ((L[a] || {}).search || 0))[0];
     if ((L[s] || {}).search) return s;
@@ -804,6 +811,15 @@
         case 'kick': if (ev.b === me || near(ev.b)) PB.Audio.play('kick'); break;
         case 'pickBall': if (ev.b === me) PB.Audio.play('ball'); break;
         case 'voltorbBoom': break;
+        case 'roundWin': {
+          const mine = ev.team && ev.team === myTeam;
+          PB.Audio.play(mine ? 'win' : ev.team ? 'alarm' : 'tick');
+          renderer.announce(PB.T(!ev.team ? 'Ronda empatada' : mine ? '¡Ronda para tu equipo!' : 'Ronda para los rivales'), !ev.team ? '#ffffff' : mine ? '#5aa8ff' : '#ff6060', (ev.rounds[myTeam] || 0) + ' - ' + (ev.rounds[myTeam === 'blue' ? 'red' : 'blue'] || 0), 2.2);
+          break;
+        }
+        case 'round':
+          if (game.rounds && (game.rounds.blue === 1 && game.rounds.red === 1)) renderer.announce(PB.T('¡Última ronda!'), '#ffd23a', '', 1.6);
+          break;
         case 'goldenGoal':
           PB.Audio.play('alarm');
           PB.Audio.play('wall');
@@ -894,6 +910,7 @@
       focus = alive[Math.floor(spectate / 8) % Math.max(1, alive.length)] || game.brawlers[0];
     } else if (me.dead) {
       focus = null;
+      if (me.out) focus = game.brawlers.find((b) => b !== me && b.team === me.team && !b.dead) || null;
     }
     renderer.draw(game, {
       flip: !!(me && mode !== 'menu' && !game.mode.ffa && me.team === 'red'),

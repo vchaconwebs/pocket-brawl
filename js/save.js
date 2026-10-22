@@ -425,14 +425,14 @@ PB.Save = (() => {
     const me = r.me, id = me.def.id;
     // copas
     const before = copas(id);
-    const delta = PB.copasDelta(before, r.win ? 'win' : r.draw ? 'draw' : 'lose', r.mode === 'showdown' ? r.rank || 10 : 0);
+    const delta = PB.copasDelta(before, r.win ? 'win' : r.draw ? 'draw' : 'lose', r.mode === 'showdown' || r.mode === 'duo' ? r.rank || 10 : 0);
     d.copas[id] = Math.max(0, before + delta);
     // fichas y cofres
     let tokens;
-    if (r.mode === 'showdown') tokens = [0, 50, 40, 40, 30, 30, 20, 20, 15, 10, 10][r.rank || 10] || 10;
+    if (r.mode === 'showdown' || r.mode === 'duo') tokens = [0, 50, 40, 40, 30, 30, 20, 20, 15, 10, 10][r.rank || 10] || 10;
     else tokens = r.win ? 40 : r.draw ? 25 : 15;
     // las primeras victorias del día dan fichas dobles
-    const won = r.mode === 'showdown' ? (r.rank || 10) <= 4 : r.win;
+    const won = r.mode === 'showdown' || r.mode === 'duo' ? (r.rank || 10) <= 4 : r.win;
     const today = new Date().toDateString();
     if (d.bonusDay !== today) { d.bonusDay = today; d.bonusLeft = PB.META.bonusWins; }
     let bonus = false;
@@ -463,11 +463,11 @@ PB.Save = (() => {
     inc('supers', me.supersUsed || 0);
     s.streak = r.win ? (s.streak || 0) + 1 : 0;
     s.bestStreak = Math.max(s.bestStreak || 0, s.streak);
-    const winKey = { gems: 'winsGems', showdown: 'winsShowdown', heist: 'winsHeist', ball: 'winsBall', zone: 'winsZone' }[r.mode];
-    if (r.mode === 'showdown' ? r.rank === 1 : r.win) inc(winKey, 1);
+    const winKey = { gems: 'winsGems', showdown: 'winsShowdown', duo: 'winsShowdown', heist: 'winsHeist', ball: 'winsBall', zone: 'winsZone' }[r.mode];
+    if (winKey && (r.mode === 'showdown' || r.mode === 'duo' ? r.rank === 1 : r.win)) inc(winKey, 1);
     const add = { play: 1, win: r.win ? 1 : 0, ko: me.kills, damage: me.dmgDone, supers: me.supersUsed || 0, copas: Math.max(0, delta) };
     if (r.mode === 'gems') { add.balls = me.ballsTaken; inc('balls', me.ballsTaken); }
-    if (r.mode === 'showdown') { add.candy = me.stat; inc('candies', me.stat); }
+    if (r.mode === 'showdown' || r.mode === 'duo') { add.candy = me.stat; inc('candies', me.stat); }
     if (r.mode === 'heist') { add.snorlax = me.stat; inc('snorlax', Math.round(me.stat)); }
     if (r.mode === 'ball') { add.goals = me.stat; inc('goals', me.stat); }
     if (r.mode === 'zone') { add.zone = me.stat; inc('zone', Math.round(me.stat)); }
@@ -484,7 +484,7 @@ PB.Save = (() => {
   function applyAbandon(info) {
     const d = get();
     const id = info.id;
-    if (d.copas[id] !== undefined) d.copas[id] = Math.max(0, copas(id) + PB.copasDelta(copas(id), 'lose', info.mode === 'showdown' ? 10 : 0));
+    if (d.copas[id] !== undefined) d.copas[id] = Math.max(0, copas(id) + PB.copasDelta(copas(id), 'lose', info.mode === 'showdown' || info.mode === 'duo' ? 10 : 0));
     const now = Date.now();
     d.abandons = (d.abandons || []).filter((t) => now - t < 60 * 60 * 1000);
     d.abandons.push(now);

@@ -49,6 +49,31 @@ function hideSpot(g, b, home) {
   return best;
 }
 
+// Niebla venenosa que va cerrando el mapa (Niebla Tóxica y Dúo)
+function gasUpdate(g, dt) {
+  const gas = g.gas;
+  // la niebla empieza a cerrarse a los 15 s y llega al mínimo a los 1:15
+  const k = Math.max(0, Math.min(1, (g.time - 15) / 60));
+  gas.r = gas.maxR + (gas.minR - gas.maxR) * k;
+  if (k > 0 && !gas.warn) { gas.warn = true; g.events.push({ type: 'gas' }); }
+  gas.tickT -= dt;
+  const tick = gas.tickT <= 0;
+  if (tick) gas.tickT = 0.5;
+  for (const b of g.brawlers) {
+    if (b.dead || dist(b, gas) < gas.r) continue;
+    b.lastCombat = g.time; // en la niebla no se regenera vida
+    if (tick) g.damage(b, 280 + 60 * Math.floor(g.time / 30), null, null, { quiet: true });
+  }
+  // burbujas de veneno en el borde
+  for (let i = 0; i < 3; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const x = gas.x + Math.cos(a) * (gas.r + Math.random() * 60), y = gas.y + Math.sin(a) * (gas.r + Math.random() * 60);
+    if (x > -50 && y > -50 && x < g.world.pixelW + 50 && y < g.world.pixelH + 50) {
+      g.vfx('bubble', 'poison', x, y, { vy: -30, life: 0.8, scale: 0.6 + Math.random() * 0.6, fade: true });
+    }
+  }
+}
+
 // chut del Voltorb: velocidad de salida y hasta dónde llega rodando (lo que marca la línea de apuntado)
 PB.KICK = { speed: 600, reach: 326 };
 
@@ -165,27 +190,7 @@ PB.MODES = {
       g.gas = { x: W.pixelW / 2, y: W.pixelH / 2, r: maxR, maxR, minR: 140, tickT: 0, warn: false };
     },
     update(g, dt) {
-      const gas = g.gas;
-      // la niebla empieza a cerrarse a los 15 s y llega al mínimo a los 1:15
-      const k = Math.max(0, Math.min(1, (g.time - 15) / 60));
-      gas.r = gas.maxR + (gas.minR - gas.maxR) * k;
-      if (k > 0 && !gas.warn) { gas.warn = true; g.events.push({ type: 'gas' }); }
-      gas.tickT -= dt;
-      const tick = gas.tickT <= 0;
-      if (tick) gas.tickT = 0.5;
-      for (const b of g.brawlers) {
-        if (b.dead || dist(b, gas) < gas.r) continue;
-        b.lastCombat = g.time; // en la niebla no se regenera vida
-        if (tick) g.damage(b, 280 + 60 * Math.floor(g.time / 30), null, null, { quiet: true });
-      }
-      // burbujas de veneno en el borde
-      for (let i = 0; i < 3; i++) {
-        const a = Math.random() * Math.PI * 2;
-        const x = gas.x + Math.cos(a) * (gas.r + Math.random() * 60), y = gas.y + Math.sin(a) * (gas.r + Math.random() * 60);
-        if (x > -50 && y > -50 && x < g.world.pixelW + 50 && y < g.world.pixelH + 50) {
-          g.vfx('bubble', 'poison', x, y, { vy: -30, life: 0.8, scale: 0.6 + Math.random() * 0.6, fade: true });
-        }
-      }
+      gasUpdate(g, dt);
       const alive = g.brawlers.filter((b) => !b.dead);
       if (alive.length <= 1 && !g.winner) {
         if (alive[0]) alive[0].rank = 1;
@@ -193,6 +198,7 @@ PB.MODES = {
       }
     },
     timeUp() {},
+
     onKill(g, b) {
       b.out = true;
       b.rank = g.brawlers.filter((o) => !o.dead).length + 1;
@@ -516,5 +522,146 @@ PB.MODES = {
   },
 };
 
-PB.MODE_ORDER = ['gems', 'showdown', 'heist', 'ball', 'zone'];
+
+// ------------------------------------------------------------------ comunes de los modos nuevos
+// Todos vuelven a su base con la vida llena (nueva ronda de Eliminación)
+function resetRound(g) {
+  g.projectiles = [];
+  g.zones = [];
+  g.mines = [];
+  g.turrets = [];
+  const count = {};
+  for (const b of g.brawlers) {
+    const list = g.world.spawns[b.team];
+    const sp = list[(count[b.team] = (count[b.team] || 0) + 1) % 3];
+    Object.assign(b, { x: sp.x, y: sp.y, dead: false, out: false, hp: b.maxHp, ammo: g.rules.maxAmmo, kx: 0, ky: 0, stunT: 0, dash: null, burst: null, action: null, stealthT: 0, respawnT: 0, shieldT: 0, barrierT: 0 });
+  }
+  g.startT = 3;
+}
+// Bot que va a por el rival más cercano sin separarse mucho de los suyos
+function fightPlan(bot, info) {
+  const g = bot.g, b = bot.b;
+  const r = retreatPlan(bot, info);
+  if (r) return r;
+  const foes = g.enemiesOf(b).filter((e) => !e.dead);
+  const mates = g.brawlers.filter((o) => o !== b && o.team === b.team && !o.dead);
+  if (!foes.length) return { goal: mates[0] || { x: g.world.pixelW / 2, y: g.world.pixelH / 2 } };
+  const near = foes.sort((p, q) => dist(p, b) - dist(q, b))[0];
+  // si un compañero está lejos y en apuros, a ayudarle
+  const help = mates.find((m) => m.hp < m.maxHp * 0.5 && dist(m, b) > 300);
+  if (help && dist(near, b) > 260) return { goal: help };
+  return { goal: near };
+}
+
+// ------------------------------------------------------------------ Niebla Tóxica Dúo
+// Como Niebla Tóxica, pero por parejas: 5 equipos de 2. Gana la última pareja en pie.
+PB.MODES.duo = Object.assign({}, PB.MODES.showdown, {
+  id: 'duo', name: 'Niebla Tóxica Dúo', duo: true, places: 5,
+  desc: 'Por parejas: 5 equipos de 2. Rompe cajas para hacerte más fuerte mientras la niebla cierra el mapa. Gana la última pareja en pie.',
+  update(g, dt) {
+    gasUpdate(g, dt);
+    if (g.winner) return;
+    const teams = [...new Set(g.brawlers.filter((b) => !b.dead).map((b) => b.team))];
+    if (teams.length <= 1) {
+      for (const b of g.brawlers) if (teams[0] && b.team === teams[0]) b.rank = 1;
+      g.end(teams[0] || 'draw');
+    }
+  },
+  onKill(g, b) {
+    b.out = true;
+    g.dropCandy(b.x, b.y, Math.max(1, b.power));
+    // si cae la pareja entera, ese equipo queda en el puesto que toque
+    const mates = g.brawlers.filter((o) => o.team === b.team);
+    if (mates.every((o) => o.dead)) {
+      const left = new Set(g.brawlers.filter((o) => !o.dead).map((o) => o.team)).size;
+      for (const o of mates) o.rank = left + 1;
+      if (mates.some((o) => o.isPlayer) && !g.winner) g.end('out');
+    }
+  },
+  botPlan(bot, info) {
+    const g = bot.g, b = bot.b;
+    // no se aleja mucho de su pareja
+    const mate = g.brawlers.find((o) => o !== b && o.team === b.team && !o.dead);
+    if (mate && dist(mate, b) > 380 && !(info.foe && info.fd < 250)) return { goal: mate };
+    return PB.MODES.showdown.botPlan(bot, info);
+  },
+  result(g, me) {
+    if (me.rank === 1 || g.winner === me.team) return { title: '¡PRIMER PUESTO!', cls: 'win' };
+    return { title: 'PUESTO #' + (me.rank || '?'), cls: me.rank <= 2 ? '' : 'lose' };
+  },
+});
+
+// ------------------------------------------------------------------ Duelo de Equipos
+// 3 contra 3 a K.O.: se reaparece y gana el primer equipo en llegar a 15 K.O.
+PB.MODES.brawl = {
+  id: 'brawl', name: 'Duelo de Equipos', map: 'zone', statName: 'K.O.', kos: 15,
+  desc: '3 contra 3 a lo bestia: cada rival debilitado es un punto. Gana el primer equipo en llegar a 15 K.O.',
+  rules: { matchTime: 150 },
+  setup(g) { g.kos = { blue: 0, red: 0 }; },
+  onKill(g, b) {
+    const t = otherTeam(b.team);
+    g.kos[t]++;
+    if (g.kos[t] >= this.kos && !g.winner) g.end(t);
+  },
+  timeUp(g) {
+    const { blue, red } = g.kos;
+    g.end(blue > red ? 'blue' : red > blue ? 'red' : 'draw');
+  },
+  botPlan: fightPlan,
+  result: teamResult,
+};
+
+// ------------------------------------------------------------------ Eliminación
+// 3 contra 3 sin reaparecer: gana la ronda el equipo que debilite a los 3 rivales.
+// Al mejor de 3 rondas. Si una ronda dura más de 60 s, la gana quien tenga más Pokémon en pie.
+PB.MODES.knockout = {
+  id: 'knockout', name: 'Eliminación', map: 'zone', statName: 'K.O.', noRespawn: true, roundTime: 60,
+  desc: '3 contra 3 sin reaparecer: gana la ronda el equipo que debilite a los 3 rivales. Al mejor de 3 rondas.',
+  rules: { matchTime: 9999 },
+  setup(g) {
+    g.rounds = { blue: 0, red: 0 };
+    g.round = 1;
+    g.roundT = 0;
+    g.roundEnd = null;
+  },
+  update(g, dt) {
+    if (g.roundEnd) {
+      g.roundEnd.t -= dt;
+      if (g.roundEnd.t <= 0) {
+        g.roundEnd = null;
+        g.round++;
+        g.roundT = 0;
+        resetRound(g);
+        g.events.push({ type: 'round', n: g.round });
+      }
+      return;
+    }
+    g.roundT += dt;
+    const alive = (t) => g.brawlers.filter((b) => b.team === t && !b.dead);
+    const ab = alive('blue'), ar = alive('red');
+    if (!ab.length || !ar.length) return this.roundWin(g, ab.length ? 'blue' : ar.length ? 'red' : null);
+    if (g.roundT >= this.roundTime) {
+      // se acabó el tiempo: más Pokémon en pie y, si empatan, más vida
+      const hp = (l) => l.reduce((a, b) => a + b.hp / b.maxHp, 0);
+      const w = ab.length !== ar.length ? (ab.length > ar.length ? 'blue' : 'red') : Math.abs(hp(ab) - hp(ar)) < 0.05 ? null : hp(ab) > hp(ar) ? 'blue' : 'red';
+      this.roundWin(g, w);
+    }
+  },
+  roundWin(g, team) {
+    if (team) g.rounds[team]++;
+    g.events.push({ type: 'roundWin', team, rounds: Object.assign({}, g.rounds) });
+    if (team && g.rounds[team] >= 2) return g.end(team);
+    // tras 5 rondas sin ganador (empates), gana quien lleve más
+    if (g.round >= 5) return g.end(g.rounds.blue > g.rounds.red ? 'blue' : g.rounds.red > g.rounds.blue ? 'red' : 'draw');
+    g.roundEnd = { t: 2.5, team };
+  },
+  onKill(g, b) {
+    b.out = true; // no reaparece hasta la siguiente ronda
+  },
+  timeUp() {},
+  botPlan: fightPlan,
+  result: teamResult,
+};
+
+PB.MODE_ORDER = ['gems', 'showdown', 'duo', 'heist', 'ball', 'zone', 'brawl', 'knockout'];
 })();

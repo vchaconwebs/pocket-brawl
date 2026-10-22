@@ -1980,3 +1980,19 @@ h1.lose { color: #ff8a7a; }
 .patch-vers { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 10px; flex: none; }
 .patch-vers button { font: inherit; font-size: 14px; padding: 3px 10px; border-radius: 8px; border: 2px solid #33416a; background: #1a2242; color: #c9d4f2; cursor: pointer; }
 .patch-vers button.on { border-color: #ffd84a; color: #fff6c8; background: #2a3358; }
+
+/* notas de voz del chat general */
+.gc-mic, .gc-x { flex: none; width: 42px; font-size: 18px; border-radius: 10px; border: 2px solid #33416a; background: #1a2242; color: #fff; cursor: pointer; }
+.gc-mic.rec { background: #b02828; border-color: #ff6a6a; animation: recPulse 0.9s infinite; }
+@keyframes recPulse { 50% { filter: brightness(1.35); } }
+.gc-x { font-size: 15px; color: #c9d4f2; }
+.gc-play { font: inherit; font-size: 14px; padding: 4px 12px; border-radius: 999px; border: 1px solid #33416a; background: #1f2a50; color: #fff; cursor: pointer; }
+.gc-play:disabled { opacity: 0.6; cursor: default; }
+/* 9 modos: en pantallas bajas, 3 por fila más compactos y con desplazamiento si no caben */
+#mp-grid { overflow-y: auto; min-height: 0; }
+@media (max-height: 500px) {
+  #mp-grid { gap: 6px; grid-template-columns: repeat(3, 1fr); }
+  .mode-card2 { gap: 2px !important; min-height: 0 !important; }
+  .mode-card2 img { width: 30px; height: 30px; }
+  .mode-card2 b { font-size: 15px; }
+}

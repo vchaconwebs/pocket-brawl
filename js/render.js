@@ -1337,11 +1337,36 @@ PB.Renderer = class {
         this.outlined(String(Math.ceil(game.countdown.t)), cx - 80, 74, 26, '#ffffff');
         this.outlined(PB.T(ours ? '¡Aguantad!' : '¡Quitádselas!'), cx + 16, 71, 16, '#ffffff');
       }
-    } else if (id === 'showdown') {
-      const alive = game.brawlers.filter((b) => !b.dead).length;
-      panel(200, 42);
-      PB.Pokeball.draw(ctx, cx - 66, 27, 1.4, {});
-      this.outlined(PB.T('Quedan {n}', { n: alive }), cx + 10, 34, 20, '#ffffff');
+    } else if (id === 'brawl') {
+      // K.O. de cada equipo hasta 15
+      panel(220, 50);
+      UI.panel(ctx, cx - 100, 13, 74, 36, { p: 2, fill: '#2a5ab8' });
+      UI.panel(ctx, cx + 26, 13, 74, 36, { p: 2, fill: '#b83a3a' });
+      this.outlined(String(game.kos[team]), cx - 63, 42, 30, '#ffffff');
+      this.outlined('/' + game.mode.kos, cx, 38, 15, '#ffd23a');
+      this.outlined(String(game.kos[foe]), cx + 63, 42, 30, '#ffffff');
+      clock(78);
+    } else if (id === 'knockout') {
+      // rondas ganadas (puntos) y Pokémon que quedan en pie de cada equipo
+      panel(260, 50);
+      const dots = (x, n, col) => { for (let i = 0; i < 2; i++) { ctx.fillStyle = '#141824'; ctx.fillRect(x + i * 18 - 7, 15, 14, 14); ctx.fillStyle = i < n ? col : '#3a4466'; ctx.fillRect(x + i * 18 - 5, 17, 10, 10); } };
+      dots(cx - 96, game.rounds[team], '#5aa8ff');
+      dots(cx + 78, game.rounds[foe], '#ff6060');
+      this.outlined(PB.T('Ronda {n}', { n: game.round }), cx, 30, 17, '#ffd23a');
+      const alive = (t) => game.brawlers.filter((b) => b.team === t && !b.dead).length;
+      this.outlined('●'.repeat(alive(team)) + '○'.repeat(3 - alive(team)), cx - 70, 46, 13, '#8ec2ff');
+      this.outlined('●'.repeat(alive(foe)) + '○'.repeat(3 - alive(foe)), cx + 70, 46, 13, '#ff9a9a');
+      if (!game.roundEnd && game.startT <= 0) {
+        const left = Math.max(0, game.mode.roundTime - game.roundT);
+        UI.panel(ctx, cx - 34, 63, 68, 22, { p: 2, fill: left < 10 ? 'rgba(150,30,30,0.9)' : 'rgba(16,24,56,0.86)' });
+        this.outlined('0:' + String(Math.ceil(left)).padStart(2, '0'), cx, 79, 14, '#ffffff');
+      }
+    } else if (id === 'showdown' || id === 'duo') {
+      const alive = id === 'duo' ? new Set(game.brawlers.filter((b) => !b.dead).map((b) => b.team)).size : game.brawlers.filter((b) => !b.dead).length;
+      const wide = id === 'duo' ? 60 : 0;
+      panel(200 + wide, 42);
+      PB.Pokeball.draw(ctx, cx - 66 - wide / 2, 27, 1.4, {});
+      this.outlined(PB.T(id === 'duo' ? 'Quedan {n} parejas' : 'Quedan {n}', { n: alive }), cx + 10, 34, 20, '#ffffff');
       const me = view.player;
       if (me && !me.dead && Math.hypot(me.x - game.gas.x, me.y - game.gas.y) > game.gas.r) {
         UI.panel(ctx, cx - 110, 58, 220, 30, { p: 2, fill: 'rgba(90,30,120,0.9)' });

@@ -667,7 +667,7 @@ PB.Online = (() => {
   let gMsgs = [], gWatch = null, banned = false;
   let pMsgs = [], pWatch = null, pCode = null, pSince = 0;
   const avatar = () => { const d = PB.Save.get(), b = PB.brawlerById(d.selected); return String(d.avatarDex || (b ? b.dex : '')).slice(0, 16); };
-  const chatMsg = (key, m) => ({ id: key, uid: String(m.uid || ''), name: clean(m.name, 16) || 'Entrenador', text: String(m.text || '').slice(0, 120), t: +m.t || 0, av: String(m.av || ''), mine: m.uid === uid });
+  const chatMsg = (key, m) => ({ id: key, uid: String(m.uid || ''), name: clean(m.name, 16) || 'Entrenador', text: String(m.text || '').slice(0, 120), t: +m.t || 0, av: String(m.av || ''), au: typeof m.au === 'string' ? m.au.slice(0, 30) : '', dur: Math.max(0, Math.min(9, +m.dur || 0)), mine: m.uid === uid });
   function listen(ref, list, ev) {
     const q = ref.orderByChild('t').limitToLast(40);
     const add = q.on('child_added', (s) => {
@@ -693,6 +693,9 @@ PB.Online = (() => {
     // limpieza: los mensajes de hace más de un día se borran (cualquiera puede, poco a poco)
     rtdb.ref('chat').orderByChild('t').endAt(now() - DAY).limitToFirst(25).once('value')
       .then((s) => s.forEach((c) => { c.ref.remove().catch(() => {}); })).catch(() => {});
+    // los audios duran una hora
+    rtdb.ref('chatAudio').orderByChild('t').endAt(now() - 3600000).limitToFirst(25).once('value')
+      .then((s) => s.forEach((c) => { c.ref.remove().catch(() => {}); })).catch(() => {});
     return true;
   }
   async function sendGlobalChat(text) {
@@ -707,7 +710,30 @@ PB.Online = (() => {
     } catch (e) { return err('Espera un poco antes de enviar otro mensaje.'); }
     return { ok: true };
   }
-  const deleteChat = (id) => rtdb.ref('chat/' + id).remove().catch(() => {});
+  // nota de voz: el audio va aparte (chatAudio/<id>) y el mensaje lo enlaza; se escriben a la vez
+  async function sendVoice(data, mime, dur) {
+    if (!(await start())) return err('Sin conexión.');
+    if (banned) return err('No puedes escribir en el chat.');
+    if (!data || data.length > 60000) return err('El audio es demasiado largo.');
+    const TS = fb.database.ServerValue.TIMESTAMP;
+    const key = rtdb.ref('chat').push().key;
+    try {
+      await rtdb.ref().update({
+        ['chatAudio/' + key]: { uid, d: data, m: String(mime || '').slice(0, 40), t: TS },
+        ['chat/' + key]: { uid, name: myName(), text: '🎤', t: TS, av: avatar(), au: key, dur: Math.round(dur * 10) / 10 },
+        ['chatLast/' + uid]: TS,
+      });
+    } catch (e) { return err('Espera un poco antes de enviar otro mensaje.'); }
+    return { ok: true };
+  }
+  async function getVoice(id) {
+    if (!(await start())) return null;
+    const s = await rtdb.ref('chatAudio/' + id).once('value').catch(() => null);
+    const v = s && s.val();
+    return v && typeof v.d === 'string' ? { data: v.d, mime: v.m || '' } : null;
+  }
+  // borrar un mensaje también borra su audio
+  const deleteChat = (id) => { rtdb.ref('chatAudio/' + id).remove().catch(() => {}); return rtdb.ref('chat/' + id).remove().catch(() => {}); };
   const banChat = (id) => rtdb.ref('chatBan/' + id).set(true).catch(() => {});
   // chat del grupo: se engancha a la sala en la que estés (solo ven los mensajes desde que entraste)
   function watchPartyChat() {
@@ -1028,8 +1054,16 @@ PB.Online = (() => {
     const M = PB.MODES[mode];
     const players = {};
     let teams = null;
+    let order = null;
     if (M.ffa) {
       for (const t of tickets) for (const [id, inf] of Object.entries(t.uids || {})) players[id] = inf;
+      if (M.duo) {
+        // las salas de 2 ocupan una pareja entera; los que van solos se emparejan entre ellos
+        order = [];
+        const pairs = tickets.filter((t) => Object.keys(t.uids || {}).length >= 2), solos = tickets.filter((t) => Object.keys(t.uids || {}).length < 2);
+        for (const t of pairs) order.push(...Object.keys(t.uids).slice(0, 2));
+        for (const t of solos) order.push(...Object.keys(t.uids || {}));
+      }
     } else {
       const ft = fitTeams(tickets);
       teams = { blue: [], red: [] };
@@ -1037,7 +1071,7 @@ PB.Online = (() => {
     }
     const ids = Object.keys(players);
     const host = ids[Math.floor(Math.random() * ids.length)];
-    await rtdb.ref('matches/' + mid).set({ mode, host, players, teams, t: fb.database.ServerValue.TIMESTAMP });
+    await rtdb.ref('matches/' + mid).set({ mode, host, players, teams, order, t: fb.database.ServerValue.TIMESTAMP });
   }
 
   // ------------------------------------------------------------ conexión directa (WebRTC)
@@ -1184,7 +1218,8 @@ PB.Online = (() => {
     const slots = []; // uid o null (bot) por posición
     if (M.ffa) {
       const n = M.players || 10;
-      for (let i = 0; i < n; i++) slots.push(humans[i] || null);
+      if (M.duo && Array.isArray(m.order)) for (let i = 0; i < n; i++) slots.push(m.order[i] && humans.includes(m.order[i]) ? m.order[i] : null);
+      else for (let i = 0; i < n; i++) slots.push(humans[i] || null);
       opts.ffa = slots.map((u) => (u ? m.players[u].fav : rnd()));
     } else {
       const side = (t) => { const l = (m.teams[t] || []).filter((u) => humans.includes(u)); while (l.length < 3) l.push(null); return l.slice(0, 3); };
@@ -1224,7 +1259,7 @@ PB.Online = (() => {
     topPlayers, topClans,
     searchClans, getClan, myClan, createClan, joinClan, leaveClan, clanRequests, answerClanRequest,
     chat, sendChat,
-    watchChat, sendGlobalChat, deleteChat, banChat, sendPartyChat, inviteToPlay,
+    watchChat, sendGlobalChat, deleteChat, banChat, sendPartyChat, inviteToPlay, sendVoice, getVoice,
     chatMsgs: () => gMsgs, partyMsgs: () => pMsgs, isAdmin: () => uid === ADMIN, get myUid() { return uid; },
     party: () => party, createParty, invite, joinByCode, setReady, updateMe, kick, leaveParty,
     voteRematch, cancelRematch, rematchGo, rematchLeft,

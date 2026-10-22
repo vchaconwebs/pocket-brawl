@@ -62,6 +62,8 @@ PB.Chat = (() => {
     $('#gc-send').onclick = sendGlobal;
     $('#gc-q').onkeydown = (e) => { if (e.key === 'Enter') sendGlobal(); if (e.key === 'Escape') closeGlobal(); };
     document.querySelectorAll('#gc-tabs button').forEach((b) => (b.onclick = () => setTab(b.dataset.t)));
+    $('#gc-mic').onclick = () => (rec ? stopRec(true) : startRec());
+    $('#gc-cancel').onclick = () => stopRec(false);
     PB.Online.on('gchat', () => { if (tab === 'global') renderGlobal(); badge(); });
     PB.Online.on('pchat', (m) => {
       if (tab === 'party') renderGlobal();
@@ -88,6 +90,9 @@ PB.Chat = (() => {
     $('#gc-tabs').classList.toggle('hidden', !has);
     document.querySelectorAll('#gc-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === tab));
     $('#gc-q').placeholder = PB.T(tab === 'party' ? 'Escribe a tu grupo…' : 'Escribe a todos…');
+    // las notas de voz son del chat general
+    $('#gc-mic').classList.toggle('hidden', tab === 'party' || !canRecord());
+    if (tab === 'party' && rec) stopRec(false);
     $('#gc-title').textContent = PB.T(tab === 'party' ? 'Chat del grupo' : 'Chat general');
     if (gOpen) renderGlobal();
   }
@@ -112,6 +117,7 @@ PB.Chat = (() => {
     if (!(window.matchMedia && matchMedia('(pointer: coarse)').matches)) setTimeout(() => $('#gc-q').focus(), 60);
   }
   function closeGlobal() {
+    if (rec) stopRec(false);
     if (!gOpen) return;
     PB.Audio.play('uiBack');
     gOpen = false;
@@ -157,7 +163,7 @@ PB.Chat = (() => {
       }
       return `<div class="gc-m${m.mine ? ' mine' : ''}${own ? ' owner' : ''}"><img src="${portrait(m.av)}" alt="">` +
         `<div class="gc-b"><button class="gc-n" data-id="${esc(m.id)}">${esc(m.name)}</button>${own ? '<span class="gc-tag">CREADOR</span>' : ''}<small>${hm(m.t)}</small>` +
-        `<p>${esc(filter(m.text, 120) || '***')}</p>${menu}</div></div>`;
+        (m.au ? `<p><button class="gc-play" data-au="${esc(m.au)}">▶ 🎤 ${m.dur ? m.dur.toFixed(0) + ' s' : ''}</button></p>` : `<p>${esc(filter(m.text, 120) || '***')}</p>`) + `${menu}</div></div>`;
     }).join('') || `<p class="gc-empty">${PB.T(tab === 'party' ? 'Habla con los de tu grupo. Solo lo veis vosotros.' : 'Aún no hay mensajes. ¡Saluda!')}</p>`;
     const act = (sel, fn) => log.querySelectorAll(sel).forEach((b) => (b.onclick = async (e) => {
       e.stopPropagation();
@@ -175,6 +181,7 @@ PB.Chat = (() => {
       const r = await PB.Online.inviteToPlay(b.dataset.inv).catch(() => ({ error: PB.T('No se ha podido enviar.') }));
       PB.Lobby.toast(r.error || PB.T('¡Invitación enviada! Si acepta, entrará en tu grupo.'));
     });
+    log.querySelectorAll('.gc-play').forEach((b) => (b.onclick = () => playVoice(b)));
     act('[data-mute]', (b) => { setMuted(b.dataset.mute, true); PB.Lobby.toast(PB.T('No verás más sus mensajes')); });
     act('[data-del]', (b) => PB.Online.deleteChat(b.dataset.del));
     act('[data-ban]', async (b) => { await PB.Online.banChat(b.dataset.ban); PB.Lobby.toast(PB.T('Bloqueado del chat')); });
@@ -199,6 +206,72 @@ PB.Chat = (() => {
     PB.Audio.play('ui');
     const log = $('#gc-log');
     log.scrollTop = log.scrollHeight;
+  }
+
+  // ------------------------------------------------------------ notas de voz
+  // Se graban como mucho 6 s con el micro (con poca calidad: pesan unos 20 KB) y se mandan solas al parar.
+  let rec = null, playing = null;
+  const canRecord = () => !!(window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  async function startRec() {
+    if (!canRecord()) return PB.Lobby.toast(PB.T('Tu navegador no puede grabar audio.'));
+    if (Date.now() - lastSend < 3000) return PB.Lobby.toast(PB.T('Espera un poco antes de enviar otro mensaje.'));
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+    catch (e) { return PB.Lobby.toast(PB.T('Necesitamos permiso para usar el micrófono.')); }
+    const mime = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm'].find((m) => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) || '';
+    const mr = new MediaRecorder(stream, Object.assign({ audioBitsPerSecond: 24000 }, mime ? { mimeType: mime } : {}));
+    const chunks = [];
+    rec = { mr, stream, chunks, t0: Date.now(), send: false, iv: null };
+    mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    mr.onstop = () => finishRec(rec && rec.mr === mr ? rec : { mr, stream, chunks, send: false });
+    mr.start();
+    $('#gc-mic').classList.add('rec');
+    $('#gc-cancel').classList.remove('hidden');
+    $('#gc-q').disabled = true;
+    const tick = () => {
+      const s = (Date.now() - rec.t0) / 1000;
+      $('#gc-q').placeholder = PB.T('Grabando… {s} s · toca 🎤 para enviar', { s: s.toFixed(0) });
+      if (s >= 6) stopRec(true);
+    };
+    tick();
+    rec.iv = setInterval(tick, 200);
+  }
+  function stopRec(send) {
+    if (!rec) return;
+    rec.send = send;
+    rec.dur = (Date.now() - rec.t0) / 1000;
+    clearInterval(rec.iv);
+    try { rec.mr.stop(); } catch (e) { finishRec(rec); }
+  }
+  async function finishRec(r) {
+    if (!r || r.done) return;
+    r.done = true;
+    rec = null;
+    try { r.stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+    $('#gc-mic').classList.remove('rec');
+    $('#gc-cancel').classList.add('hidden');
+    $('#gc-q').disabled = false;
+    tabs();
+    if (!r.send) return;
+    if ((r.dur || 0) < 0.6) return PB.Lobby.toast(PB.T('Mantén un poco más para grabar.'));
+    const blob = new Blob(r.chunks, { type: r.mr.mimeType || 'audio/webm' });
+    const data = await new Promise((ok) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1] || ''); fr.onerror = () => ok(''); fr.readAsDataURL(blob); });
+    lastSend = Date.now();
+    const res = await PB.Online.sendVoice(data, blob.type, Math.min(6, r.dur)).catch(() => ({ error: PB.T('No se ha podido enviar.') }));
+    if (res.error) return PB.Lobby.toast(res.error);
+    PB.Audio.play('ui');
+  }
+  async function playVoice(btn) {
+    if (playing) { try { playing.pause(); } catch (e) {} playing = null; }
+    const old = btn.textContent;
+    btn.textContent = '…';
+    const v = await PB.Online.getVoice(btn.dataset.au);
+    if (!v) { btn.textContent = PB.T('Audio caducado'); btn.disabled = true; return; }
+    const a = new Audio('data:' + (v.mime || 'audio/webm') + ';base64,' + v.data);
+    playing = a;
+    btn.textContent = '🔊 ' + old.replace('▶ ', '');
+    a.onended = () => { btn.textContent = old; if (playing === a) playing = null; };
+    a.play().catch(() => { btn.textContent = old; PB.Lobby.toast(PB.T('Este audio no se puede reproducir en tu navegador.')); });
   }
 
   // ------------------------------------------------------------ chat de la partida
