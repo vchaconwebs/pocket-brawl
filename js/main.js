@@ -42,7 +42,7 @@
   function plan(playerId) {
     const ids = PB.BRAWLERS.map((b) => b.id);
     const M = PB.MODES[gameMode];
-    const opts = { mode: gameMode, playerInBlue: !!playerId, noCountdown: !playerId };
+    const opts = { mode: gameMode, playerInBlue: !!playerId, noCountdown: !playerId, mapIdx: PB.pickMap(PB.MODES[gameMode].map) };
     if (M.ffa) {
       const n = M.players || 10;
       const list = [];
@@ -160,6 +160,7 @@
       const lv = Object.values(opts.humans).map((h) => h.lvl || 1);
       const avg = Math.round(lv.reduce((a, b) => a + b, 0) / lv.length);
       opts.names = shuffle(PB.TRAINER_NAMES.slice());
+      if (opts.mapIdx == null) opts.mapIdx = PB.pickMap(PB.MODES[opts.mode].map);
       opts.botLvls = Array.from({ length: n }, () => Math.max(1, Math.min(PB.META.maxLevel, avg + Math.floor(Math.random() * 3) - 1)));
       net.humans = Object.assign({}, net.seats, { [link.me]: myIdx });
       link.send(null, { k: 'start', opts, seats: net.seats, hostIdx: myIdx });

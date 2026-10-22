@@ -59,12 +59,13 @@ PB.World = class {
 
   solidAt(c, r) {
     const t = this.tile(c, r);
-    return t === '#' || t === 'T' || t === 'C' || t === 'X' || t === '~';
+    // F = valla (no deja pasar, pero se dispara por encima), W = barril
+    return t === '#' || t === 'T' || t === 'C' || t === 'X' || t === '~' || t === 'F' || t === 'W';
   }
 
   blocksShotAt(c, r) {
     const t = this.tile(c, r);
-    return t === '#' || t === 'T' || t === 'C' || t === 'X';
+    return t === '#' || t === 'T' || t === 'C' || t === 'X' || t === 'W';
   }
 
   isBushAt(x, y) {
@@ -75,7 +76,7 @@ PB.World = class {
     return this.blocksShotAt(Math.floor(x / PB.TILE), Math.floor(y / PB.TILE));
   }
 
-  // Rompe muros '#' dentro de un radio. Devuelve los centros de los muros rotos.
+  // Rompe rocas, árboles, cajas, vallas y barriles dentro de un radio. Devuelve los centros de los muros rotos.
   destroyAround(x, y, radius) {
     const T = PB.TILE;
     const broken = [];
@@ -84,7 +85,7 @@ PB.World = class {
     for (let r = r0; r <= r1; r++) {
       for (let c = c0; c <= c1; c++) {
         const t = this.tile(c, r);
-        if (t !== '#' && t !== 'T' && t !== 'C') continue;
+        if (t !== '#' && t !== 'T' && t !== 'C' && t !== 'F' && t !== 'W') continue;
         const cx = c * T + T / 2, cy = r * T + T / 2;
         if (Math.hypot(cx - x, cy - y) <= radius + T * 0.35) {
           this.tiles[r][c] = '.';

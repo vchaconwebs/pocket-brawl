@@ -138,7 +138,39 @@ PB.Lobby = (() => {
     if (id === 'starters') renderStarters();
     current = id;
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('hidden', s.id !== id);
-    if (id === 'lobby') refreshLobby();
+    if (id === 'lobby') { refreshLobby(); setTimeout(checkPatchNotes, 400); }
+  }
+
+  // ------------------------------------------------------------------ notas de parche
+  // La nota de la versión nueva sale una sola vez al entrar a la lobby.
+  // Los jugadores nuevos no la ven (no tienen nada con qué comparar).
+  const SEEN = 'pb.seenVersion';
+  function checkPatchNotes() {
+    if (current !== 'lobby' || !PB.PATCH_NOTES || !PB.PATCH_NOTES.length) return;
+    let seen = null;
+    try { seen = localStorage.getItem(SEEN); } catch (e) { return; }
+    if (seen === PB.VERSION) return;
+    const d = PB.Save.get();
+    if (!seen && !(d.stats && d.stats.played)) { try { localStorage.setItem(SEEN, PB.VERSION); } catch (e) {} return; }
+    showPatchNotes();
+  }
+  function showPatchNotes() {
+    const n = PB.PATCH_NOTES[0];
+    const t = n[PB.lang === 'es' ? 'es' : 'en'] || n.es;
+    $('#patch-ver').textContent = 'v' + n.v;
+    $('#patch-title').textContent = t.title;
+    $('#patch-date').textContent = n.date;
+    $('#patch-list').innerHTML = '';
+    for (const [ico, txt] of t.items) {
+      const li = document.createElement('li');
+      const i = document.createElement('i');
+      i.textContent = ico;
+      li.appendChild(i);
+      li.appendChild(document.createTextNode(txt));
+      $('#patch-list').appendChild(li);
+    }
+    $('#patch').classList.remove('hidden');
+    PB.Audio.play('ready');
   }
 
   function refreshLobby() {
@@ -1577,6 +1609,13 @@ PB.Lobby = (() => {
       document.documentElement.style.setProperty(v, 'url("' + PB.PixUI.iconURL(n, 3) + '")');
     }
     $('#btn-settings').onclick = () => openSettings('lobby');
+    $('#game-ver').textContent = PB.VERSION;
+    $('#btn-news').onclick = () => { PB.Audio.play('ui'); showPatchNotes(); };
+    $('#patch-ok').onclick = () => {
+      PB.Audio.play('ui');
+      $('#patch').classList.add('hidden');
+      try { localStorage.setItem(SEEN, PB.VERSION); } catch (e) {}
+    };
     $('#st-back').onclick = () => (stReturn === 'pause' ? api.backToPause() : show('lobby'));
     document.querySelectorAll('#st-tabs button').forEach((b) => (b.onclick = () => showSettings(b.dataset.tab)));
     $('#ico-cup').src = cupIcon();

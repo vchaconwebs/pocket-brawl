@@ -30,6 +30,46 @@ PB.Tiles = (() => {
     dark: '#2a6a34',
   };
 
+  // Temas: cambian el suelo, los árboles, las rocas y la hierba alta de un mapa
+  const THEMES = {
+    otono: {
+      grass: ['#b8b45a', '#aeaa52', '#c4bc62'], grassSpeck: '#8a8a3c', grassLight: '#e0d07e',
+      flowers: ['#f0a030', '#e8642a', '#f8d038', '#ffffff'], shore: '#8a8a3c',
+      leaf: ['#4a1c0c', '#8a3010', '#c4561a', '#e8862a', '#f6b84a'],
+      tall: { o: '#5a3a10', d: '#8a5a1c', m: '#b07a28', l: '#d09c3c', w: '#ecc260', bg: '#8a5a1c' },
+      outside: ['#7a6a2c', '#6e5f26', '#5e5020'],
+    },
+    nieve: {
+      grass: ['#e6eef8', '#dbe6f2', '#f0f6fc'], grassSpeck: '#b4c6dc', grassLight: '#ffffff',
+      flowers: ['#9ad4ff', '#ffffff', '#c8e0ff', '#f892c8'], shore: '#b4c6dc',
+      path: ['#c8b89a', '#bfae8e', '#d2c4a6'], pathSpeck: '#a8967a', pathLight: '#e2d8c4', pathEdge: '#8c7a5e',
+      rock: ['#2e3a52', '#4c5e7e', '#7890b2', '#aec4e0', '#eef6ff'],
+      leaf: ['#0c3024', '#165040', '#1f6a52', '#3c8a6c', '#ffffff'], pine: true,
+      tall: { o: '#2e4a5a', d: '#46707e', m: '#6c98a6', l: '#a6ccd8', w: '#eef8ff', bg: '#46707e' },
+      outside: ['#c4d4e4', '#b4c6da', '#a2b6cc'],
+    },
+    arena: {
+      grass: ['#e6cc8a', '#dec282', '#eed694'], grassSpeck: '#c4a468', grassLight: '#f6e6b4',
+      flowers: ['#f85c5c', '#f8d038', '#ffffff', '#f0a030'], shore: '#c4a468',
+      path: ['#c89a5c', '#be9054', '#d2a666'], pathSpeck: '#a87a40', pathLight: '#e0b87c', pathEdge: '#8a6230',
+      rock: ['#5a3418', '#8a5430', '#b07a48', '#d09c64', '#eec48a'],
+      cactus: true,
+      tall: { o: '#5a4a1c', d: '#7a6a28', m: '#9a8a38', l: '#c0b050', w: '#e0d078', bg: '#7a6a28' },
+      outside: ['#d2b070', '#c8a666', '#b8965a'],
+    },
+    halloween: {
+      grass: ['#3a3450', '#36304a', '#403a58'], grassSpeck: '#2a2440', grassLight: '#5a5078',
+      flowers: ['#f8a030', '#ffd060', '#f86a20', '#c890ff'], shore: '#2a2440',
+      path: ['#5a4a5a', '#524252', '#62526a'], pathSpeck: '#3e323e', pathLight: '#74647c', pathEdge: '#3a2e3e',
+      liq: '#3e7a52', liqDeep: '#2e5e40', liqLight: '#6aae7e', foam: '#bfe8c4',
+      spooky: true,
+      tall: { o: '#1a1028', d: '#2e1e44', m: '#46306a', l: '#6a4a94', w: '#9a7ac4', bg: '#2e1e44' },
+      outside: ['#1e1a2c', '#1a1626', '#16121f'],
+    },
+  };
+  let K = C;
+  const pal = (theme) => (THEMES[theme] ? Object.assign({}, C, THEMES[theme]) : C);
+
   // Hash determinista 2D -> [0, 1)
   const H = (x, y, s = 0) => {
     let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(s | 0, 2246822519);
@@ -77,26 +117,49 @@ PB.Tiles = (() => {
     for (let y = 0; y < A; y++) for (let x = 0; x < A; x++) {
       const gx = tx * A + x, gy = ty * A + y;
       const band = H(gx >> 3, gy >> 3, 11) * 0.7 + H(gx, gy, 12) * 0.5;
-      let col = C.grass[Math.min(2, Math.floor((band * 3) / 1.2))];
+      let col = K.grass[Math.min(2, Math.floor((band * 3) / 1.2))];
       const r = H(gx, gy, 13);
-      if (r < 0.03) col = C.grassSpeck;
-      else if (r > 0.988) col = C.grassLight;
+      if (r < 0.03) col = K.grassSpeck;
+      else if (r > 0.988) col = K.grassLight;
       P.set(ox + x, oy + y, col);
     }
     if (plain) return;
     const d = H(tx, ty, 14);
     const dx = ox + 3 + Math.floor(H(tx, ty, 15) * 10), dy = oy + 4 + Math.floor(H(tx, ty, 16) * 9);
     if (d < 0.22) { // matojo
-      P.set(dx, dy, C.grassLight); P.set(dx - 1, dy - 1, C.grassLight); P.set(dx + 1, dy - 1, C.grassLight);
-      P.set(dx, dy - 2, C.grassLight); P.set(dx, dy + 1, C.grassSpeck);
+      P.set(dx, dy, K.grassLight); P.set(dx - 1, dy - 1, K.grassLight); P.set(dx + 1, dy - 1, K.grassLight);
+      P.set(dx, dy - 2, K.grassLight); P.set(dx, dy + 1, K.grassSpeck);
     } else if (d < 0.36) { // flor
-      const fc = C.flowers[Math.floor(H(tx, ty, 17) * C.flowers.length)];
+      const fc = K.flowers[Math.floor(H(tx, ty, 17) * K.flowers.length)];
       P.set(dx, dy - 1, fc); P.set(dx - 1, dy, fc); P.set(dx + 1, dy, fc); P.set(dx, dy + 1, fc);
       P.set(dx, dy, '#f8e070');
       if (H(tx, ty, 18) < 0.5) { // segunda flor
         const ex = dx + 4 > ox + 14 ? dx - 5 : dx + 4, ey = dy + 3 > oy + 14 ? dy - 4 : dy + 3;
         P.set(ex, ey - 1, fc); P.set(ex - 1, ey, fc); P.set(ex + 1, ey, fc); P.set(ex, ey + 1, fc); P.set(ex, ey, '#f8e070');
       }
+    }
+  }
+
+  // Velas (Halloween): tres velas con su llama
+  function paintCandles(P, ox, oy, tx, ty) {
+    for (let k = 0; k < 3; k++) {
+      const x = ox + 3 + Math.floor(H(tx, ty, 200 + k) * 10), y = oy + 6 + Math.floor(H(tx, ty, 210 + k) * 7);
+      const h = 3 + Math.floor(H(tx, ty, 220 + k) * 3);
+      for (let i = 0; i < h; i++) { P.set(x, y - i, '#efe6d2'); P.set(x + 1, y - i, '#cfc2a8'); }
+      P.set(x, y - h, '#ffd060'); P.set(x + 1, y - h, '#f8a030'); P.set(x, y - h - 1, '#fff2a0');
+      P.set(x - 1, y + 1, '#1e1a2c'); P.set(x + 2, y + 1, '#1e1a2c');
+    }
+  }
+
+  // Macizo de flores (solo decoración, se puede pisar)
+  function paintFlowers(P, ox, oy, tx, ty) {
+    if (K.spooky) return paintCandles(P, ox, oy, tx, ty);
+    for (let k = 0; k < 7; k++) {
+      const dx = ox + 2 + Math.floor(H(tx, ty, 120 + k) * 12), dy = oy + 2 + Math.floor(H(tx, ty, 140 + k) * 12);
+      const fc = K.flowers[Math.floor(H(tx, ty, 160 + k) * K.flowers.length)];
+      P.set(dx, dy - 1, fc); P.set(dx - 1, dy, fc); P.set(dx + 1, dy, fc); P.set(dx, dy + 1, fc);
+      P.set(dx, dy, '#f8e070');
+      P.set(dx + 1, dy + 2, K.grassSpeck); P.set(dx - 1, dy + 2, K.grassSpeck);
     }
   }
 
@@ -110,11 +173,11 @@ PB.Tiles = (() => {
       const dn = n ? 99 : y - 1 - wob, ds = s ? 99 : A - 2 - y - wob, dw = w ? 99 : x - 1 - wob, de = e ? 99 : A - 2 - x - wob;
       let d = Math.min(dn, ds, dw, de);
       if (d < 0) continue;
-      let col = C.path[Math.floor(H(gx >> 2, gy >> 2, 42) * 2.2 + H(gx, gy, 43) * 0.8) % 3];
+      let col = K.path[Math.floor(H(gx >> 2, gy >> 2, 42) * 2.2 + H(gx, gy, 43) * 0.8) % 3];
       const r = H(gx, gy, 44);
-      if (r < 0.05) col = C.pathSpeck;
-      else if (r > 0.97) col = C.pathLight;
-      if (d < 1) col = C.pathEdge;
+      if (r < 0.05) col = K.pathSpeck;
+      else if (r > 0.97) col = K.pathLight;
+      if (d < 1) col = K.pathEdge;
       P.set(ox + x, oy + y, col);
     }
   }
@@ -137,12 +200,12 @@ PB.Tiles = (() => {
       const gx = tx * A + x, gy = ty * A + y;
       const r = H(gx, gy, 31);
       let col;
-      if (d < 1) col = C.shore;
-      else if (d < 2) col = C.foam;
-      else if (d < 4) col = C.liqLight;
-      else if (d < 6) col = r < 0.5 ? C.liq : C.liqLight;
-      else col = d < 8 && r < 0.5 ? C.liq : C.liqDeep;
-      if (d >= 3 && H(gx >> 2, gy, 33) < 0.05 && (gx & 3) !== 3) col = C.liqLight;
+      if (d < 1) col = K.shore;
+      else if (d < 2) col = K.foam;
+      else if (d < 4) col = K.liqLight;
+      else if (d < 6) col = r < 0.5 ? K.liq : K.liqLight;
+      else col = d < 8 && r < 0.5 ? K.liq : K.liqDeep;
+      if (d >= 3 && H(gx >> 2, gy, 33) < 0.05 && (gx & 3) !== 3) col = K.liqLight;
       P.set(ox + x, oy + y, col);
     }
     // nenúfar
@@ -193,12 +256,14 @@ PB.Tiles = (() => {
 
   // Pinta el suelo de todo el mapa (a resolución de arte)
   function floor(world) {
+    K = pal(world.theme);
     const at = (c, r) => world.tile(c, r);
     const P = Pix(world.w * A, world.h * A);
     for (let r = 0; r < world.h; r++) for (let c = 0; c < world.w; c++) {
       const ox = c * A, oy = r * A, t = at(c, r);
       paintGrass(P, ox, oy, c, r, world.goals.red.length > 0);
       if (t === 'P') paintPath(P, ox, oy, c, r, at);
+      else if (t === 'f') paintFlowers(P, ox, oy, c, r);
       else if (t === '~') paintWater(P, ox, oy, c, r, at);
     }
     for (const [list, col, dark] of [[world.spawns.blue, '#5a9cf0', '#3a6cc0'], [world.spawns.red, '#f06a5a', '#c0443a']]) {
@@ -215,7 +280,7 @@ PB.Tiles = (() => {
         if (Math.floor(y / (A * 2)) % 2 === 0) {
           const gx = x, gy = y;
           const r = H(gx, gy, 91);
-          P.set(x, y, r < 0.5 ? '#86d468' : r < 0.95 ? '#80ce62' : '#9ae07a');
+          P.set(x, y, K === C ? (r < 0.5 ? '#86d468' : r < 0.95 ? '#80ce62' : '#9ae07a') : r < 0.5 ? K.grassLight : r < 0.95 ? K.grass[2] : K.grassLight);
         }
       }
       const hline = (x0, x1, y) => { for (let x = Math.max(0, x0); x <= Math.min(W2 - 1, x1); x++) P.set(x, y, LINE); };
@@ -257,13 +322,14 @@ PB.Tiles = (() => {
   }
 
   // Bosque de fuera del mapa
-  function outsideFloor(tx, ty) {
-    const key = 'out' + ((tx & 3) + (ty & 3) * 4);
+  function outsideFloor(tx, ty, theme) {
+    const key = 'out' + (theme || '') + ((tx & 3) + (ty & 3) * 4);
     if (cache.has(key)) return cache.get(key);
     const P = Pix(A, A);
+    const O = (THEMES[theme] || {}).outside || ['#3d8a40', '#367e3a', '#2c6c32'];
     for (let y = 0; y < A; y++) for (let x = 0; x < A; x++) {
       const r = H(x + tx * A, y + ty * A, 51);
-      P.set(x, y, r < 0.5 ? '#3d8a40' : r < 0.9 ? '#367e3a' : '#2c6c32');
+      P.set(x, y, r < 0.5 ? O[0] : r < 0.9 ? O[1] : O[2]);
     }
     const cv = P.done();
     cache.set(key, cv);
@@ -278,10 +344,11 @@ PB.Tiles = (() => {
   }
 
   // Roca rompible (16 x 20): ocupa la casilla y sobresale 4 px por arriba
-  function rock(v) {
-    return cached('rock' + v, () => {
+  function rock(v, theme) {
+    if (pal(theme).spooky) return tomb(v);
+    return cached('rock' + v + (theme || ''), () => {
       const P = Pix(A, 20);
-      const R = C.rock;
+      const R = pal(theme).rock;
       const rad = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => 6.2 + H(i, v, 61) * 1.4);
       const cx = 7.5, cy = 11;
       for (let y = 0; y < 20; y++) for (let x = 0; x < A; x++) {
@@ -307,10 +374,14 @@ PB.Tiles = (() => {
   }
 
   // Árbol de ruta (20 x 32)
-  function tree(v) {
-    return cached('tree' + v, () => {
+  function tree(v, theme) {
+    const T2 = pal(theme);
+    if (T2.cactus) return cactus(v);
+    if (T2.spooky) return deadTree(v);
+    if (T2.pine) return pine(v);
+    return cached('tree' + v + (theme || ''), () => {
       const P = Pix(20, 32);
-      const Lf = C.leaf, Tr = C.trunk;
+      const Lf = T2.leaf, Tr = C.trunk;
       for (let y = 22; y < 31; y++) for (let x = 8; x < 12; x++) P.set(x, y, Tr[x === 8 ? 0 : x === 11 ? 1 : 2]);
       P.set(7, 30, Tr[0]); P.set(12, 30, Tr[0]);
       const blobs = [[10, 18, 7], [5, 15, 4.5], [15, 15, 4.5], [10, 10, 6.5], [7, 6, 4], [13, 6, 4], [10, 3, 3]];
@@ -330,6 +401,175 @@ PB.Tiles = (() => {
     });
   }
 
+  // Lápida (16 x 20)
+  function tomb(v) {
+    return cached('tomb' + v, () => {
+      const P = Pix(A, 20);
+      const G = ['#2a2a38', '#4a4a5c', '#6e6e84', '#9494aa', '#bcbcd0'];
+      const cross = v % 3 === 2;
+      if (cross) {
+        for (let y = 2; y < 18; y++) for (let x = 6; x < 10; x++) P.set(x, y, x === 6 ? G[3] : x === 9 ? G[1] : G[2]);
+        for (let y = 5; y < 9; y++) for (let x = 2; x < 14; x++) P.set(x, y, y === 5 ? G[3] : y === 8 ? G[1] : G[2]);
+      } else {
+        for (let y = 3; y < 18; y++) for (let x = 3; x < 13; x++) {
+          const dx = x - 7.5, top = y < 7 ? Math.hypot(dx, (y - 7) * 1.3) > 5 : false;
+          if (top) continue;
+          P.set(x, y, x <= 4 ? G[3] : x >= 11 ? G[1] : G[2]);
+        }
+        // inscripción
+        for (const y of [8, 10, 12]) for (let x = 5; x < 11; x++) if ((x + y + v) % 4) P.set(x, y, G[1]);
+        if (v % 2) { P.set(4, 6, '#3e7a52'); P.set(5, 5, '#3e7a52'); P.set(11, 14, '#3e7a52'); }
+      }
+      // tierra removida
+      for (let x = 1; x < 15; x++) { P.set(x, 18, '#3a2e3e'); P.set(x, 19, '#2a2030'); }
+      outline(P, G[0]);
+      return P.done();
+    });
+  }
+
+  // Árbol seco de Halloween (20 x 32)
+  function deadTree(v) {
+    return cached('dead' + v, () => {
+      const P = Pix(20, 32);
+      const B = ['#1a1218', '#2e2026', '#46323a', '#5e4650'];
+      const line = (x0, y0, x1, y1, w) => {
+        const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) * 2;
+        for (let i = 0; i <= n; i++) {
+          const x = x0 + ((x1 - x0) * i) / n, y = y0 + ((y1 - y0) * i) / n;
+          for (let k = 0; k < w; k++) P.set(Math.round(x) + k, Math.round(y), k === 0 ? B[3] : B[2]);
+        }
+      };
+      line(9, 31, 9, 12, 3);
+      line(9, 20, 3, 12, 2); line(3, 12, 1, 7, 1); line(3, 12, 5, 6, 1);
+      line(11, 17, 17, 9, 2); line(17, 9, 18, 4, 1); line(15, 11, 13, 5, 1);
+      line(10, 12, 9, 3, 2); line(9, 6, 6, 2, 1);
+      if (v % 2) for (const [x, y] of [[2, 6], [18, 3]]) P.set(x, y, '#c890ff');
+      for (let x = 6; x < 14; x++) P.set(x, 31, B[1]);
+      outline(P, B[0]);
+      return P.done();
+    });
+  }
+
+  // Calabaza de Halloween (16 x 18): tapa los disparos y se rompe con las súper
+  function pumpkin(v) {
+    return cached('pumpkin' + v, () => {
+      const P = Pix(A, 18);
+      const O = ['#7a2a06', '#b84a0e', '#e2701c', '#f89a3a', '#ffc070'];
+      for (let y = 5; y < 17; y++) for (let x = 1; x < 15; x++) {
+        const dx = (x - 7.5) / 7, dy = (y - 11) / 6;
+        if (dx * dx + dy * dy > 1) continue;
+        const rib = Math.abs(((x - 7.5) % 4.5 + 4.5) % 4.5 - 2.25) < 0.6;
+        let col = dx < -0.4 ? O[3] : dx < 0.3 ? O[2] : O[1];
+        if (rib) col = O[1];
+        if (dy < -0.7) col = O[3];
+        P.set(x, y, col);
+      }
+      // tallo
+      for (let y = 2; y < 6; y++) { P.set(7, y, '#3e6a1e'); P.set(8, y, '#2a4a14'); }
+      P.set(9, 2, '#3e6a1e');
+      // cara iluminada
+      const glow = '#ffe060', inner = '#ff9a20';
+      for (const [x, y] of [[4, 9], [5, 9], [5, 8], [10, 9], [11, 9], [10, 8]]) P.set(x, y, glow);
+      for (let x = 4; x < 12; x++) P.set(x, 13, (x + v) % 2 ? glow : inner);
+      for (const x of [5, 7, 9]) P.set(x, 12, glow);
+      outline(P, O[0]);
+      return P.done();
+    });
+  }
+
+  // Pino nevado (20 x 32)
+  function pine(v) {
+    return cached('pine' + v, () => {
+      const P = Pix(20, 32);
+      const G = ['#0c3024', '#165040', '#1f6a52', '#3c8a6c'], Sn = ['#c4d8ee', '#eef6ff', '#ffffff'], Tr = C.trunk;
+      for (let y = 26; y < 31; y++) for (let x = 8; x < 12; x++) P.set(x, y, Tr[x === 8 ? 0 : x === 11 ? 1 : 2]);
+      // tres pisos de ramas, cada uno más ancho, con nieve encima
+      [[4, 9, 5], [11, 17, 7], [18, 26, 9]].forEach(([y0, y1, half], k) => {
+        for (let y = y0; y <= y1; y++) {
+          const w = Math.round(((y - y0 + 2) / (y1 - y0 + 2)) * half);
+          for (let x = 10 - w; x <= 9 + w; x++) {
+            const lit = (10 - x) / (half + 1);
+            let col = lit > 0.4 ? G[3] : lit > 0 ? G[2] : lit > -0.5 ? G[1] : G[0];
+            if (y - y0 < 2 || (y === y1 && (x + v + k) % 3 === 0)) col = (x + y) % 3 ? Sn[1] : Sn[2];
+            else if (H(x, y, 81 + v) < 0.08) col = Sn[0];
+            P.set(x, y, col);
+          }
+        }
+      });
+      P.set(10, 2, Sn[2]); P.set(9, 3, Sn[1]); P.set(10, 3, Sn[2]); P.set(11, 3, Sn[1]);
+      outline(P, G[0]);
+      return P.done();
+    });
+  }
+
+  // Cactus (20 x 32)
+  function cactus(v) {
+    return cached('cactus' + v, () => {
+      const P = Pix(20, 32);
+      const G = ['#1c4a24', '#2c6a30', '#3e8a3c', '#62b056', '#94d47a'];
+      const col = (x, cx, w) => { const t = (x - cx) / w; return t < -0.5 ? G[3] : t < 0 ? G[2] : t < 0.5 ? G[2] : G[1]; };
+      // tronco
+      for (let y = 6; y < 31; y++) for (let x = 7; x < 13; x++) {
+        if (y === 6 && (x === 7 || x === 12)) continue;
+        P.set(x, y, x === 8 ? G[4] : col(x, 9.5, 3));
+      }
+      // brazos
+      const armL = 12 + (v % 2) * 3, armR = 9 + ((v >> 1) % 2) * 4;
+      for (let y = armL; y < armL + 4; y++) for (let x = 3; x < 7; x++) P.set(x, y, col(x, 4.5, 2));
+      for (let y = armL - 6; y < armL; y++) for (let x = 3; x < 6; x++) P.set(x, y, x === 3 ? G[3] : G[2]);
+      for (let y = armR; y < armR + 4; y++) for (let x = 13; x < 17; x++) P.set(x, y, col(x, 15, 2));
+      for (let y = armR - 5; y < armR; y++) for (let x = 14; x < 17; x++) P.set(x, y, x === 14 ? G[3] : G[1]);
+      // pinchos
+      for (let y = 8; y < 30; y += 3) { P.set(7 + (y % 2), y, '#f0f0c8'); P.set(11 + (y % 2), y + 1, '#f0f0c8'); }
+      if (v % 2 === 0) { P.set(9, 5, '#f85c9a'); P.set(10, 5, '#f85c9a'); P.set(9, 4, '#ff9ac4'); }
+      // base de arena
+      for (let x = 5; x < 15; x++) P.set(x, 31, '#c4a468');
+      outline(P, G[0]);
+      return P.done();
+    });
+  }
+
+  // Valla de madera (16 x 16): se une con las de los lados. No deja pasar, pero se dispara por encima.
+  function fence(left, right) {
+    return cached('fence' + (left ? 1 : 0) + (right ? 1 : 0), () => {
+      const P = Pix(A, A);
+      const Wd = ['#4a2a12', '#6e4220', '#8e5a2e', '#b07640', '#cc945a'];
+      const x0 = left ? 0 : 2, x1 = right ? 15 : 13;
+      for (const ry of [6, 10]) for (let x = x0; x <= x1; x++) { P.set(x, ry, Wd[3]); P.set(x, ry + 1, Wd[1]); }
+      for (const px of [2, 13]) for (let y = 3; y < 15; y++) {
+        P.set(px, y, y === 3 ? Wd[4] : Wd[2]);
+        P.set(px + 1, y, y === 3 ? Wd[3] : Wd[1]);
+      }
+      outline(P, Wd[0]);
+      return P.done();
+    });
+  }
+
+  // Barril (16 x 20): tapa los disparos y se rompe con las súper
+  function barrel(v, theme) {
+    if (pal(theme).spooky) return pumpkin(v);
+    return cached('barrel' + v, () => {
+      const P = Pix(A, 20);
+      const Wd = ['#4a2a12', '#6e4220', '#8e5a2e', '#b07640', '#d29a5e'];
+      const M = ['#3a3f4a', '#6a7280', '#a4acb8'];
+      for (let y = 2; y < 19; y++) {
+        const bulge = Math.round(Math.sin(((y - 2) / 16) * Math.PI) * 1.5);
+        for (let x = 2 - bulge; x < 14 + bulge; x++) {
+          const t = (x - 7.5) / (6 + bulge);
+          let col = t < -0.55 ? Wd[4] : t < -0.1 ? Wd[3] : t < 0.45 ? Wd[2] : Wd[1];
+          if (y === 5 || y === 15) col = t < -0.3 ? M[2] : M[1];
+          if (y === 6 || y === 16) col = M[0];
+          P.set(x, y, col);
+        }
+      }
+      // tapa
+      for (let x = 3; x < 13; x++) { P.set(x, 2, Wd[4]); P.set(x, 3, Wd[3]); }
+      if (v % 2) for (const [x, y] of [[6, 10], [7, 11], [9, 9]]) P.set(x, y, Wd[1]);
+      outline(P, Wd[0]);
+      return P.done();
+    });
+  }
+
   // Hierba alta (16 x 22): sobresale 6 px por arriba. frame: 0/1 balanceo, 2 = sacudida
   // Matas puntiagudas (8 x 9) en filas solapadas, como la hierba alta de los juegos.
   const CLUMP = [
@@ -343,9 +583,10 @@ PB.Tiles = (() => {
     'odmmmmmd',
     '.oddddo.',
   ];
-  const TALL = { o: '#185226', d: '#23733a', m: '#379a46', l: '#58b955', w: '#8ad46e', bg: '#23733a' };
-  function tallGrass(frame) {
-    return cached('tall' + frame, () => {
+  const TALL0 = { o: '#185226', d: '#23733a', m: '#379a46', l: '#58b955', w: '#8ad46e', bg: '#23733a' };
+  function tallGrass(frame, theme) {
+    const TALL = (THEMES[theme] && THEMES[theme].tall) || TALL0;
+    return cached('tall' + frame + (theme || ''), () => {
       const W = A, Hh = 22;
       const P = Pix(W, Hh);
       for (let y = 5; y < Hh; y++) for (let x = 0; x < W; x++) P.set(x, y, TALL.bg);
@@ -507,5 +748,5 @@ PB.Tiles = (() => {
     ctx.drawImage(cv, Math.round(x), Math.round(y), cv.width * PX, cv.height * PX);
   }
 
-  return { floor, outsideFloor, rock, tree, tallGrass, crate, candy, flag, draw, H, A, PX };
+  return { floor, outsideFloor, rock, tree, tallGrass, crate, candy, flag, fence, barrel, draw, H, A, PX };
 })();

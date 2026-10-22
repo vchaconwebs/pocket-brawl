@@ -32,7 +32,7 @@
    "offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
   </script>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=73">
+  <link rel="stylesheet" href="css/style.css?v=78">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -141,9 +141,19 @@
       <footer class="lb-bottom">
         <p class="legal">
           Fangame no oficial y sin ánimo de lucro ·
-          <a href="CREDITS.md" target="_blank">Créditos y licencias</a>
+          <a href="CREDITS.md" target="_blank">Créditos y licencias</a> ·
+          <button class="ver-link" id="btn-news">v<span id="game-ver"></span> · Novedades</button>
         </p>
       </footer>
+    </div>
+  </div>
+
+  <!-- NOVEDADES (nota de parche) -->
+  <div id="patch" class="patch hidden" role="dialog" aria-modal="true" aria-labelledby="patch-title">
+    <div class="panel patch-panel">
+      <div class="patch-head"><span class="patch-ver" id="patch-ver"></span><h2 id="patch-title"></h2><small id="patch-date"></small></div>
+      <ul id="patch-list"></ul>
+      <button class="big" id="patch-ok">¡A jugar!</button>
     </div>
   </div>
 
@@ -404,30 +414,31 @@
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=73"></script>
-  <script src="js/data.js?v=73"></script>
-  <script src="js/roster-data.js?v=73"></script>
-  <script src="js/i18n-data.js?v=73"></script>
-  <script src="js/i18n-names.js?v=73"></script>
-  <script src="js/i18n.js?v=73"></script>
-  <script src="js/sprites.js?v=73"></script>
-  <script src="js/vfx.js?v=73"></script>
-  <script src="js/roster.js?v=73"></script>
-  <script src="js/pokeball.js?v=73"></script>
-  <script src="js/tiles.js?v=73"></script>
-  <script src="js/world.js?v=73"></script>
-  <script src="js/game.js?v=73"></script>
-  <script src="js/net.js?v=73"></script>
-  <script src="js/modes.js?v=73"></script>
-  <script src="js/ai.js?v=73"></script>
-  <script src="js/audio.js?v=73"></script>
-  <script src="js/render.js?v=73"></script>
-  <script src="js/input.js?v=73"></script>
-  <script src="js/settings.js?v=73"></script>
-  <script src="js/pixui.js?v=73"></script>
-  <script src="js/save.js?v=73"></script>
-  <script src="js/online.js?v=73"></script>
-  <script src="js/lobby.js?v=73"></script>
-  <script src="js/main.js?v=73"></script>
+  <script src="js/sprite-data.js?v=78"></script>
+  <script src="js/data.js?v=78"></script>
+  <script src="js/news.js?v=78"></script>
+  <script src="js/roster-data.js?v=78"></script>
+  <script src="js/i18n-data.js?v=78"></script>
+  <script src="js/i18n-names.js?v=78"></script>
+  <script src="js/i18n.js?v=78"></script>
+  <script src="js/sprites.js?v=78"></script>
+  <script src="js/vfx.js?v=78"></script>
+  <script src="js/roster.js?v=78"></script>
+  <script src="js/pokeball.js?v=78"></script>
+  <script src="js/tiles.js?v=78"></script>
+  <script src="js/world.js?v=78"></script>
+  <script src="js/game.js?v=78"></script>
+  <script src="js/net.js?v=78"></script>
+  <script src="js/modes.js?v=78"></script>
+  <script src="js/ai.js?v=78"></script>
+  <script src="js/audio.js?v=78"></script>
+  <script src="js/render.js?v=78"></script>
+  <script src="js/input.js?v=78"></script>
+  <script src="js/settings.js?v=78"></script>
+  <script src="js/pixui.js?v=78"></script>
+  <script src="js/save.js?v=78"></script>
+  <script src="js/online.js?v=78"></script>
+  <script src="js/lobby.js?v=78"></script>
+  <script src="js/main.js?v=78"></script>
 </body>
 </html>

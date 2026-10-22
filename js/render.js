@@ -127,7 +127,7 @@ PB.Renderer = class {
     // bosque de fuera del mapa
     for (let r = r0 - 1; r <= r1; r++) for (let c = c0 - 1; c <= c1; c++) {
       if (c >= 0 && r >= 0 && c < W.w && r < W.h) continue;
-      PB.Tiles.draw(ctx, PB.Tiles.outsideFloor(c, r), c * T, r * T);
+      PB.Tiles.draw(ctx, PB.Tiles.outsideFloor(c, r, W.theme), c * T, r * T);
     }
     ctx.drawImage(this.floor, 0, 0);
 
@@ -173,7 +173,7 @@ PB.Renderer = class {
     const items = [];
     for (let r = r0 - 1; r <= r1 + 1; r++) for (let c = c0 - 1; c <= c1; c++) {
       const tt = W.tile(c, r);
-      if (tt === '#' || tt === 'T' || tt === 'C') items.push({ k: 'wall', y: r * T + T, c, r, tt });
+      if (tt === '#' || tt === 'T' || tt === 'C' || tt === 'F' || tt === 'W') items.push({ k: 'wall', y: r * T + T, c, r, tt });
       else if (tt === 'X' && PB.Tiles.H(c, r, 9) < 0.85) items.push({ k: 'wall', y: r * T + T, c, r, tt: 'B' });
     }
     for (const b of game.brawlers) {
@@ -318,6 +318,14 @@ PB.Renderer = class {
     ctx.globalAlpha = 1;
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    // Halloween: noche con los bordes en penumbra morada
+    if (game.world.theme === 'halloween') {
+      const gr = ctx.createRadialGradient(this.cw / 2, this.ch / 2, Math.min(this.cw, this.ch) * 0.3, this.cw / 2, this.ch / 2, Math.max(this.cw, this.ch) * 0.75);
+      gr.addColorStop(0, 'rgba(20,10,40,0)');
+      gr.addColorStop(1, 'rgba(20,10,40,0.55)');
+      ctx.fillStyle = gr;
+      ctx.fillRect(0, 0, this.cw, this.ch);
+    }
     // destello de la súper: borde de pantalla del color del tipo
     if (this.sfx && sfxK >= 0) {
       const a = (1 - sfxK) * (this.sfx.mine ? 0.65 : 0.35);
@@ -355,9 +363,12 @@ PB.Renderer = class {
     const v = Math.floor(PB.Tiles.H(c, r, 3) * 4);
     ctx.fillStyle = 'rgba(0,0,0,0.22)';
     ctx.beginPath();
-    ctx.ellipse(x + T / 2 + 4, y + T - 6, tt === '#' ? 30 : 34, 11, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + T / 2 + 4, y + T - 6, tt === '#' || tt === 'W' ? 30 : tt === 'F' ? 32 : 34, tt === 'F' ? 6 : 11, 0, 0, Math.PI * 2);
     ctx.fill();
-    if (tt === '#') PB.Tiles.draw(ctx, PB.Tiles.rock(v), x, y + T - 80);
+    const W0 = this.game.world, theme = W0.theme;
+    if (tt === '#') PB.Tiles.draw(ctx, PB.Tiles.rock(v, theme), x, y + T - 80);
+    else if (tt === 'W') PB.Tiles.draw(ctx, PB.Tiles.barrel(v, theme), x, y + T - (theme === 'halloween' ? 72 : 80));
+    else if (tt === 'F') PB.Tiles.draw(ctx, PB.Tiles.fence(W0.tile(c - 1, r) === 'F', W0.tile(c + 1, r) === 'F'), x, y);
     else if (tt === 'C') {
       const W = this.game.world, hp = W.crateHp.get(r * W.w + c) || 0;
       const hit = this.game.fx.some((f) => f.kind === 'crateHit' && f.c === c && f.r === r);
@@ -371,7 +382,7 @@ PB.Renderer = class {
       ctx.fillRect(x + 6, y - 28, ((T - 12) * hp) / 3000, 2);
     } else {
       const jx = tt === 'B' ? (PB.Tiles.H(c, r, 4) - 0.5) * 24 : 0;
-      PB.Tiles.draw(ctx, PB.Tiles.tree(v), x - 8 + jx, y + T - 128);
+      PB.Tiles.draw(ctx, PB.Tiles.tree(v, this.game.world.theme), x - 8 + jx, y + T - 128);
     }
   }
 
@@ -380,7 +391,7 @@ PB.Renderer = class {
     const T = PB.TILE;
     const frame = rustle ? (Math.floor(t * 10) % 2 ? 2 : 1) : Math.floor(t * 1.2 + PB.Tiles.H(c, r, 8) * 2) % 2;
     this.ctx.globalAlpha = alpha;
-    PB.Tiles.draw(this.ctx, PB.Tiles.tallGrass(frame), c * T, r * T - 24);
+    PB.Tiles.draw(this.ctx, PB.Tiles.tallGrass(frame, this.game && this.game.world.theme), c * T, r * T - 24);
     this.ctx.globalAlpha = 1;
   }
 

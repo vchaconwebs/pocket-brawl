@@ -9,8 +9,13 @@ PB.Game = class {
   // opts: { mode, blue: [ids], red: [ids], ffa: [ids], playerInBlue, noCountdown }
   constructor(opts) {
     this.mode = PB.MODES[opts.mode] || PB.MODES.gems;
-    const map = PB.MAPS[this.mode.map];
+    // cada modo tiene varios mapas: opts.mapIdx dice cuál (en red lo decide el anfitrión)
+    const maps = PB.mapsOf(this.mode.map);
+    this.mapIdx = Math.max(0, Math.min(maps.length - 1, opts.mapIdx | 0));
+    const map = maps[this.mapIdx];
+    this.mapName = map.name || '';
     this.world = new PB.World(map.quad ? PB.buildQuadMap(map.quad) : PB.buildMap(map.top));
+    this.world.theme = map.theme || ''; // otono, nieve, arena (cambia suelo, árboles, rocas e hierba)
     this.rules = Object.assign({}, PB.RULES, this.mode.rules || {});
     this.time = 0; // tiempo de juego (empieza al terminar la cuenta atrás)
     this.clock = 0; // tiempo real de la partida (efectos)
@@ -866,7 +871,7 @@ PB.Game = class {
   breakWalls(x, y, radius) {
     const broken = this.world.destroyAround(x, y, radius);
     for (const w of broken) {
-      const cols = w.kind === 'T' ? ['#2f8a3e', '#48a850', '#6a4428'] : ['#5c6672', '#9ca8b4', '#7c8894'];
+      const cols = w.kind === 'T' ? ['#2f8a3e', '#48a850', '#6a4428'] : w.kind === 'F' || w.kind === 'W' ? ['#8e5a2e', '#b07640', '#5a3818'] : ['#5c6672', '#9ca8b4', '#7c8894'];
       for (let i = 0; i < 12; i++) {
         const a = Math.random() * Math.PI * 2, s = 60 + Math.random() * 220;
         this.px(w.x, w.y, cols[i % 3], { vx: Math.cos(a) * s, vy: Math.sin(a) * s, z: 20, vz: 200 + Math.random() * 250, life: 0.9, size: 7 });
