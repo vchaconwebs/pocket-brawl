@@ -70,7 +70,7 @@
         },
         "modes": {
           "$m": {
-            ".write": "$m.matches(/^(gems|showdown|heist|ball|zone)$/)",
+            ".write": "$m.matches(/^(gems|showdown|duo|heist|ball|zone|brawl|knockout)$/)",
             ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1"
           }
         },
@@ -104,7 +104,7 @@
       ".read": true,
       "$sid": {
         ".write": "$sid.matches(/^[a-z0-9]{12}$/)",
-        ".validate": "newData.isNumber() && (newData.val() === 1 || newData.val() === 2) || newData.isString() && newData.val().matches(/^(m|[ps]:(gems|showdown|heist|ball|zone))$/)"
+        ".validate": "newData.isNumber() && (newData.val() === 1 || newData.val() === 2) || newData.isString() && newData.val().matches(/^(m|[ps]:(gems|showdown|duo|heist|ball|zone|brawl|knockout))$/)"
       }
     },
     "statsPeak": {
@@ -144,6 +144,12 @@
         },
         "$other": {
           ".validate": "false"
+        },
+        "au": {
+          ".validate": "newData.isString() && newData.val().length <= 30 && newData.val() === $id"
+        },
+        "dur": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9"
         }
       }
     },
@@ -188,6 +194,31 @@
           "$other": {
             ".validate": "false"
           }
+        }
+      }
+    },
+    "chatAudio": {
+      ".indexOn": [
+        "t"
+      ],
+      "$id": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() && newData.exists() && newData.child('uid').val() === auth.uid && newData.parent().parent().child('chat/' + $id + '/uid').val() === auth.uid || data.exists() && !newData.exists() && (data.child('uid').val() === auth.uid || auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3' || data.child('t').val() < now - 3600000))",
+        ".validate": "!newData.exists() || newData.hasChildren(['uid', 'd', 't']) && newData.child('t').val() === now && newData.child('d').isString() && newData.child('d').val().length <= 60000 && (!newData.child('m').exists() || newData.child('m').isString() && newData.child('m').val().length <= 40)",
+        "uid": {
+          ".validate": "true"
+        },
+        "d": {
+          ".validate": "true"
+        },
+        "m": {
+          ".validate": "true"
+        },
+        "t": {
+          ".validate": "true"
+        },
+        "$other": {
+          ".validate": "false"
         }
       }
     }
