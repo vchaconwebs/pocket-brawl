@@ -73,6 +73,12 @@
             ".write": "$m.matches(/^(gems|showdown|heist|ball|zone)$/)",
             ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1"
           }
+        },
+        "src": {
+          "$s": {
+            ".write": "$s.matches(/^(directo|tiktok|itch|minijuegos|google|youtube|instagram|x|reddit|facebook|otros)$/)",
+            ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1"
+          }
         }
       }
     },

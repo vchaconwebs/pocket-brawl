@@ -80,10 +80,26 @@ PB.Online = (() => {
     if (!rtdb || testing) return;
     rtdb.ref('stats/' + day() + '/' + path).set(fb.database.ServerValue.increment(1)).catch(() => {});
   }
+  // de dónde viene la visita: ?from=... (itch, minijuegos…) o la web que la ha enlazado
+  function visitSource() {
+    const from = new URLSearchParams(location.search).get('from');
+    if (from && /^[a-z]+$/.test(from)) return from;
+    let host = '';
+    try { host = document.referrer ? new URL(document.referrer).hostname : ''; } catch (e) {}
+    if (!host || host.endsWith('pokeversus.com')) return 'directo';
+    const known = [['tiktok', 'tiktok'], ['itch', 'itch'], ['minijuegos', 'minijuegos'], ['miniplay', 'minijuegos'], ['google', 'google'],
+      ['youtube', 'youtube'], ['youtu.be', 'youtube'], ['instagram', 'instagram'], ['t.co', 'x'], ['twitter', 'x'], ['x.com', 'x'],
+      ['reddit', 'reddit'], ['facebook', 'facebook'], ['bing', 'google'], ['duckduckgo', 'google']];
+    const k = known.find(([part]) => host.includes(part));
+    return k ? k[1] : 'otros';
+  }
   function countVisit() {
     try { if (sessionStorage.getItem('pb.visit')) return; sessionStorage.setItem('pb.visit', '1'); } catch (e) {}
     bump('visits');
+    const src = visitSource();
+    if (SOURCES.includes(src)) bump('src/' + src);
   }
+  const SOURCES = ['directo', 'tiktok', 'itch', 'minijuegos', 'google', 'youtube', 'instagram', 'x', 'reddit', 'facebook', 'otros'];
   // el primer registro del día de cada jugador suma uno a "players" (la lista no se puede leer)
   function countPlayer() {
     if (!rtdb || !uid || testing) return;
