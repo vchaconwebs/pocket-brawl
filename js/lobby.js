@@ -669,10 +669,20 @@ PB.Lobby = (() => {
     const tone = (it) => (it.kind === 'ultra' ? 'ultra' : it.kind === 'great' ? 'great' : it.kind === 'poke' ? 'poke' : it.kind === 'rainbow' ? 'rainbow' : it.kind === 'coins' ? 'coins' : 'points');
     const icon = (it) => (['poke', 'great', 'ultra'].includes(it.kind) ? ballIcon(it.kind, 3) : rewardInfo(it).icon);
     const label = (it) => (['poke', 'great', 'ultra'].includes(it.kind) ? PB.META.chests[it.kind].name : rewardInfo(it).label);
+    // la barra entre el punto N y el N+1 está hecha de la mitad derecha de la columna N y la
+    // mitad izquierda de la N+1 (la primera columna solo tiene mitad derecha y la última solo izquierda)
+    const L = p.level, prog = L >= p.max ? 1 : p.progress;
+    const railFill = (lvl) => {
+      const first = lvl === 1, last = lvl === p.max && !(L >= p.max);
+      if (lvl < L || (lvl === L && L >= p.max)) return 1;
+      if (lvl === L) return first ? Math.min(1, prog * 2) : 0.5 + Math.min(prog, 0.5);
+      if (lvl === L + 1 && L > 0) { const k = Math.max(0, prog - 0.5); return last ? k * 2 : k; }
+      return 0;
+    };
     const cols = p.rewards.map((r) => {
       const st = r.claimed ? 'claimed' : r.ready ? 'ready' : 'locked';
       const main = r.items[0];
-      const fill = r.lvl <= p.level ? 1 : r.lvl === p.level + 1 ? p.progress : 0;
+      const fill = railFill(r.lvl);
       const kind = r.lvl === p.max ? ' final' : r.lvl % 5 === 0 ? ' milestone' : '';
       return `<div class="ps-col ${st}${kind}" style="--fill:${fill}">` +
         (r.lvl === p.max ? '<span class="ps-ribbon">¡Premio final!</span>' : r.lvl % 5 === 0 ? '<span class="ps-ribbon small">Hito</span>' : '') +
@@ -693,9 +703,17 @@ PB.Lobby = (() => {
     track.innerHTML = cols + extra;
     track.querySelectorAll('.ps-col.ready .ps-card').forEach((e) => (e.onclick = () => claimPassNode(e.dataset.lvl)));
     show('passscreen');
-    // centra el siguiente premio (o el primero por reclamar)
-    const cur = track.querySelector('.ps-col.ready') || track.children[Math.min(p.level, track.children.length - 1)];
-    if (cur) track.scrollLeft = cur.offsetLeft - track.clientWidth / 2 + cur.clientWidth / 2;
+    // centra el siguiente nivel a conseguir (por dónde vas), de golpe y ya con la pantalla dibujada
+    const cur = track.children[Math.min(p.level, track.children.length - 1)];
+    const center = () => {
+      if (!cur) return;
+      const a = cur.getBoundingClientRect(), r = track.getBoundingClientRect();
+      track.style.scrollBehavior = 'auto';
+      track.scrollLeft += a.left - r.left - (r.width - a.width) / 2;
+      track.style.scrollBehavior = '';
+    };
+    center();
+    requestAnimationFrame(center);
   }
 
   function claimPassNode(lvl) {

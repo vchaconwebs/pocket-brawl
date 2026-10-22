@@ -127,7 +127,7 @@
   // Formas del ataque básico. Cada una reparte el mismo daño total que el papel, pero de otra manera.
   // t = daño total de un ataque del papel (balas × daño), r = la plantilla del papel
   const STYLE = {
-    cone: (t, r) => ({ kind: 'spread', count: 7, spread: 0.95, range: Math.round(r.range * 0.78), speed: 480, dmg: t / 7 * 0.92, r: 12, scale: 0.9, d: 'Una llamarada corta en abanico.' }),
+    cone: (t, r) => ({ kind: 'spread', count: 7, spread: 0.95, range: Math.round(r.range * 1.1), speed: 480, dmg: t / 7 * 0.92, r: 12, scale: 0.9, d: 'Una llamarada corta en abanico.' }),
     burst3: (t, r) => ({ kind: 'burst', count: 3, delay: 0.1, range: r.range, speed: 860, dmg: t / 3, r: 11, scale: 1 }),
     orb: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: r.range, speed: 540, dmg: t * 1.05, r: 25, pierce: true, scale: 1.8 }),
     homing: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 1.05), speed: 560, dmg: t * 0.8, r: 16, homing: 2.8, scale: 1.4 }),
