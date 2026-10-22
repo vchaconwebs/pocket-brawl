@@ -89,11 +89,24 @@ PB.MODES = {
         if (carrier) return { goal: carrier, aggressive: true, hunt: carrier };
         if (info.foe) return { goal: info.foe, aggressive: true };
       }
-      // jugar seguro: con poca vida, si va ganando la cuenta atrás y lleva Pokéballs, o si lleva muchas
+      // sitio "con cuidado": en su lado, cerca del centro (no en la base), cada uno en un hueco distinto
+      const toHome = Math.atan2(home.y - W.mine.y, home.x - W.mine.x) + ((b.idx % 3) - 1) * 0.7;
+      const guard = { x: W.mine.x + Math.cos(toHome) * 260, y: W.mine.y + Math.sin(toHome) * 260 };
       const teamBalls = g.teamBalls(b.team);
-      if ((info.hpF < 0.3 && info.foe && info.fd < 450) || (winning && b.balls > 0) || (b.balls >= 5 && info.hpF < 0.6) ||
-          (teamBalls >= g.rules.ballsToWin - 2 && b.balls >= 3)) {
-        return { goal: safe, retreat: true };
+      // muy tocado y con un rival encima: se aparta a cubierto (a medio camino, no hasta casa)
+      if (info.hpF < 0.25 && info.foe && info.fd < 400) {
+        return { goal: b.balls >= 4 ? safe : guard, retreat: true };
+      }
+      // con muchas Pokéballs (o ganando la cuenta atrás): juega tranquilo en el centro,
+      // coge las que caen cerca si nadie las tiene más a mano y se defiende sin perseguir
+      if ((winning && b.balls > 0) || (b.balls >= 5 && info.hpF < 0.6) || (teamBalls >= g.rules.ballsToWin - 2 && b.balls >= 3)) {
+        let near = null, nd = 340;
+        for (const gm of g.balls) {
+          const d = dist(gm, b);
+          if (d < nd && !g.enemiesOf(b).some((e) => !e.dead && dist(e, gm) < d - 40)) { nd = d; near = gm; }
+        }
+        if (near) return { goal: near };
+        return { goal: guard };
       }
       if (info.foe && (losing || (info.fd < 700 && info.hpF > 0.45))) return { goal: info.foe };
       let best = null, bd = Infinity;
