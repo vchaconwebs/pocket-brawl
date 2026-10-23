@@ -221,6 +221,18 @@
           ".validate": "false"
         }
       }
+    },
+    "relay": {
+      "$mid": {
+        "$to": {
+          ".read": "auth != null && auth.uid === $to",
+          ".write": "auth != null && auth.uid === $to && !newData.exists()",
+          "$id": {
+            ".write": "auth != null && (!data.exists() && newData.child('f').val() === auth.uid || auth.uid === $to && !newData.exists())",
+            ".validate": "!newData.exists() || newData.hasChildren(['f', 'd']) && newData.child('d').isString() && newData.child('d').val().length <= 40000"
+          }
+        }
+      }
     }
   }
 }
