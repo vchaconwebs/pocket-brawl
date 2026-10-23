@@ -16,12 +16,15 @@ PB.Pokeball = (() => {
     B: '#1e4a9a', b: '#3a7ad8', j: '#8ab8ff', X: '#e8331c',
     // Ultra Ball
     K: '#141418', n: '#2e2e36', N: '#55555f', Y: '#f8c830',
+    // Safari Ball
+    S: '#2f6a1e', s: '#5a9c3a', l: '#9ad06a', D: '#24461a',
   };
   // colores de la mitad de arriba según el tipo de bola
   const TOPS = {
     poke: { h: 'h', r: 'r', R: 'R' },
     great: { h: 'j', r: 'b', R: 'B' },
     ultra: { h: 'N', r: 'n', R: 'K' },
+    safari: { h: 'l', r: 's', R: 'S' },
   };
   const SIZE = 15;
   const cache = new Map();
@@ -52,6 +55,8 @@ PB.Pokeball = (() => {
               // franjas rojas de la Super Ball y "H" amarilla de la Ultra Ball
               if (kind === 'great' && Math.abs(dx) >= 3 && Math.abs(dx) <= 5 && dy >= -3) ch = 'X';
               if (kind === 'ultra' && Math.abs(dx) >= 2 && Math.abs(dx) <= 3.5 && dy <= -1.5) ch = 'Y';
+              // manchas verde oscuro de la Safari Ball
+              if (kind === 'safari' && dy <= -1.5 && ((x * 3 + y * 5) % 7 === 0 || (x * 5 + y * 3) % 11 === 0)) ch = 'D';
             }
             else ch = lit < -0.35 ? 'G' : lit < 0.05 ? 'g' : 'w';
           }

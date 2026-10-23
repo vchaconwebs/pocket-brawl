@@ -9,6 +9,12 @@ PB.META = {
   // monedas para pasar del nivel N al N+1 (índice = nivel actual)
   levelCost: [0, 10, 20, 40, 80, 150, 250, 380, 500, 600], // 2.030 monedas del 1 al 10
   tokensPerChest: 100,
+  // Zona Safari: fichas por tirada (se llena aparte, con las mismas fichas) y cómo es cada tirada
+  safari: {
+    tokens: 500, items: 10, sure: 3, extra: 0.12, // 10 premios: 3 Pokémon seguros y cada uno de los otros, un 12 % de ser otro
+    rare: { common: 50, starter: 30, rare: 30, epic: 15, legendary: 5 },
+    pity: 2, // tras 2 tiradas sin épico ni legendario, la siguiente trae uno seguro
+  },
   // premio de cada partida (en Niebla Tóxica cuenta como victoria quedar entre los 4 primeros)
   matchReward: {
     win: { coins: 25, points: 24, rainbow: 3 },
@@ -503,6 +509,68 @@ PB.Save = (() => {
     return res;
   }
 
+  // ---------------------------------------------------------------- Zona Safari
+  const SAFARI_REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Teselia', 'Kalos', 'Alola', 'Galar', 'Paldea'];
+  function safariRegions() {
+    return SAFARI_REGIONS.map((name, i) => {
+      const all = PB.BRAWLERS.filter((b) => b.gen === i + 1);
+      return { gen: i + 1, name, total: all.length, owned: all.filter((b) => owned(b.id)).length, star: all.length ? all[0].dex : 1 };
+    });
+  }
+  const safariReady = () => Math.floor((get().safari || 0) / PB.META.safari.tokens);
+  function openSafari(gen) {
+    const d = get(), S = PB.META.safari;
+    if ((d.safari || 0) < S.tokens) return null;
+    let locked = PB.BRAWLERS.filter((b) => b.gen === gen && !owned(b.id));
+    if (!locked.length) return null;
+    d.safari -= S.tokens;
+    const items = [];
+    let force = (d.safariPity || 0) >= S.pity, gotEpic = false;
+    const pickPokemon = () => {
+      let pool = locked;
+      if (force) { const hi = locked.filter((b) => b.rarity === 'epic' || b.rarity === 'legendary'); if (hi.length) pool = hi; force = false; }
+      let total = 0;
+      for (const b of pool) total += S.rare[b.rarity] || 20;
+      let r = Math.random() * total, pick = pool[0];
+      for (const b of pool) { r -= S.rare[b.rarity] || 20; if (r <= 0) { pick = b; break; } }
+      locked = locked.filter((b) => b !== pick);
+      if (pick.rarity === 'epic' || pick.rarity === 'legendary') gotEpic = true;
+      d.owned[pick.id] = 1;
+      return { kind: 'pokemon', id: pick.id, rarity: pick.rarity };
+    };
+    for (let i = 0; i < S.items; i++) {
+      const wantPokemon = i < S.sure || Math.random() < S.extra;
+      if (wantPokemon) {
+        items.push(locked.length ? pickPokemon() : { kind: 'rainbow', n: 10 }); // región completa: Monedas Arcoíris
+        continue;
+      }
+      const r = Math.random();
+      if (r < 0.45) items.push({ kind: 'coins', n: 30 + Math.floor(Math.random() * 51) });
+      else if (r < 0.8) items.push({ kind: 'points', n: 15 + Math.floor(Math.random() * 26) });
+      else if (r < 0.97) items.push({ kind: 'rainbow', n: 3 + Math.floor(Math.random() * 6) });
+      else {
+        // muy raro: una skin regional de un Pokémon que tengas
+        const opts = [];
+        for (const id of Object.keys(d.owned)) for (const rg of regionSkins(id)) if (!hasRegion(id, rg)) opts.push({ id, region: rg });
+        if (opts.length) {
+          const o = opts[Math.floor(Math.random() * opts.length)];
+          d.regions = d.regions || {};
+          (d.regions[o.id] = d.regions[o.id] || []).push(o.region);
+          items.push({ kind: 'skin', id: o.id, region: o.region });
+        } else items.push({ kind: 'rainbow', n: 6 });
+      }
+    }
+    for (const it of items) {
+      if (it.kind === 'coins') d.coins += it.n;
+      if (it.kind === 'points') d.points += it.n;
+      if (it.kind === 'rainbow') d.rainbow = (d.rainbow || 0) + it.n;
+    }
+    d.safariPity = gotEpic ? 0 : (d.safariPity || 0) + 1;
+    d.stats.safari = (d.stats.safari || 0) + 1;
+    persist();
+    return { gen, name: SAFARI_REGIONS[gen - 1], items };
+  }
+
   // Índice del mejor cofre para abrir primero (Ultra > Super > Poké)
   function nextChest() {
     const d = get();
@@ -536,6 +604,7 @@ PB.Save = (() => {
     let bonus = false;
     if (won && d.bonusLeft > 0) { d.bonusLeft--; tokens *= 2; bonus = true; }
     d.tokens += tokens;
+    d.safari = (d.safari || 0) + tokens; // la Zona Safari se llena a la vez (no gasta las de los cofres)
     // monedas, Puntos Pokémon y Monedas Arcoíris de la partida
     const R0 = PB.META.matchReward[won ? 'win' : 'lose'];
     const MR = { coins: Math.round(R0.coins * k), points: Math.round(R0.points * k), rainbow: Math.round((R0.rainbow || 0) * k) };
@@ -697,6 +766,6 @@ PB.Save = (() => {
     load, get, persist, setName, owned, level, copas, totalCopas, select, upgradeCost, upgrade, unlockCost, unlock, spendCoins,
     pass, claimPass, claimPassExtra,
     needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, isFav, toggleFav, regionSkins, hasRegion, buyRegion, branch, lineOf, setBranch, kit, setKit, kitOwned, buyKit, kitCost,
-    importJSON, openChest, nextChest, applyMatch, applyAbandon, abandonWait, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
+    importJSON, openChest, nextChest, safariRegions, safariReady, openSafari, applyMatch, applyAbandon, abandonWait, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
   };
 })();

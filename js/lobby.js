@@ -283,6 +283,15 @@ PB.Lobby = (() => {
     cnt.textContent = d.chests.length;
     cnt.classList.toggle('hidden', !d.chests.length);
     $('#chest-widget').classList.toggle('ready', d.chests.length > 0);
+    // Zona Safari: barra aparte (cada 500 fichas, una tirada)
+    const SF = PB.META.safari.tokens, sfReady = PB.Save.safariReady();
+    $('#sf-img').src = ballIcon('safari', 4);
+    $('#sf-fill').style.width = Math.min(100, ((d.safari || 0) % SF) / SF * 100) + '%';
+    $('#sf-txt').textContent = PB.T('{a}/{b} fichas', { a: (d.safari || 0) % SF, b: SF });
+    $('#sf-label').textContent = sfReady ? PB.T('¡Zona Safari!') : PB.T('Zona Safari');
+    $('#sf-count').textContent = sfReady;
+    $('#sf-count').classList.toggle('hidden', !sfReady);
+    $('#safari-widget').classList.toggle('ready', sfReady > 0);
     // avisos rojos: misiones, logros y solicitudes de amistad
     const pend = PB.Save.pending();
     setBadge('#mis-badge', pend.missions);
@@ -999,6 +1008,158 @@ PB.Lobby = (() => {
       box.appendChild(el);
     }
     show('achievements');
+  }
+
+  // ------------------------------------------------------------------ Zona Safari
+  function showSafari() {
+    $('#sf-result').classList.add('hidden');
+    $('#sf-regions').classList.remove('hidden');
+    $('#sf-help').classList.remove('hidden');
+    const ready = PB.Save.safariReady();
+    $('#sf-have').textContent = ready ? PB.T('{n} tiradas', { n: ready }) : '';
+    $('#sf-help').textContent = ready
+      ? PB.T('Elige una región: 10 premios con al menos 3 Pokémon que aún no tienes (y con suerte más).')
+      : PB.T('Se llena con las fichas de tus partidas (sin quitárselas a las Poké Balls). Con 500 fichas, una tirada: 10 premios con al menos 3 Pokémon nuevos.');
+    $('#sf-regions').innerHTML = PB.Save.safariRegions().map((r) => {
+      const done = r.owned >= r.total;
+      return `<button class="sf-reg${done ? ' done' : ''}" data-gen="${r.gen}"${!ready || done ? ' disabled' : ''}>` +
+        `<img src="${PB.Sprites.portraitURL(r.star)}" alt=""><b>${r.name}</b>` +
+        `<span class="bar"><i style="width:${Math.round((r.owned / Math.max(1, r.total)) * 100)}%"></i></span>` +
+        `<small>${done ? PB.T('¡Completada!') : r.owned + '/' + r.total}</small></button>`;
+    }).join('');
+    document.querySelectorAll('#sf-regions .sf-reg').forEach((e) => (e.onclick = () => safariPull(+e.dataset.gen)));
+    show('safari');
+  }
+
+  // Máquina de bolas (pixel art en un canvas): cúpula de cristal llena de Pokéballs, cuerpo rojo, manivela y rampa.
+  // shake: cuánto se agitan las bolas de dentro; crank: ángulo de la manivela
+  const MC = { w: 80, h: 104, k: 3 }; // tamaño en píxeles de la máquina y a cuánto se escala
+  let mcBalls = null;
+  function drawMachine(cv, shake, crank) {
+    const c = cv.getContext('2d'), k = MC.k;
+    c.imageSmoothingEnabled = false;
+    c.clearRect(0, 0, cv.width, cv.height);
+    const px = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x * k, y * k, w * k, h * k); };
+    const cx = 40, cy = 34, R = 28;
+    // bolas de dentro (posiciones fijas que tiemblan al girar)
+    if (!mcBalls) {
+      mcBalls = [];
+      const kinds = ['poke', 'poke', 'great', 'safari', 'poke', 'ultra', 'great', 'safari', 'poke', 'great', 'poke', 'safari', 'ultra', 'poke'];
+      for (let n = 0; n < 14; n++) {
+        const row = Math.floor(n / 5), col = n % 5;
+        mcBalls.push({ x: cx - 18 + col * 9 + (row % 2) * 4, y: cy + 16 - row * 10, kind: kinds[n] });
+      }
+    }
+    // cúpula: cristal azulado con borde
+    for (let y = -R; y <= R; y++) for (let x = -R; x <= R; x++) {
+      const d = Math.hypot(x, y);
+      if (d > R + 0.5) continue;
+      px(cx + x, cy + y, 1, 1, d > R - 1.5 ? '#1b1418' : 'rgba(170,220,255,0.28)');
+    }
+    for (const b of mcBalls) {
+      const jx = shake ? (Math.random() - 0.5) * shake : 0, jy = shake ? (Math.random() - 0.5) * shake : 0;
+      PB.Pokeball.draw(c, (b.x + jx) * k, (b.y + jy) * k, 2, { kind: b.kind });
+    }
+    // brillo del cristal
+    px(cx - 18, cy - 18, 3, 8, 'rgba(255,255,255,0.55)'); px(cx - 15, cy - 21, 6, 3, 'rgba(255,255,255,0.55)');
+    // cuerpo
+    px(12, 58, 56, 40, '#1b1418');
+    px(14, 60, 52, 36, '#d8331c'); px(14, 60, 52, 4, '#ff6a4a'); px(14, 90, 52, 6, '#9e1c12');
+    px(10, 56, 60, 5, '#1b1418'); px(12, 57, 56, 3, '#f6c030');
+    // cartel
+    px(22, 65, 36, 9, '#1b1418'); px(23, 66, 34, 7, '#fff6d8');
+    c.fillStyle = '#2f6a1e'; c.font = `${7 * k}px "Jersey 10", monospace`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('SAFARI', 40 * k, 69.8 * k);
+    // rampa por donde salen las bolas
+    px(30, 78, 20, 14, '#1b1418'); px(32, 80, 16, 10, '#3a2a30'); px(32, 88, 16, 2, '#1b1418');
+    // manivela (gira)
+    const ox = 62, oy = 74;
+    px(ox - 3, oy - 3, 7, 7, '#1b1418'); px(ox - 2, oy - 2, 5, 5, '#c3bfc6');
+    const ax = ox + Math.cos(crank) * 9, ay = oy + Math.sin(crank) * 9;
+    c.strokeStyle = '#1b1418'; c.lineWidth = 3 * k; c.beginPath(); c.moveTo((ox + 0.5) * k, (oy + 0.5) * k); c.lineTo((ax + 0.5) * k, (ay + 0.5) * k); c.stroke();
+    c.strokeStyle = '#c3bfc6'; c.lineWidth = 1.4 * k; c.beginPath(); c.moveTo((ox + 0.5) * k, (oy + 0.5) * k); c.lineTo((ax + 0.5) * k, (ay + 0.5) * k); c.stroke();
+    px(ax - 2, ay - 2, 5, 5, '#1b1418'); px(ax - 1, ay - 1, 3, 3, '#f6c030');
+    // patas
+    px(14, 98, 8, 6, '#1b1418'); px(58, 98, 8, 6, '#1b1418');
+  }
+
+  function safariPull(gen) {
+    const res = PB.Save.openSafari(gen);
+    if (!res) return;
+    PB.Audio.play('ui');
+    $('#sf-regions').classList.add('hidden');
+    $('#sf-help').classList.add('hidden');
+    $('#sf-result').classList.remove('hidden');
+    $('#sf-title').textContent = PB.T('Zona Safari · {r}', { r: res.name });
+    // la bola de cada premio avisa de lo que trae: Ultra = épico o legendario, Super = raro, Poké = común, Safari = objetos
+    const ballOf = (it) => (it.kind !== 'pokemon' ? 'safari' : it.rarity === 'epic' || it.rarity === 'legendary' ? 'ultra' : it.rarity === 'common' ? 'poke' : 'great');
+    const face = (it) => {
+      if (it.kind === 'pokemon') {
+        const b = PB.brawlerById(it.id), r = rarityOf(b);
+        return `<img src="${portrait(b)}" alt=""><b>${b.name}</b><small style="color:${r.color}">${r.name}</small>`;
+      }
+      if (it.kind === 'skin') {
+        const b = PB.brawlerById(it.id);
+        return `<img src="${PB.Sprites.portraitURL(PB.skinDex(b.dex, it.region))}" alt=""><b>${b.name}</b><small>${PB.T('Skin regional')}</small>`;
+      }
+      const ico = it.kind === 'coins' ? coinIcon() : it.kind === 'points' ? starIcon() : rainbowIcon();
+      return `<img class="cur" src="${ico}" alt=""><b>+${it.n}</b>`;
+    };
+    $('#sf-items').innerHTML = res.items.map((it, i) => {
+      const r = it.kind === 'pokemon' ? rarityOf(PB.brawlerById(it.id)) : null;
+      return `<button class="sf-it ${it.kind} empty" data-i="${i}" style="--rar:${r ? r.color : '#5a6890'}" disabled><span class="sf-cov"><img src="${ballIcon(ballOf(it), 3)}" alt=""></span><span class="sf-face">${face(it)}</span></button>`;
+    }).join('');
+    const reveal = $('#sf-reveal'), done = $('#sf-done');
+    reveal.classList.add('hidden');
+    done.classList.add('hidden');
+    // 1) gira la manivela y las bolas se agitan; 2) van cayendo las 10 bolas por la rampa hasta su hueco
+    const cv = $('#sf-mc');
+    cv.width = MC.w * MC.k; cv.height = MC.h * MC.k;
+    let t0 = performance.now(), dropped = 0;
+    const slots = [...document.querySelectorAll('#sf-items .sf-it')];
+    const dropBall = (i) => {
+      const it = res.items[i], slot = slots[i];
+      const r1 = cv.getBoundingClientRect(), sc = r1.width / (MC.w * MC.k);
+      const fx = r1.left + 40 * MC.k * sc, fy = r1.top + 86 * MC.k * sc;
+      const r2 = slot.getBoundingClientRect();
+      const ball = document.createElement('img');
+      ball.className = 'sf-fly';
+      ball.src = ballIcon(ballOf(it), 3);
+      ball.style.left = fx - 22 + 'px'; ball.style.top = fy - 22 + 'px';
+      document.body.appendChild(ball);
+      PB.Audio.play('tick');
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        ball.style.transform = `translate(${r2.left + r2.width / 2 - fx}px, ${r2.top + r2.height / 2 - fy}px) rotate(${360 + Math.random() * 360}deg)`;
+      }));
+      setTimeout(() => {
+        ball.remove();
+        slot.classList.remove('empty');
+        slot.disabled = false;
+        PB.Audio.play(ballOf(it) === 'ultra' ? 'ready' : 'ball');
+        if (++dropped === res.items.length) { reveal.classList.remove('hidden'); }
+      }, 520);
+    };
+    const anim = (now) => {
+      const el = (now - t0) / 1000;
+      const spinning = el < 1.1 + res.items.length * 0.32;
+      drawMachine(cv, spinning ? 2.2 : 0, el * 7);
+      if (spinning && $('#sf-result') && !$('#sf-result').classList.contains('hidden')) requestAnimationFrame(anim);
+    };
+    requestAnimationFrame(anim);
+    PB.Audio.play('evolve');
+    res.items.forEach((_, i) => setTimeout(() => dropBall(i), 1100 + i * 320));
+    // destapar: tocando cada bola o todas de golpe
+    const left = () => slots.filter((e) => !e.classList.contains('open')).length;
+    const flip = (e) => {
+      if (e.classList.contains('open') || e.classList.contains('empty')) return;
+      e.classList.add('open');
+      const it = res.items[+e.dataset.i];
+      PB.Audio.play(it.kind === 'pokemon' ? (it.rarity === 'legendary' || it.rarity === 'epic' ? 'win' : 'candy') : 'ball');
+      if (!left()) { reveal.classList.add('hidden'); done.classList.remove('hidden'); refreshLobby(); }
+    };
+    slots.forEach((e) => (e.onclick = () => flip(e)));
+    reveal.onclick = () => slots.filter((e) => !e.classList.contains('open')).forEach((e, k) => setTimeout(() => flip(e), k * 140));
+    done.onclick = () => { PB.Audio.play('ui'); PB.Save.safariReady() ? showSafari() : show('lobby'); };
   }
 
   // ------------------------------------------------------------------ aviso / confirmación
@@ -2146,6 +2307,7 @@ PB.Lobby = (() => {
     for (const e of document.querySelectorAll('[data-back]')) e.onclick = () => show(e.dataset.back);
     $('#dt-back').onclick = showCollection;
     $('#chestopen').onclick = chestTap;
+    $('#safari-widget').onclick = () => { PB.Audio.play('ui'); showSafari(); };
     $('#chest-widget').onclick = () => {
       chestReturn = 'lobby';
       if (PB.Save.get().chests.length) openNextChest();

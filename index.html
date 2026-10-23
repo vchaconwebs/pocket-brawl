@@ -113,6 +113,14 @@
             <small id="tok-txt">0/100 fichas</small>
           </span>
         </button>
+        <button class="chest-widget safari-widget" id="safari-widget">
+          <span class="cw-ball"><img id="sf-img" alt=""><span class="cw-badge hidden" id="sf-count">0</span></span>
+          <span class="cw-info">
+            <b id="sf-label">Zona Safari</b>
+            <span class="bar"><i id="sf-fill"></i></span>
+            <small id="sf-txt">0/500 fichas</small>
+          </span>
+        </button>
       </aside>
 
       <div class="lb-center">
@@ -435,6 +443,18 @@
   </div>
 
   <!-- ABRIR COFRE -->
+  <div id="safari" class="screen hidden">
+    <div class="panel wide">
+      <div class="pn-head"><button class="back" data-back="lobby">←</button><h2>Zona Safari <small id="sf-have"></small></h2></div>
+      <p class="sf-help" id="sf-help"></p>
+      <div id="sf-regions"></div>
+      <div id="sf-result" class="hidden">
+        <h3 id="sf-title"></h3>
+        <div class="sf-stage"><canvas id="sf-mc"></canvas><div id="sf-items"></div></div>
+        <div class="row"><button class="act gold" id="sf-reveal">Destapar todo</button><button class="act blue hidden" id="sf-done">Seguir</button></div>
+      </div>
+    </div>
+  </div>
   <div id="chestopen" class="screen hidden">
     <canvas id="chest-fx"></canvas>
     <div class="chest-ui">
