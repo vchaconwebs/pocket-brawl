@@ -246,6 +246,7 @@
   };
   const ball = (top) => `<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#10131c"/><path d="M4 16a12 12 0 0 1 24 0z" fill="${top}"/><path d="M4 16a12 12 0 0 0 24 0z" fill="#f1f4fb"/><rect x="4" y="14.6" width="24" height="2.8" fill="#10131c"/><circle cx="16" cy="16" r="4.5" fill="#10131c"/><circle cx="16" cy="16" r="2.6" fill="#f1f4fb"/></svg>`;
   const flag = '<svg viewBox="0 0 24 24"><path d="M6 3v18" stroke="#b9c3dc" stroke-width="2.2" stroke-linecap="round"/><path d="M7 4h11l-3 4 3 4H7z" fill="#3987e5"/></svg>';
+  const badge = (txt, bg, fg = '#fff') => `<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="${bg}"/><text x="12" y="16.5" text-anchor="middle" font-size="12" font-weight="800" font-family="system-ui,sans-serif" fill="${fg}">${txt}</text></svg>`;
   const MODES = {
     gems: { name: 'Atrapa Pokéballs', av: ball('#e8443a') },
     showdown: { name: 'Niebla Tóxica', av: `<img src="${P(94)}" alt="">` },
@@ -256,7 +257,6 @@
     brawl: { name: 'Duelo de Equipos', av: badge('⚔', '#8a2a2a') },
     knockout: { name: 'Eliminación', av: badge('☠', '#3a3a3a') },
   };
-  const badge = (txt, bg, fg = '#fff') => `<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="${bg}"/><text x="12" y="16.5" text-anchor="middle" font-size="12" font-weight="800" font-family="system-ui,sans-serif" fill="${fg}">${txt}</text></svg>`;
   const SOURCES = {
     directo: { name: 'Directo', av: badge('↗', '#3a4670') },
     tiktok: { name: 'TikTok', av: badge('♪', '#111', '#25f4ee') },
