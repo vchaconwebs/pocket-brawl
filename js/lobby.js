@@ -389,10 +389,12 @@ PB.Lobby = (() => {
 
   // ------------------------------------------------------------------ ficha
   let dtStage = 0; // fase que se ve en la ficha
+  let dtMega = false; // viendo su megaevolución
 
   function showDetail(id) {
     detailId = id;
     dtStage = 0;
+    dtMega = false;
     renderDetail();
     show('detail');
   }
@@ -428,15 +430,30 @@ PB.Lobby = (() => {
         return `<button class="evo-br${i === PB.Save.branch(id) ? ' sel' : ''}" data-br="${i}" title="${PB.DEX[fin].name}"><img src="${PB.Sprites.portraitURL(fin)}" alt=""></button>`;
       }).join('') + '</div>'
       : '';
+    // megaevolución: una fase más al final (con su sprite de mega si lo tiene; si no, «Poder Mega»)
+    const lastI = L.line.length - 1, finDex = L.line[lastI], megaKey = PB.megaSkin(finDex, 0);
+    const megaDex = megaKey ? PB.skinDex(finDex, megaKey) : null;
+    const megaName = megaDex ? PB.FORMS[megaDex].name : PB.T('Poder Mega');
     $('#dt-evo').innerHTML = branchPick + '<div class="evo-row">' + L.line.map((dex, i) =>
       (i ? '<span class="evo-arrow"></span>' : '') +
-      `<button class="evo-st${i === dtStage ? ' sel' : ''}" data-st="${i}"><img src="${PB.Sprites.portraitURL(dex)}" alt=""><b>${PB.DEX[dex].name}</b>` +
-      `<small>${i ? '+' + Math.round((PB.stageMul(b, i) - 1) * 100) + ' %' : 'Empieza así'}</small></button>`).join('') + '</div>' +
-      '<p class="evo-note">Evoluciona en mitad de la partida al ganar EXP: haciendo daño, debilitando y con los objetivos del modo.</p>';
-    document.querySelectorAll('#dt-evo .evo-st').forEach((e) => (e.onclick = () => { dtStage = +e.dataset.st; PB.Audio.play('tick'); renderDetail(); }));
+      `<button class="evo-st${i === dtStage && !dtMega ? ' sel' : ''}" data-st="${i}"><img src="${PB.Sprites.portraitURL(dex)}" alt=""><b>${PB.DEX[dex].name}</b>` +
+      `<small>${i ? '+' + Math.round((PB.stageMul(b, i) - 1) * 100) + ' %' : 'Empieza así'}</small></button>`).join('') +
+      '<span class="evo-arrow mega"></span>' +
+      `<button class="evo-st mega${dtMega ? ' sel' : ''}" data-mega="1"><img src="${PB.Sprites.portraitURL(megaDex || finDex)}" alt=""><b>${megaName}</b><small>MEGA · 7 s</small></button>` +
+      '</div>' +
+      (dtMega
+        ? `<p class="evo-note mega">${PB.T('Megaevolución: en su última fase se llena la barra MEGA (haciendo daño y K.O.). Al usarla, durante 7 s pega un 25 % más, recibe un 20 % menos de daño y va un 12 % más rápido.')}${megaDex ? '' : ' ' + PB.T('Este Pokémon no tiene forma mega: se envuelve en un aura de poder con las mismas ventajas.')}</p>`
+        : '<p class="evo-note">Evoluciona en mitad de la partida al ganar EXP: haciendo daño, debilitando y con los objetivos del modo.</p>');
+    if (dtMega) $('#dt-name').textContent = megaDex ? megaName : PB.stageName(L, lastI) + ' · ' + megaName;
+    document.querySelectorAll('#dt-evo .evo-st').forEach((e) => (e.onclick = () => {
+      if (e.dataset.mega) { dtMega = true; dtStage = lastI; } else { dtMega = false; dtStage = +e.dataset.st; }
+      PB.Audio.play('tick');
+      renderDetail();
+    }));
     document.querySelectorAll('#dt-evo .evo-br').forEach((e) => (e.onclick = () => {
       PB.Save.setBranch(id, +e.dataset.br);
       dtStage = L.line.length - 1;
+      dtMega = false;
       PB.Audio.play('ball');
       renderDetail();
     }));
@@ -1938,7 +1955,7 @@ PB.Lobby = (() => {
     PB.Sprites.draw(c, meDex, 'Idle', Math.PI / 2, t, w / 2, h * 0.82 + 10, 5, 0, shiny);
   }
 
-  function drawHero(cv, dex, scale, glow, shiny) {
+  function drawHero(cv, dex, scale, glow, shiny, mega) {
     if (!PB.Sprites.ready(dex, shiny)) PB.Sprites.ensure([{ dex, shiny }]);
     const c = cv.getContext('2d');
     const w = cv.width, h = cv.height;
@@ -1956,6 +1973,22 @@ PB.Lobby = (() => {
       c.ellipse(w / 2, h * 0.8, w * 0.32, h * 0.09, 0, 0, Math.PI * 2);
       c.stroke();
     }
+    if (mega) {
+      // aura de la mega: brillo rosa que late y chispas que suben
+      const g = c.createRadialGradient(w / 2, h * 0.55, 4, w / 2, h * 0.55, w * 0.42);
+      g.addColorStop(0, 'rgba(255,120,230,' + (0.45 + Math.sin(t * 4) * 0.15) + ')');
+      g.addColorStop(1, 'rgba(255,120,230,0)');
+      c.fillStyle = g;
+      c.fillRect(0, 0, w, h);
+      const cols = ['#ff5ad8', '#7ad8ff', '#ffe066', '#ffffff'];
+      for (let i = 0; i < 12; i++) {
+        const ph = (t * 0.6 + i / 12) % 1, x = w / 2 + Math.sin(i * 2.4) * w * 0.28, y = h * 0.85 - ph * h * 0.7;
+        c.globalAlpha = 1 - ph;
+        c.fillStyle = cols[i % 4];
+        c.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);
+      }
+      c.globalAlpha = 1;
+    }
     PB.Sprites.draw(c, dex, 'Idle', Math.PI / 2, t, w / 2, h * 0.8 + scale * 2, scale, 0, shiny);
   }
 
@@ -1965,7 +1998,9 @@ PB.Lobby = (() => {
       drawLobbyTeam($('#hero-cv'));
     } else if (current === 'detail' && detailId) {
       const b = PB.brawlerById(detailId);
-      drawHero($('#dt-cv'), PB.skinDex(PB.Save.lineOf(detailId)[dtStage] || b.dex, PB.Save.skin(detailId)), 4, PB.Save.owned(detailId), PB.Save.skin(detailId) === 'shiny');
+      const line = PB.Save.lineOf(detailId), dx = line[dtStage] || b.dex;
+      const mk = dtMega ? PB.megaSkin(dx, 0) : null;
+      drawHero($('#dt-cv'), mk ? PB.skinDex(dx, mk) : PB.skinDex(dx, PB.Save.skin(detailId)), 4, PB.Save.owned(detailId), !mk && PB.Save.skin(detailId) === 'shiny', dtMega);
     } else if (current === 'chestopen' && chest) {
       drawChest(dt);
     }

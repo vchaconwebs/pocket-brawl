@@ -1611,6 +1611,11 @@ h1.lose { color: #ff8a7a; }
 @keyframes sfPop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @media (max-width: 700px) { #sf-items { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; } .sf-it { height: 86px; } .sf-it .sf-face img { width: 40px; height: 40px; } .sf-it .sf-cov img { width: 40px; height: 40px; } }
 .prow .mini.no { background: linear-gradient(#ff6b5a, #c8302a); color: #fff; }
+#dt-evo .evo-st.mega { box-shadow: inset 0 0 0 2px #ff5ad8; }
+#dt-evo .evo-st.mega.sel { background: linear-gradient(#ff8ae6, #c03aa8); }
+#dt-evo .evo-st.mega small { color: #ffd0f4; }
+#dt-evo .evo-arrow.mega { filter: hue-rotate(260deg) saturate(1.6); }
+.evo-note.mega { color: #ffc8f2; }
 #toast {
   position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 50; padding: 4px 14px; font-size: 16px; color: #fff;
   background: rgba(14, 20, 48, 0.95); box-shadow: 0 0 0 3px #141824, inset 0 0 0 2px #ffd23a; pointer-events: none; max-width: 90vw; text-align: center;
