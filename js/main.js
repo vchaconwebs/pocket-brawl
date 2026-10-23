@@ -135,6 +135,7 @@
       b.isBot = !h;
       b.trainer = b.name = h ? h.name : names[i % names.length];
       b.shiny = !!(h && h.shiny);
+      b.creator = !!(h && h.uid === PB.Chat.OWNER); // el creador del juego sale en dorado
       const lvl = h ? h.lvl || 1 : opts.botLvls ? opts.botLvls[i] : Math.max(1, Math.min(PB.META.maxLevel, avg + Math.floor(Math.random() * 3) - 1));
       b.lvl = lvl;
       b.lvlMul = PB.levelMul(lvl);
@@ -517,7 +518,7 @@
       return `<div class="end-row${b.isPlayer ? ' me' : ''}">` +
         (M.ffa ? `<span class="er-rank">#${b.rank || '-'}</span>` : '') +
         `<span class="er-pt"><img src="${PB.Sprites.portraitURL(dex)}" alt="">${b === mvp ? '<i class="er-mvp">MVP</i>' : ''}</span>` +
-        `<span class="er-name"><b>${b.trainer || b.name}${b.friend ? '<i class="bot-tag friend">AMIGO</i>' : ''}</b><small>${PB.stageName(b, b.stage)}${lvl}</small></span>` +
+        `<span class="er-name"><b${b.creator ? ' class="creator"' : ''}>${b.trainer || b.name}${b.friend ? '<i class="bot-tag friend">AMIGO</i>' : ''}</b><small>${PB.stageName(b, b.stage)}${lvl}</small></span>` +
         `<span class="er-st"><b>${b.kills}</b><small>K.O.</small></span>` +
         `<span class="er-st"><b>${b.deaths}</b><small>Caídas</small></span>` +
         `<span class="er-st"><b>${statTxt(b)}</b><small>${M.statName}</small></span>` +

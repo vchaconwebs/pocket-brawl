@@ -2048,3 +2048,8 @@ body:not(.pad) .pad-focus { outline: none !important; box-shadow: none !importan
 .rk-sug button:hover { border-color: #ffd84a; }
 .rk-sug img { width: 30px; height: 30px; image-rendering: pixelated; }
 .rk-sug small { color: #8a96b0; font-size: 12px; }
+
+/* el creador (Fl3xix) en dorado en las partidas */
+.mchat-log p.creator b { color: #ffd23a !important; }
+.mchat-log p.creator { box-shadow: inset 0 0 0 1px rgba(255, 210, 60, 0.5); }
+.er-name b.creator { color: #ffd23a !important; }

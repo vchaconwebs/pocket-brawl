@@ -341,8 +341,8 @@ PB.Chat = (() => {
     if (mMute) return '';
     const log = $('#mchat-log');
     const p = document.createElement('p');
-    p.className = rel;
-    p.innerHTML = `<b>${esc(b.name)}:</b> ${esc(t)}`;
+    p.className = rel + (b.creator ? ' creator' : '');
+    p.innerHTML = `<b>${esc(b.name)}${b.creator ? ' ★' : ''}:</b> ${esc(t)}`;
     log.appendChild(p);
     while (log.children.length > 6) log.firstChild.remove();
     setTimeout(() => p.classList.add('old'), 8000);

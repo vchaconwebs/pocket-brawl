@@ -964,7 +964,7 @@ PB.Renderer = class {
     const mine = b.team === team;
     const isMe = b === focus && b.isPlayer;
     // nombre (y un rayo si tiene el súper listo)
-    this.outlined(b.name, x, y - 8, 13, isMe ? '#7dff8f' : mine ? '#a9d0ff' : '#ffb0b0');
+    this.outlined(b.name, x, y - 8, 13, b.creator ? '#ffd23a' : isMe ? '#7dff8f' : mine ? '#a9d0ff' : '#ffb0b0');
     // vida: barra pixel con una marca cada 1000
     const hpk = Math.max(0, b.hp) / b.maxHp;
     const col = isMe ? '#43e05a' : mine ? '#3d8bff' : '#ff4545';
