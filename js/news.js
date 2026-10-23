@@ -1,9 +1,35 @@
 // Versión del juego y notas de parche. Al publicar una actualización con novedades:
 // sube PB.VERSION y añade su nota ARRIBA del todo en PB.PATCH_NOTES (la primera es la que se enseña).
 // Cada jugador la ve una sola vez al entrar a la lobby (se guarda en localStorage 'pb.seenVersion').
-PB.VERSION = '1.3';
+PB.VERSION = '1.4';
 
 PB.PATCH_NOTES = [
+  {
+    v: '1.4',
+    date: '23/10/2026',
+    es: {
+      title: 'Novedades de la versión 1.4',
+      items: [
+        ['⚔️', 'Dos modos nuevos: Duelo de Equipos (3 contra 3, gana el primero en llegar a 15 K.O.) y Eliminación (3 contra 3 sin reaparecer, al mejor de 3 rondas).'],
+        ['🗺️', 'Cada modo nuevo tiene sus propios mapas: Coliseo, Cañón, Bosque helado, Duelo, Setos, Oasis… ¡y uno de Halloween para cada uno!'],
+        ['👯', 'Niebla Tóxica: ahora eliges si juegas Solo o en Dúo, por parejas con un amigo.'],
+        ['🎤', 'Notas de voz en el chat general: graba hasta 6 segundos y mándalo a todos.'],
+        ['🐞', 'Hemos arreglado los fallos que nos habéis mandado por «Ideas y bugs». Por ejemplo, Rowlet y los Pokémon con ataques que van y vuelven ya rompen las cajas. ¡Gracias por avisar, seguid mandándolos!'],
+        ['✨', 'Mapas más limpios (sin las baldosas de salida) e iconos nuevos para los modos.'],
+      ],
+    },
+    en: {
+      title: "What's new in version 1.4",
+      items: [
+        ['⚔️', 'Two new modes: Team Duel (3v3, first to 15 KOs wins) and Knockout (3v3 with no respawns, best of 3 rounds).'],
+        ['🗺️', 'Each new mode has its own maps: Colosseum, Canyon, Frozen Forest, Duel, Hedges, Oasis… and a Halloween one for each!'],
+        ['👯', 'Toxic Fog: now you choose to play Solo or Duo, in pairs with a friend.'],
+        ['🎤', 'Voice notes in the global chat: record up to 6 seconds and send it to everyone.'],
+        ['🐞', 'We fixed the bugs you sent us through «Ideas & bugs». For example, Rowlet and the Pokémon with boomerang attacks now break crates. Thanks for reporting, keep them coming!'],
+        ['✨', 'Cleaner maps (no spawn tiles) and new mode icons.'],
+      ],
+    },
+  },
   {
     v: '1.3',
     date: '23/10/2026',

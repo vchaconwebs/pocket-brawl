@@ -92,82 +92,77 @@ PB.Lobby = (() => {
     PB.Pokeball.draw(c, s / 2, s / 2, size || 1, { kind });
   });
   const candyIcon = () => pixIcon('candy', 18, (c) => c.drawImage(PB.Tiles.candy(), 0, 0));
-  // Iconos de los modos (48 px): insignia del color del modo, un Pokémon que lo representa y un
-  // emblema en la esquina. Los retratos se descargan la primera vez; mientras, sale sin Pokémon.
-  const MODE_LOOK = {
-    random: { col: ['#f0b030', '#9a5a10'], mon: 132, emblem: 'q' },
-    gems: { col: ['#48b052', '#1f5a28'], mon: 52, emblem: 'ball' },
-    showdown: { col: ['#9a48c8', '#4a1a68'], mon: 109, emblem: 'candy' },
-    duo: { col: ['#c84aa8', '#5a1a4a'], mon: [109, 110], emblem: 'candy' },
-    heist: { col: ['#4a9ac8', '#1a4a68'], mon: '0143', emblem: 'z' },
-    ball: { col: ['#e08a48', '#7a3a14'], mon: '0100', emblem: 'goal' },
-    zone: { col: ['#4a6ae0', '#1a2a78'], mon: 25, emblem: 'flag' },
-    brawl: { col: ['#e04848', '#701818'], mon: 68, emblem: 'swords' },
-    knockout: { col: ['#6a6a7a', '#20202a'], mon: 105, emblem: 'skull' },
-  };
-  const modeImgs = {};
-  let modeIconT = null;
-  // cuando llega un retrato se vuelven a pintar los iconos que se ven
-  function refreshModeIcons() {
-    clearTimeout(modeIconT);
-    modeIconT = setTimeout(() => {
-      if (!api) return;
-      const rnd = api.isRandom && api.isRandom();
-      $('#mode-ico').src = modeIcon(rnd ? 'random' : api.getMode());
-      for (const el of document.querySelectorAll('#mp-grid .mode-card2')) {
-        const im = el.querySelector('img');
-        if (im) im.src = modeIcon(el.dataset.mode);
-      }
-    }, 50);
+  // Duelo de Equipos: dos espadas cruzadas · Eliminación: calavera y las 3 rondas
+  const SKULL = [
+    '....oooooooo....',
+    '..ooWWWWWWWWoo..',
+    '.oWWWWWWWWWWWWo.',
+    'oWWWWWWWWWWWWWWo',
+    'oWWWWWWWWWWWWWso',
+    'oWWooooWWooooWso',
+    'oWWooooWWooooWso',
+    'oWWooooWWooooWso',
+    'oWWWooWWWWooWWso',
+    '.oWWWWWooWWWWso.',
+    '..oWWWWooWWWso..',
+    '...oWWWWWWWso...',
+    '...oWoWoWoWoo...',
+    '...oWoWoWoWso...',
+    '....oooooooo....',
+  ];
+  function drawFightIcon(c, id) {
+    const P = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+    const g = c.createLinearGradient(0, 0, 0, 40);
+    g.addColorStop(0, id === 'brawl' ? '#e0503c' : '#5a5a70');
+    g.addColorStop(1, id === 'brawl' ? '#7a1a14' : '#1c1c28');
+    c.fillStyle = g;
+    c.fillRect(0, 0, 40, 40);
+    if (id === 'brawl') {
+      // una espada en diagonal; la otra es su reflejo
+      const sword = (flip) => {
+        const dot = (x, y, w, col) => P(flip ? 40 - x - w : x, y, w, w, col);
+        for (let t = 0; t <= 18; t++) dot(3 + t, 3 + t, 4, '#141824'); // contorno de la hoja
+        for (let t = 0; t <= 18; t++) { dot(4 + t, 4 + t, 2, '#e8eefc'); if (t > 1) dot(5 + t, 4 + t, 1, '#ffffff'); }
+        for (let k = -4; k <= 4; k++) { dot(23 + k - 1, 23 - k - 1, 4, '#141824'); }
+        for (let k = -4; k <= 4; k++) { dot(23 + k, 23 - k, 2, '#f0b020'); }
+        for (let t = 25; t <= 30; t++) { dot(t - 1, t - 1, 4, '#141824'); dot(t, t, 2, '#8a5a2a'); }
+        dot(31, 31, 4, '#141824'); dot(32, 32, 2, '#f0b020');
+      };
+      sword(true);
+      sword(false);
+    } else {
+      SKULL.forEach((row, y) => [...row].forEach((ch, x) => {
+        if (ch === '.') return;
+        P(4 + x * 2, 1 + y * 2, 2, 2, ch === 'o' ? '#141824' : ch === 's' ? '#c4c4bc' : '#f4f4ee');
+      }));
+      // al mejor de 3 rondas
+      [9, 18, 27].forEach((x, i) => { P(x - 1, 32, 6, 6, '#141824'); P(x, 33, 4, 4, i < 2 ? '#ffd23a' : '#6a6a80'); });
+    }
   }
   const modeIcon = (id) => {
-    const L = MODE_LOOK[id] || MODE_LOOK.gems;
-    const imgs = [].concat(L.mon).map((dex) => {
-      if (!modeImgs[dex]) {
-        const im = new Image();
-        im.onload = refreshModeIcons;
-        im.src = PB.Sprites.portraitURL(dex);
-        modeImgs[dex] = im;
-      }
-      return modeImgs[dex];
-    });
-    const ready = imgs.every((im) => im.complete && im.naturalWidth);
-    return pixIcon('mode2-' + id + (ready ? '-ok' : ''), 48, (c) => {
+    if (id === 'random') return pixIcon('mode-random', 40, (c) => {
+      // dado: cuatro colores de los modos y una interrogación
       c.imageSmoothingEnabled = false;
-      const P = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
-      // insignia con esquinas de pixel
-      P(2, 0, 44, 48, '#10131c'); P(0, 2, 48, 44, '#10131c'); P(1, 1, 46, 46, '#10131c');
-      const g = c.createLinearGradient(0, 2, 0, 46);
-      g.addColorStop(0, L.col[0]);
-      g.addColorStop(1, L.col[1]);
-      c.fillStyle = g;
-      c.fillRect(3, 2, 42, 44); c.fillRect(2, 3, 44, 42);
-      P(3, 2, 42, 2, 'rgba(255,255,255,0.35)'); // brillo de arriba
-      P(2, 42, 44, 3, 'rgba(0,0,0,0.25)'); // sombra de abajo
-      for (let i = -48; i < 48; i += 12) { c.fillStyle = 'rgba(255,255,255,0.06)'; c.beginPath(); c.moveTo(i, 46); c.lineTo(i + 6, 46); c.lineTo(i + 52, 0); c.lineTo(i + 46, 0); c.fill(); }
-      // Pokémon
-      if (ready) {
-        if (imgs.length > 1) { c.drawImage(imgs[1], 14, 4, 34, 34); c.drawImage(imgs[0], -2, 10, 34, 34); }
-        else c.drawImage(imgs[0], 4, 3, 40, 40);
-      }
-      // emblema en la esquina
-      const ex = 33, ey = 33;
-      if (L.emblem !== 'q') { P(ex - 2, ey - 2, 17, 17, '#10131c'); P(ex - 1, ey - 1, 15, 15, '#f4f4ee'); }
-      if (L.emblem === 'ball') PB.Pokeball.draw(c, ex + 6.5, ey + 6.5, 1, {});
-      else if (L.emblem === 'candy') c.drawImage(PB.Tiles.candy(), ex - 1, ey - 1, 15, 15);
-      else if (L.emblem === 'flag') c.drawImage(PB.Tiles.flag('blue', 0), ex + 1, ey - 2, 12, 18);
-      else if (L.emblem === 'z') { c.font = '15px "Jersey 10", monospace'; c.textAlign = 'center'; c.fillStyle = '#3a78e0'; c.fillText('Zz', ex + 6.5, ey + 12); }
-      else if (L.emblem === 'goal') { P(ex + 1, ey + 2, 12, 2, '#3a3a44'); P(ex + 1, ey + 2, 2, 10, '#3a3a44'); P(ex + 11, ey + 2, 2, 10, '#3a3a44'); for (let i = 0; i < 3; i++) P(ex + 4 + i * 3, ey + 5, 1, 7, '#9aa0b0'); }
-      else if (L.emblem === 'swords') { for (let i = 0; i < 10; i++) { P(ex + 1 + i, ey + 1 + i, 2, 2, '#7a8090'); P(ex + 11 - i, ey + 1 + i, 2, 2, '#7a8090'); } P(ex, ey + 10, 5, 2, '#c08a10'); P(ex + 9, ey + 10, 5, 2, '#c08a10'); }
-      else if (L.emblem === 'skull') { P(ex + 2, ey + 1, 10, 8, '#2a2a34'); P(ex + 4, ey + 9, 6, 3, '#2a2a34'); P(ex + 4, ey + 3, 2, 3, '#f4f4ee'); P(ex + 8, ey + 3, 2, 3, '#f4f4ee'); }
-      else if (L.emblem === 'q') {
-        // Aleatorio: interrogación grande
-        c.font = '22px "Jersey 10", monospace'; c.textAlign = 'center';
-        c.fillStyle = '#10131c'; c.fillText('?', 40, 46);
-        c.fillStyle = '#fff3b0'; c.fillText('?', 39, 45);
-      }
-      // borde
-      c.strokeStyle = 'rgba(255,255,255,0.18)'; c.lineWidth = 1; c.strokeRect(3.5, 3.5, 41, 41);
+      [['#3a7a3a', 0, 0], ['#5a2a78', 20, 0], ['#b8561a', 0, 20], ['#2a4a8a', 20, 20]].forEach(([col, x, y]) => { c.fillStyle = col; c.fillRect(x, y, 20, 20); });
+      c.font = '34px "Jersey 10", monospace';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillStyle = '#10131c';
+      c.fillText('?', 22, 23);
+      c.fillStyle = '#ffd84a';
+      c.fillText('?', 20, 21);
+    });
+    if (id === 'heist') return window.SPRITE_DATA['0143'].portrait;
+    if (id === 'ball') return window.SPRITE_DATA['0100'].portrait;
+    return pixIcon('mode-' + id, 40, (c) => {
+      c.imageSmoothingEnabled = false;
+      if (id === 'brawl' || id === 'knockout') return drawFightIcon(c, id);
+      c.fillStyle = { gems: '#3a7a3a', showdown: '#5a2a78', duo: '#7a2a6a', zone: '#2a4a8a' }[id] || '#333';
+      c.fillRect(0, 0, 40, 40);
+      if (id === 'gems') PB.Pokeball.draw(c, 20, 20, 2, {});
+      else if (id === 'showdown') c.drawImage(PB.Tiles.candy(), 2, 2, 36, 36);
+      else if (id === 'duo') { c.drawImage(PB.Tiles.candy(), 0, 6, 26, 26); c.drawImage(PB.Tiles.candy(), 14, 10, 26, 26); }
+      else c.drawImage(PB.Tiles.flag('blue', 0), 6, 0, 26, 42);
     });
   };
   PB.Icons = { coin: coinIcon, star: starIcon, ball: ballIcon, candy: candyIcon, mode: modeIcon, cup: cupIcon, rainbow: rainbowIcon };
