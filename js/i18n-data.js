@@ -660,6 +660,7 @@ PB.I18N = {
   'Skin regional': ['Regional skin', 'Skin regional', 'Skin régional', 'Skin regionale', 'Regional-Skin'],
   'Destapar todo': ['Reveal all', 'Revelar tudo', 'Tout révéler', 'Rivela tutto', 'Alle aufdecken'],
   'Seguir': ['Continue', 'Continuar', 'Continuer', 'Continua', 'Weiter'],
+  'Toca cada bola para abrirlas de una en una, o pulsa «Destapar todo».': ['Tap each ball to open them one by one, or press “Reveal all”.', 'Toque em cada bola para abri-las uma a uma, ou aperte «Revelar tudo».', 'Touche chaque balle pour les ouvrir une par une, ou appuie sur « Tout révéler ».', 'Tocca ogni ball per aprirle una alla volta, oppure premi «Rivela tutto».', 'Tippe auf jeden Ball, um sie einzeln zu öffnen, oder drücke „Alle aufdecken“.'],
   'Súper cancelado': ['Super cancelled', 'Super cancelado', 'Super annulé', 'Super annullato', 'Super abgebrochen'],
   'Quedan {n}': ['{n} left', 'Restam {n}', 'Restants : {n}', 'Restano {n}', 'Noch {n}'],
   'Tu equipo': ['Your team', 'Sua equipe', 'Ton équipe', 'La tua squadra', 'Dein Team'],

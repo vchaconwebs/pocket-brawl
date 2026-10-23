@@ -1594,6 +1594,7 @@ h1.lose { color: #ff8a7a; }
 .sf-fly { position: fixed; width: 44px; height: 44px; z-index: 9999; image-rendering: pixelated; pointer-events: none; transition: transform 0.5s cubic-bezier(0.3, 0.6, 0.4, 1); }
 @media (max-height: 500px) { #sf-mc { width: 150px; } .sf-stage { gap: 8px; } }
 @media (max-width: 700px) and (orientation: portrait) { .sf-stage { flex-direction: column; } }
+.sf-tip { text-align: center; margin: 0 0 8px; font-size: 16px; color: #ffe066; animation: itPulse 1.6s ease-in-out infinite; }
 #sf-result h3 { font-weight: 400; font-size: 22px; margin: 0 0 8px; text-align: center; }
 #sf-items { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
 .sf-it { font: inherit; color: #fff; position: relative; height: 112px; background: #10183a; border: 3px solid #141824; box-shadow: inset 0 0 0 2px var(--rar); cursor: pointer; padding: 4px; }

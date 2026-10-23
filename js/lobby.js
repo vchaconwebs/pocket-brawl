@@ -1112,6 +1112,7 @@ PB.Lobby = (() => {
     const reveal = $('#sf-reveal'), done = $('#sf-done');
     reveal.classList.add('hidden');
     done.classList.add('hidden');
+    $('#sf-tip').classList.add('hidden');
     // 1) gira la manivela y las bolas se agitan; 2) van cayendo las 10 bolas por la rampa hasta su hueco
     const cv = $('#sf-mc');
     cv.width = MC.w * MC.k; cv.height = MC.h * MC.k;
@@ -1136,7 +1137,11 @@ PB.Lobby = (() => {
         slot.classList.remove('empty');
         slot.disabled = false;
         PB.Audio.play(ballOf(it) === 'ultra' ? 'ready' : 'ball');
-        if (++dropped === res.items.length) { reveal.classList.remove('hidden'); }
+        if (++dropped === res.items.length) {
+          reveal.classList.remove('hidden');
+          $('#sf-tip').textContent = PB.T('Toca cada bola para abrirlas de una en una, o pulsa «Destapar todo».');
+          $('#sf-tip').classList.remove('hidden');
+        }
       }, 520);
     };
     const anim = (now) => {
@@ -1155,7 +1160,7 @@ PB.Lobby = (() => {
       e.classList.add('open');
       const it = res.items[+e.dataset.i];
       PB.Audio.play(it.kind === 'pokemon' ? (it.rarity === 'legendary' || it.rarity === 'epic' ? 'win' : 'candy') : 'ball');
-      if (!left()) { reveal.classList.add('hidden'); done.classList.remove('hidden'); refreshLobby(); }
+      if (!left()) { reveal.classList.add('hidden'); $('#sf-tip').classList.add('hidden'); done.classList.remove('hidden'); refreshLobby(); }
     };
     slots.forEach((e) => (e.onclick = () => flip(e)));
     reveal.onclick = () => slots.filter((e) => !e.classList.contains('open')).forEach((e, k) => setTimeout(() => flip(e), k * 140));
