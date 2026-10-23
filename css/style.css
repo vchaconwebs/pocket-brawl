@@ -2007,3 +2007,8 @@ h1.lose { color: #ff8a7a; }
 #help .pad { display: none; }
 body.pad #help .pad { display: inline !important; }
 body.pad #help .pc, body.pad #help .mobile { display: none !important; }
+
+/* selección con el mando en los menús */
+.pad-focus { outline: 5px solid #ffffff !important; outline-offset: 3px; box-shadow: 0 0 0 8px rgba(90, 168, 255, 0.55), 0 0 18px 8px rgba(255, 255, 255, 0.35) !important; position: relative; z-index: 2; animation: padPulse 1s ease-in-out infinite; }
+@keyframes padPulse { 50% { outline-color: #8ec2ff; } }
+body:not(.pad) .pad-focus { outline: none !important; box-shadow: none !important; }

@@ -192,18 +192,101 @@ PB.Input = class {
     return this.pad;
   }
 
-  // Botones del mando en los menús (solo lo básico: jugar, volver a jugar, pausa y atrás)
+  // Menús con mando: las flechas (o el stick) mueven una selección por los botones de la ventana
+  // que esté delante, ✕ pulsa el seleccionado y ○ vuelve atrás o cierra.
+  padLayer() {
+    const vis = (e) => e && !e.classList.contains('hidden') && e.offsetParent !== null;
+    // primero las ventanas que van por encima (aviso, nota de parche, chat...), luego la pantalla
+    for (const sel of ['#modal', '#patch', '#about', '#feedback', '#gchat']) { const e = document.querySelector(sel); if (vis(e) || (e && !e.classList.contains('hidden') && sel === '#modal')) return e; }
+    return document.querySelector('.screen:not(.hidden)');
+  }
+  padItems(layer) {
+    const sel = 'button, a[href], input, select, textarea, .card, .mode-card2, #lb-hero, [data-k], [data-t], [data-v]';
+    return [...layer.querySelectorAll(sel)].filter((e) => {
+      if (e.disabled || e.closest('.hidden')) return false;
+      const r = e.getBoundingClientRect();
+      return r.width > 4 && r.height > 4 && getComputedStyle(e).visibility !== 'hidden';
+    });
+  }
+  padFocusOn(e) {
+    if (this.padFocus) this.padFocus.classList.remove('pad-focus');
+    this.padFocus = e;
+    if (!e) return;
+    e.classList.add('pad-focus');
+    e.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+  padMove(dx, dy, layer) {
+    const items = this.padItems(layer);
+    if (!items.length) return;
+    const cur = this.padFocus && items.includes(this.padFocus) ? this.padFocus : null;
+    if (!cur) {
+      // al entrar en una ventana: el botón principal si lo hay (¡JUGAR!, Reanudar...), si no, el primero
+      const main = items.find((e) => /^(play|pz-resume|again|patch-ok|modal-ok|nm-go|sp-go|chest-again)$/.test(e.id));
+      const chosen = items.find((e) => e.classList.contains('sel'));
+      return this.padFocusOn(main || chosen || items.find((e) => !e.classList.contains('back')) || items[0]);
+    }
+    const c = cur.getBoundingClientRect(), cx = c.left + c.width / 2, cy = c.top + c.height / 2;
+    let best = null, bs = Infinity;
+    for (const e of items) {
+      if (e === cur || cur.contains(e) || e.contains(cur)) continue;
+      const r = e.getBoundingClientRect(), ex = r.left + r.width / 2, ey = r.top + r.height / 2;
+      const along = (ex - cx) * dx + (ey - cy) * dy; // cuánto avanza en la dirección pedida
+      if (along <= 4) continue;
+      const side = Math.abs((ex - cx) * dy) + Math.abs((ey - cy) * dx); // cuánto se desvía
+      const sc = along + side * 2.2;
+      if (sc < bs) { bs = sc; best = e; }
+    }
+    if (best) { this.padFocusOn(best); if (PB.Audio) PB.Audio.play('tick'); }
+  }
   padMenus() {
     const P = this.pad, vis = (s) => { const e = document.querySelector(s); return e && !e.classList.contains('hidden'); };
     const click = (s) => { const e = document.querySelector(s); if (e && !e.disabled) e.click(); };
     const A = P.down(0), B = P.down(1), start = P.down(9);
+    const inMenu = !this.enabled;
+    // en partida solo Start (pausa)
+    if (!inMenu) {
+      if (this.padFocus) this.padFocusOn(null);
+      if (start) click('#btn-pause');
+      return;
+    }
+    const layer = this.padLayer();
+    if (!layer) return;
+    if (this.padFocus && !layer.contains(this.padFocus)) this.padFocusOn(null);
+    // dirección: cruceta o stick izquierdo, con repetición si se mantiene
+    let dx = P.dx, dy = P.dy;
+    if (!dx && !dy && P.L.len > 0.55) { if (Math.abs(P.L.x) > Math.abs(P.L.y)) dx = Math.sign(P.L.x); else dy = Math.sign(P.L.y); }
+    const dir = dx || dy ? dx + ',' + dy : '';
+    const t = performance.now();
+    if (dir && (dir !== this.padDir || t >= this.padRepeat)) {
+      this.padRepeat = t + (dir !== this.padDir ? 380 : 140);
+      this.padMove(dx, dy, layer);
+    }
+    this.padDir = dir;
     if (!A && !B && !start) return;
-    if (vis('#patch')) { if (A || B || start) click('#patch-ok'); return; }
-    if (vis('#end')) { if (A) click('#again'); else if (B) click('#back'); return; }
-    if (vis('#pause')) { if (A || B || start) click('#pz-resume'); return; }
-    if (this.enabled && start) { click('#btn-pause'); return; }
-    if (PB.Lobby && PB.Lobby.current === 'lobby' && vis('#lobby') && (A || start) && !document.querySelector('.patch:not(.hidden), #gchat:not(.hidden)')) click('#play');
-    else if (B && PB.Lobby && PB.Lobby.current !== 'lobby' && !this.enabled) { const back = document.querySelector('.screen:not(.hidden) .back'); if (back) back.click(); }
+    if (A || start) {
+      const f = this.padFocus;
+      if (f && layer.contains(f)) {
+        if (/^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)) f.focus(); else f.click();
+        return;
+      }
+      // sin nada seleccionado: lo de siempre
+      if (vis('#patch')) return click('#patch-ok');
+      if (vis('#end')) return click('#again');
+      if (vis('#pause')) return click('#pz-resume');
+      if (PB.Lobby && PB.Lobby.current === 'lobby' && vis('#lobby') && layer.id === 'lobby') return click('#play');
+      return;
+    }
+    if (B) {
+      // atrás: cerrar la ventana de encima o volver de la pantalla
+      if (layer.id === 'modal') return click('#modal-cancel');
+      if (layer.id === 'patch') return click('#patch-ok');
+      if (layer.id === 'gchat') return click('#gc-close');
+      if (layer.classList.contains('patch')) { const x = layer.querySelector('.fb-close'); if (x) x.click(); return; }
+      if (layer.id === 'end') return click('#back');
+      if (layer.id === 'pause') return click('#pz-resume');
+      const back = layer.querySelector('.back');
+      if (back) back.click();
+    }
   }
 
   // Devuelve el input del jugador y lo necesario para dibujar el apuntado.
