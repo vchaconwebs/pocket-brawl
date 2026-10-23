@@ -215,12 +215,16 @@
     const basicName = st ? st[1] : kit.basic;
     const { d: sd, scale: ss, ...sup } = SUPER[supKind];
     const rarity = fam.leg ? 'legendary' : STARTERS.has(line[0]) ? 'starter' : fin.bst > 530 ? 'epic' : fin.bst > 470 ? 'rare' : 'common';
+    // los de corto alcance (cuerpo a cuerpo y llamaradas en abanico) tienen que acercarse: algo más de vida y velocidad;
+    // los cuerpo a cuerpo, además, cargan antes el súper
+    const close = atk.kind === 'melee' ? 2 : (atk.range || 999) < 250 ? 1 : 0;
+    const closeHp = [1, 1.08, 1.14][close], closeSpd = [0, 6, 12][close];
     return {
       id: fam.id, dex: line[0], line, name: base.name, types, atkType, gen: base.gen,
       roleId, role: PB.T(R.name),
-      hp: Math.round((R.hp * hpMul) / 50) * 50,
-      speed: Math.round(R.speed + zSpd * 5),
-      reload: R.reload, superHits: R.superHits,
+      hp: Math.round((R.hp * hpMul * closeHp) / 50) * 50,
+      speed: Math.round(R.speed + zSpd * 5 + closeSpd),
+      reload: R.reload, superHits: R.superHits - (close === 2 ? 1 : 0),
       attack: Object.assign({ name: PB.TM(basicName) }, atk, { dmg: Math.round((atk.dmg * dmgMul) / 10) * 10, look: Object.assign({ scale: as }, look) }),
       super: Object.assign({ name: PB.TM(supName), type: supType }, sup, sup.dmg ? { dmg: Math.round((sup.dmg * dmgMul) / 10) * 10 } : {}, sup.dps ? { dps: Math.round(sup.dps * dmgMul) } : {}, { look: Object.assign({ scale: ss || 1.4 }, supLook) }),
       desc: PB.T(TRAIT[roleId]) + ' ' + PB.T(ATK_DESC[st ? st[0] : roleId]) + ' ' + PB.T('Súper: {name} ({type}), {what}.', { name: PB.TM(supName), type: PB.T(PB.TYPE_INFO[supType].name), what: PB.T(sd) }),

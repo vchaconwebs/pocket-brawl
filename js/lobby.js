@@ -175,9 +175,13 @@ PB.Lobby = (() => {
   // ------------------------------------------------------------------ pantallas
   // El inicio sale nada más entrar si no tienes cuenta (Google o correo): ahí eliges invitado,
   // Google o correo. Con cuenta se pasa directo a la lobby.
-  let chosen = false;
+  // Si la última vez entraste con cuenta, se va directo a la lobby sin esperar a Firebase
+  // (antes se veía el inicio de sesión un segundo); si al final no hay sesión, vuelve al inicio.
+  const ACCT = 'pb.account';
+  const hadAccount = (() => { try { return localStorage.getItem(ACCT) === '1'; } catch (e) { return false; } })();
+  let chosen = hadAccount, guessed = hadAccount;
   const welcomed = () => chosen;
-  function setWelcomed() { chosen = true; }
+  function setWelcomed() { chosen = true; guessed = false; }
   function show(id) {
     if (id === 'lobby' && !welcomed()) id = 'welcome';
     // jugador nuevo: primero el nombre y luego los iniciales
@@ -1854,7 +1858,10 @@ PB.Lobby = (() => {
     };
     // con sesión de Google o correo ya abierta, directo a la lobby
     PB.Online.on('auth', (a) => {
-      if (a && !a.anonymous) { setWelcomed(); if (current === 'welcome') show('lobby'); }
+      const acct = !!(a && !a.anonymous);
+      try { if (acct) localStorage.setItem(ACCT, '1'); else localStorage.removeItem(ACCT); } catch (e) {}
+      if (acct) { setWelcomed(); if (current === 'welcome') show('lobby'); }
+      else if (guessed) { chosen = guessed = false; if (current === 'lobby') show('welcome'); }
     });
     $('#pf-logout').onclick = async () => { if (await modal(PB.T('¿Cerrar sesión? En este navegador volverás a jugar como invitado.'), true)) PB.Online.logout(); };
     // enlace de invitación: ?sala=CODIGO

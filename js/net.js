@@ -9,6 +9,12 @@ PB.Net = (() => {
   // campos de cada luchador que no se copian: cada uno sabe quién es él
   const SKIP_B = new Set(['def', 'isPlayer', 'friend', 'idx', 'hit', 'animT', 'dustT', 'trainer', 'name', 'isBot', 'shiny', 'superQ', 'atkQ', 'ai', 'evoMsg', 'say']);
   const r1 = (n) => Math.round(n * 10) / 10;
+  // temporizadores (hurtT, shieldT, shotCd...): cuando ya han acabado siguen bajando en negativo;
+  // se mandan como 0 para no reenviarlos en cada foto
+  const TIMER = /(T|Cd)$/;
+  const done = (k, v) => typeof v === 'number' && v < 0 && TIMER.test(k);
+  // opciones de los ataques que casi siempre están a false / 0: entonces no se mandan (en el juego solo se mira si están)
+  const SPARSE = new Set(['pierce', 'destroysWalls', 'knockback', 'stun', 'isSuper', 'powered', 'homing', 'boomerang', 'back', 'charge']);
 
   // ------------------------------------------------------------ convertir a datos
   // Los luchadores se mandan como { $b: idx }; funciones y Set no viajan.
@@ -29,7 +35,8 @@ PB.Net = (() => {
         o[k] = x && game.brawlers[x.idx] === x ? { $b: x.idx } : pack(x, game, depth + 1);
         continue;
       }
-      const p = pack(v[k], game, depth + 1);
+      if (!v[k] && SPARSE.has(k)) continue;
+      const p = done(k, v[k]) ? 0 : pack(v[k], game, depth + 1);
       if (p !== undefined) o[k] = p;
     }
     return o;
@@ -79,7 +86,7 @@ PB.Net = (() => {
         for (const k in b) {
           if (SKIP_B.has(k)) continue;
           // la súper y la munición se redondean hacia abajo: si no, con 0,95 ya se vería la súper lista
-          const p = k === 'superCharge' || k === 'ammo' ? Math.floor(b[k] * 100) / 100 : pack(b[k], g, 1);
+          const p = k === 'superCharge' || k === 'ammo' ? Math.floor(b[k] * 100) / 100 : done(k, b[k]) ? 0 : pack(b[k], g, 1);
           const s = typeof p === 'object' && p !== null ? JSON.stringify(p) : p;
           if (full || prev[k] !== s) { d[k] = p === undefined ? null : p; prev[k] = s; }
         }
@@ -94,14 +101,19 @@ PB.Net = (() => {
       const cr = JSON.stringify([...W.crateHp.entries()].map(([k, v]) => [k, Math.round(v)]));
       if (full || cr !== this.crates) { out.crates = JSON.parse(cr); this.crates = cr; }
       // efectos nuevos (partículas, rayos...) para que se vean igual en todas las pantallas
-      const fx = [];
+      const fx = [], px = [];
       for (const f of g.fx) {
         if (f._s) continue;
         f._s = 1;
-        if (f.kind === 'px' && fx.length > 140) continue;
+        if (f.kind === 'px') {
+          // las partículas son solo adorno: van en una lista corta de números y como mucho 40 por foto
+          if (px.length < 40) px.push([Math.round(f.x), Math.round(f.y), Math.round(f.vx), Math.round(f.vy), f.color, r1(f.life), f.size, f.grow, Math.round(f.z), Math.round(f.vz)]);
+          continue;
+        }
         fx.push(pack(f, g, 0));
       }
       if (fx.length) out.fx = fx;
+      if (px.length) out.px = px;
       if (this.events.length) { out.ev = this.events; this.events = []; }
       return out;
     }
@@ -139,6 +151,7 @@ PB.Net = (() => {
       }
       if (s.crates) g.world.crateHp = new Map(s.crates);
       if (s.fx) for (const f of s.fx) { const o = unpack(f, g); o._s = 1; g.fx.push(o); }
+      if (s.px) for (const [x, y, vx, vy, color, life, size, grow, z, vz] of s.px) g.fx.push({ kind: 'px', x, y, vx, vy, z, vz, color, t: 0, life, size, grow, drag: vz ? 1 : 0.9, _s: 1 });
       if (s.ev) for (const e of s.ev) this.events.push(unpack(e, g));
       // controles que el anfitrión ya ha aplicado
       if (s.ack !== undefined) this.pending = this.pending.filter((p) => p.seq > s.ack);

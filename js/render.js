@@ -1067,11 +1067,23 @@ PB.Renderer = class {
   drawAim(b, aim) {
     const ctx = this.ctx;
     const a = aim.isSuper ? b.def.super : b.def.attack;
-    const color = aim.isSuper ? 'rgba(255,210,40,' : 'rgba(255,255,255,';
-    const alpha = aim.strong ? 0.35 : 0.14;
+    // en suelos claros (nieve, arena) el relleno blanco no se ve: va en azul oscuro
+    const light = this.game && ['nieve', 'arena'].includes(this.game.world.theme);
+    const color = aim.isSuper ? 'rgba(255,210,40,' : light ? 'rgba(30,50,120,' : 'rgba(255,255,255,';
+    const alpha = aim.strong ? (light && !aim.isSuper ? 0.3 : 0.35) : 0.14;
     ctx.fillStyle = color + alpha + ')';
     ctx.strokeStyle = color + Math.min(1, alpha * 2.2) + ')';
     ctx.lineWidth = 2;
+    // borde oscuro debajo del claro: así se ve también en la nieve y en la arena
+    const edge = () => {
+      const st = ctx.strokeStyle;
+      ctx.strokeStyle = 'rgba(12,16,32,' + (aim.strong ? 0.55 : 0.3) + ')';
+      ctx.lineWidth = 5;
+      ctx.stroke();
+      ctx.strokeStyle = st;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    };
     const ang = aim.ang;
     // hasta dónde llega de verdad un disparo: sale 18 px por delante y golpea con su tamaño
     const reach = a.range + 18 + (a.r || 12);
@@ -1093,14 +1105,14 @@ PB.Renderer = class {
         ctx.arc(b.x, b.y, reach, ang - half, ang + half);
         ctx.closePath();
         ctx.fill();
-        ctx.stroke();
+        edge();
       } else {
         const w = (a.r || 12) * 2 + 8;
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(ang);
         ctx.fillRect(0, -w / 2, reach, w);
-        ctx.strokeRect(0, -w / 2, reach, w);
+        ctx.beginPath(); ctx.rect(0, -w / 2, reach, w); edge();
         ctx.restore();
       }
     } else if (a.kind === 'lob' || a.kind === 'zone') {
@@ -1109,12 +1121,12 @@ PB.Renderer = class {
       ctx.beginPath();
       ctx.arc(tx, ty, a.radius, 0, Math.PI * 2);
       ctx.fill();
-      ctx.stroke();
+      edge();
       ctx.setLineDash([8, 8]);
       ctx.beginPath();
       ctx.moveTo(b.x, b.y);
       ctx.quadraticCurveTo((b.x + tx) / 2, (b.y + ty) / 2 - 80, tx, ty);
-      ctx.stroke();
+      edge();
       ctx.setLineDash([]);
     } else if (a.kind === 'dash') {
       ctx.save();
@@ -1122,20 +1134,20 @@ PB.Renderer = class {
       ctx.rotate(ang);
       // embestida: el cuerpo recorre el rango y golpea con su radio
       ctx.fillRect(0, -a.r, a.range + a.r, a.r * 2);
-      ctx.strokeRect(0, -a.r, a.range + a.r, a.r * 2);
+      ctx.beginPath(); ctx.rect(0, -a.r, a.range + a.r, a.r * 2); edge();
       ctx.restore();
     } else if (a.kind === 'slam' || a.kind === 'barrier' || a.kind === 'wish' || a.kind === 'nova') {
       ctx.beginPath();
       ctx.arc(b.x, b.y, a.radius || a.range, 0, Math.PI * 2);
       ctx.fill();
-      ctx.stroke();
+      edge();
     } else if (a.kind === 'melee') {
       ctx.beginPath();
       ctx.moveTo(b.x, b.y);
       ctx.arc(b.x, b.y, a.range, ang - a.arc / 2, ang + a.arc / 2);
       ctx.closePath();
       ctx.fill();
-      ctx.stroke();
+      edge();
     } else if (a.kind === 'twin' || a.kind === 'beam' || a.kind === 'boomerang' || a.kind === 'chain') {
       const w = a.kind === 'twin' ? a.gap * 2 + 20 : a.kind === 'beam' ? a.width : 40;
       const len = a.kind === 'twin' || a.kind === 'boomerang' ? reach : a.range;
@@ -1143,7 +1155,7 @@ PB.Renderer = class {
       ctx.translate(b.x, b.y);
       ctx.rotate(ang);
       ctx.fillRect(0, -w / 2, len, w);
-      ctx.strokeRect(0, -w / 2, len, w);
+      ctx.beginPath(); ctx.rect(0, -w / 2, len, w); edge();
       ctx.restore();
     } else if (a.kind === 'meteor' || a.kind === 'mines' || a.kind === 'turret') {
       const d = Math.min(aim.dist, a.kind === 'turret' ? a.place : a.range);
@@ -1151,7 +1163,7 @@ PB.Renderer = class {
       ctx.beginPath();
       ctx.arc(tx, ty, a.kind === 'turret' ? 30 : (a.spreadR || 0) + (a.radius || 40), 0, Math.PI * 2);
       ctx.fill();
-      ctx.stroke();
+      edge();
     }
   }
 
@@ -1183,11 +1195,17 @@ PB.Renderer = class {
       ctx.fillRect(0, 0, W, H);
     }
 
-    // marcador del modo
+    // marcador del modo (en móviles, más pequeño para que no tape a los rivales que vienen por arriba)
+    const hk = H < 500 ? 0.74 : 1;
+    ctx.save();
+    ctx.translate(Math.round(W / 2), 0);
+    ctx.scale(hk, hk);
+    ctx.translate(-Math.round(W / 2), 0);
     this.drawModeHud(game, view);
+    ctx.restore();
 
     // registro de K.O. con retratos: [quien] ➜ [a quién]
-    let fy = W < 760 ? 112 : game.mode.id === 'gems' ? 74 : 10; // en pantallas estrechas, debajo del marcador
+    let fy = Math.round((W < 760 ? 112 : game.mode.id === 'gems' ? 74 : 10) * hk); // en pantallas estrechas, debajo del marcador
     for (const f of game.feed) {
       const age = game.time - f.t;
       if (age > 5) continue;

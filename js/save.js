@@ -20,9 +20,10 @@ PB.META = {
   modeReward: { showdown: 0.55, duo: 0.7, ball: 1, knockout: 1, gems: 1.4, heist: 1.4, zone: 1.4, brawl: 1.4 },
   // cofres (Pokéballs): tiradas de premio y probabilidad de Pokémon nuevo en cada tirada
   chests: {
-    poke: { name: 'Poké Ball', rolls: 2, pokemon: 0.1, color: '#e8331c' },
-    great: { name: 'Super Ball', rolls: 4, pokemon: 0.1, color: '#3a7ad8' },
-    ultra: { name: 'Ultra Ball', rolls: 8, pokemon: 0.1, guaranteed: true, color: '#f8c030' },
+    // pokemon: probabilidad de Pokémon nuevo en cada tirada; rare: peso de cada rareza (mejor cofre, más raros)
+    poke: { name: 'Poké Ball', rolls: 2, pokemon: 0.15, color: '#e8331c', rare: { common: 4, starter: 2, rare: 1.5, epic: 0.5, legendary: 0.15 } },
+    great: { name: 'Super Ball', rolls: 4, pokemon: 0.2, color: '#3a7ad8', rare: { common: 3, starter: 2, rare: 2.2, epic: 1, legendary: 0.4 } },
+    ultra: { name: 'Ultra Ball', rolls: 8, pokemon: 0.24, guaranteed: true, color: '#f8c030', rare: { common: 1.5, starter: 1.5, rare: 2.2, epic: 1.6, legendary: 0.8 } },
   },
   pityChests: 6, // si abres 6 cofres seguidos sin Pokémon nuevo, el siguiente trae uno seguro
   rainbowChance: { great: 0.6, ultra: 1 },
@@ -384,8 +385,8 @@ PB.Save = (() => {
       const sure = (C.guaranteed && i === 0) || (d.pity || 0) >= PB.META.pityChests;
       if (locked.length && (sure || Math.random() < C.pokemon)) {
         d.pity = 0;
-        // los comunes salen más que los raros, y los raros más que los épicos
-        const W = { common: 3, starter: 2, rare: 2, epic: 1, legendary: 0.4 };
+        // los comunes salen más que los raros, y los raros más que los épicos (según la calidad del cofre)
+        const W = C.rare || { common: 3, starter: 2, rare: 2, epic: 1, legendary: 0.4 };
         let total = 0;
         for (const id of locked) total += W[PB.brawlerById(id).rarity] || 1;
         let r = Math.random() * total;

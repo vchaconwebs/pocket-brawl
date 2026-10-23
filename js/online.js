@@ -363,6 +363,7 @@ PB.Online = (() => {
 
   async function logout() {
     if (!auth) return;
+    try { localStorage.removeItem('pb.account'); } catch (e) {}
     // el progreso ya queda en la cuenta; en este navegador se empieza de cero
     if (user && !user.isAnonymous) {
       await fs.collection('users').doc(uid).collection('private').doc('save')
