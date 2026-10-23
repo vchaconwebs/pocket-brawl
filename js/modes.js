@@ -594,7 +594,7 @@ PB.MODES.duo = Object.assign({}, PB.MODES.showdown, {
 // ------------------------------------------------------------------ Duelo de Equipos
 // 3 contra 3 a K.O.: se reaparece y gana el primer equipo en llegar a 15 K.O.
 PB.MODES.brawl = {
-  id: 'brawl', name: 'Duelo de Equipos', map: 'zone', statName: 'K.O.', kos: 15,
+  id: 'brawl', name: 'Duelo de Equipos', map: 'brawl', statName: 'K.O.', kos: 15,
   desc: '3 contra 3 a lo bestia: cada rival debilitado es un punto. Gana el primer equipo en llegar a 15 K.O.',
   rules: { matchTime: 150 },
   setup(g) { g.kos = { blue: 0, red: 0 }; },
@@ -615,7 +615,7 @@ PB.MODES.brawl = {
 // 3 contra 3 sin reaparecer: gana la ronda el equipo que debilite a los 3 rivales.
 // Al mejor de 3 rondas. Si una ronda dura más de 60 s, la gana quien tenga más Pokémon en pie.
 PB.MODES.knockout = {
-  id: 'knockout', name: 'Eliminación', map: 'zone', statName: 'K.O.', noRespawn: true, roundTime: 60,
+  id: 'knockout', name: 'Eliminación', map: 'knockout', statName: 'K.O.', noRespawn: true, roundTime: 60,
   desc: '3 contra 3 sin reaparecer: gana la ronda el equipo que debilite a los 3 rivales. Al mejor de 3 rondas.',
   rules: { matchTime: 9999 },
   setup(g) {
