@@ -700,4 +700,6 @@ PB.I18N = {
   'Audio caducado': ['Audio expired', 'Áudio expirado', 'Audio expiré', 'Audio scaduto', 'Audio abgelaufen'],
   'Este audio no se puede reproducir en tu navegador.': ['This audio can’t be played in your browser.', 'Este áudio não pode ser reproduzido no seu navegador.', 'Cet audio ne peut pas être lu dans ton navigateur.', 'Questo audio non si può riprodurre nel tuo browser.', 'Dieses Audio kann in deinem Browser nicht abgespielt werden.'],
   'El audio es demasiado largo.': ['The audio is too long.', 'O áudio é muito longo.', 'L’audio est trop long.', 'L’audio è troppo lungo.', 'Das Audio ist zu lang.'],
+  'Solo': ['Solo', 'Solo', 'Solo', 'Solo', 'Solo'],
+  'Dúo': ['Duo', 'Dupla', 'Duo', 'Duo', 'Duo'],
 };

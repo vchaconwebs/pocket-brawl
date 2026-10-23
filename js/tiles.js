@@ -221,14 +221,6 @@ PB.Tiles = (() => {
     }
   }
 
-  // Alfombra de la base de cada equipo
-  function paintMat(P, ox, oy, col, dark) {
-    for (let y = 1; y < A - 1; y++) for (let x = 1; x < A - 1; x++) {
-      const edge = x === 1 || y === 1 || x === A - 2 || y === A - 2;
-      P.set(ox + x, oy + y, edge ? dark : (x + y) % 4 === 0 ? dark : col);
-    }
-  }
-
   // Plataforma de Pokéballs del centro: una Pokéball gigante incrustada en un anillo de piedra
   function paintPad(P, cx, cy) {
     const R = 12, ROCK = C.rock;
@@ -269,9 +261,6 @@ PB.Tiles = (() => {
       if (t === 'P') paintPath(P, ox, oy, c, r, at);
       else if (t === 'f') paintFlowers(P, ox, oy, c, r);
       else if (t === '~') paintWater(P, ox, oy, c, r, at);
-    }
-    for (const [list, col, dark] of [[world.spawns.blue, '#5a9cf0', '#3a6cc0'], [world.spawns.red, '#f06a5a', '#c0443a']]) {
-      for (const s of list) paintMat(P, Math.floor(s.x / PB.TILE) * A, Math.floor(s.y / PB.TILE) * A, col, dark);
     }
     // campo de Voltorbol: césped a franjas, línea de gol, área y semicírculo
     if (world.goals.red.length) {

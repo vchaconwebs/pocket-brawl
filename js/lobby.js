@@ -528,13 +528,23 @@ PB.Lobby = (() => {
     const grid = $('#mp-grid');
     grid.innerHTML = '';
     const rnd = api.isRandom && api.isRandom();
-    for (const id of ['random'].concat(PB.MODE_ORDER)) {
+    // Niebla Tóxica y su versión por parejas van en la misma tarjeta, con un selector Solo / Dúo
+    const cur = api.getMode();
+    for (const id of ['random'].concat(PB.MODE_ORDER.filter((m) => m !== 'duo'))) {
       const M = id === 'random' ? { name: PB.T('Aleatorio'), desc: PB.T('Te mete en el modo donde más gente está buscando partida ahora mismo.') } : PB.MODES[id];
+      const fog = id === 'showdown';
+      const on = id === 'random' ? rnd : !rnd && (id === cur || (fog && cur === 'duo'));
       const el = document.createElement('button');
-      el.className = 'mode-card2' + ((id === 'random' ? rnd : !rnd && id === api.getMode()) ? ' sel' : '') + (id === 'random' ? ' rnd' : '');
+      el.className = 'mode-card2' + (on ? ' sel' : '') + (id === 'random' ? ' rnd' : '');
       el.dataset.mode = id;
-      el.innerHTML = `<img src="${modeIcon(id)}" alt=""><b>${M.name}</b><span>${M.desc}</span><em class="mc-live"></em>`;
-      el.onclick = () => { PB.Audio.play('ui'); api.setMode(id); showModes(); };
+      const pick = fog ? `<em class="mc-sd"><i data-v="showdown" class="${cur !== 'duo' ? 'on' : ''}">${PB.T('Solo')}</i><i data-v="duo" class="${cur === 'duo' ? 'on' : ''}">${PB.T('Dúo')}</i></em>` : '';
+      el.innerHTML = `<img src="${modeIcon(id)}" alt=""><b>${M.name}</b><span>${M.desc}</span>${pick}<em class="mc-live"></em>`;
+      el.onclick = (e) => {
+        PB.Audio.play('ui');
+        const v = e.target && e.target.dataset && e.target.dataset.v;
+        api.setMode(fog ? v || (cur === 'duo' ? 'duo' : 'showdown') : id);
+        showModes();
+      };
       grid.appendChild(el);
     }
     renderModesLive();
