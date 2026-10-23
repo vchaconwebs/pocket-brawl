@@ -638,6 +638,14 @@ PB.Game = class {
           continue;
         }
       }
+      // los que van y vuelven atraviesan los muros, pero las cajas sí las golpean (una vez a la ida y otra a la vuelta)
+      if (p.boomerang) {
+        const T = PB.TILE, c = Math.floor(p.x / T), r = Math.floor(p.y / T), key = r * this.world.w + c + (p.back ? 0.5 : 0);
+        if (this.world.tile(c, r) === 'C' && !(p.crates && p.crates.has(key))) {
+          (p.crates = p.crates || new Set()).add(key);
+          this.damageCrate(c, r, p.dmg, p.owner, p.charge);
+        }
+      }
       if (!p.boomerang && this.world.shotBlockedAt(p.x, p.y)) {
         const T = PB.TILE, c = Math.floor(p.x / T), r = Math.floor(p.y / T);
         if (p.destroysWalls && this.breakWalls(p.x, p.y, 40).length) {
