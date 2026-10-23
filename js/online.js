@@ -246,7 +246,10 @@ PB.Online = (() => {
       const s = await fs.collection('users').doc(uid).get();
       if (s.exists) myDoc = Object.assign({ friends: [] }, s.data());
     }
-    const p = { name: myName(), nameLower: myName().toLowerCase(), tag: d.tag, copas: PB.Save.totalCopas(), fav: d.avatar || d.selected, clan: myDoc.clan || null, clanName: myDoc.clanName || '' };
+    // los 3 Pokémon con más copas (para el perfil público y el ranking por Pokémon)
+    const best = Object.entries(d.copas || {}).filter(([id, c]) => c > 0 && PB.brawlerById(id)).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, c]) => ({ id, c }));
+    const p = { name: myName(), nameLower: myName().toLowerCase(), tag: d.tag, copas: PB.Save.totalCopas(), fav: d.avatar || d.selected, clan: myDoc.clan || null, clanName: myDoc.clanName || '',
+      best, bestCopas: best.length ? best[0].c : 0, pc: Object.fromEntries(Object.entries(d.copas || {}).filter(([id, c]) => c > 0 && PB.brawlerById(id))), played: (d.stats && d.stats.played) || 0, wins: (d.stats && d.stats.wins) || 0, owned: Object.keys(d.owned || {}).length };
     const key = JSON.stringify(p);
     if (key === lastProfile) return;
     lastProfile = key;
@@ -259,6 +262,8 @@ PB.Online = (() => {
   const viewUser = (id, u) => ({
     id, name: clean(u.name, 16), tag: clean(u.tag, 8), copas: u.copas | 0,
     fav: PB.brawlerById(u.fav) ? u.fav : PB.BRAWLERS[0].id, clan: u.clan || null, clanName: clean(u.clanName, 20), me: id === uid,
+    best: (Array.isArray(u.best) ? u.best : []).filter((x) => x && PB.brawlerById(x.id)).slice(0, 3).map((x) => ({ id: x.id, c: x.c | 0 })),
+    bestCopas: u.bestCopas | 0, played: u.played | 0, wins: u.wins | 0, owned: u.owned | 0,
   });
 
   async function usersByIds(ids) {
@@ -495,6 +500,37 @@ PB.Online = (() => {
     const out = list.map((p, i) => Object.assign({}, p, { pos: i + 1, me: p.id === uid }));
     if (!out.some((p) => p.me)) out.push(Object.assign(viewUser(uid, myDoc), { me: true, pos: '50+' }));
     return out;
+  }
+  // ranking por Pokémon: los jugadores con más copas en un solo Pokémon
+  async function topByPokemon() {
+    if (!(await start())) return [];
+    await syncProfile().catch(() => {});
+    const list = await cached('mons', async () => {
+      const q = await fs.collection('users').orderBy('bestCopas', 'desc').limit(50).get();
+      return q.docs.map((s) => viewUser(s.id, s.data()));
+    });
+    return list.map((p, i) => Object.assign({}, p, { pos: i + 1, me: p.id === uid }));
+  }
+  // ranking de un Pokémon concreto: quién tiene más copas con él (pc.<id> en el perfil)
+  async function topForPokemon(id) {
+    if (!(await start()) || !PB.brawlerById(id)) return [];
+    await syncProfile().catch(() => {});
+    const list = await cached('mon-' + id, async () => {
+      const q = await fs.collection('users').orderBy('pc.' + id, 'desc').limit(50).get();
+      return q.docs.map((s) => Object.assign(viewUser(s.id, s.data()), { c: ((s.data().pc || {})[id]) | 0 }));
+    });
+    return list.map((p, i) => Object.assign({}, p, { pos: i + 1, me: p.id === uid }));
+  }
+  // perfil público de un jugador (los invitados no tienen)
+  async function getUser(id) {
+    if (!(await start()) || !id) return null;
+    if (id === uid) { await syncProfile().catch(() => {}); return Object.assign(viewUser(uid, myDoc), { online: true }); }
+    const s = await fs.collection('users').doc(id).get().catch(() => null);
+    if (!s || !s.exists) return null;
+    const u = viewUser(id, s.data());
+    u.online = await isOnline(id).catch(() => false);
+    u.friend = (myDoc.friends || []).includes(id);
+    return u;
   }
   async function topClans() {
     if (!(await start())) return [];
@@ -1085,18 +1121,62 @@ PB.Online = (() => {
     });
   }
 
-  function makeLink(me) {
+  // Canal hacia los demás jugadores. Normalmente directo (WebRTC); con quien no se puede conectar
+  // directo (routers estrictos, datos móviles...), los mensajes van por la base de datos:
+  // relay/<partida>/<para>/<mensaje> = { f: de, d: mensaje }. Se borran al leerlos.
+  function makeLink(me, db) {
+    db = db || rtdb;
     const chans = {};
+    const relayPeers = new Set(), seen = {};
+    let relayOff = null, relayMid = null, relayIv = null;
+    const relaySend = (peer, s) => { if (relayMid) db.ref('relay/' + relayMid + '/' + peer).push({ f: me, d: s }).catch(() => {}); };
     const link = {
       me,
       onMessage: null,
       onLeave: null,
+      onRelay: null,
       send(to, msg) {
         const s = JSON.stringify(msg);
         const list = to ? [chans[to]] : Object.values(chans);
         for (const c of list) if (c && c.readyState === 'open') { try { c.send(s); } catch (e) {} }
+        for (const p of relayPeers) if ((!to || to === p) && !chans[p]) relaySend(p, s);
       },
-      close() { for (const c of Object.values(chans)) { try { c.close(); } catch (e) {} } for (const p of pcs) { try { p.close(); } catch (e) {} } },
+      // empieza a escuchar su buzón de relevo para esta partida
+      startRelay(mid) {
+        if (relayOff) return;
+        relayMid = mid;
+        const ref = db.ref('relay/' + mid + '/' + me);
+        try { ref.onDisconnect().remove(); } catch (e) {}
+        const cb = ref.on('child_added', (sn) => {
+          const v = sn.val();
+          sn.ref.remove().catch(() => {});
+          if (!v || typeof v.d !== 'string' || typeof v.f !== 'string') return;
+          let msg;
+          try { msg = JSON.parse(v.d); } catch (e) { return; }
+          seen[v.f] = Date.now();
+          if (msg.k === '_relay') { link.addRelay(v.f); if (link.onRelay) link.onRelay(v.f); return; }
+          if (msg.k === '_ping' || !relayPeers.has(v.f)) return;
+          if (link.onMessage) { try { link.onMessage(v.f, msg); } catch (e) {} }
+        });
+        // cada 3 s un "sigo aquí"; si alguien lleva 10 s sin dar señales, se ha ido
+        relayIv = setInterval(() => {
+          for (const p of [...relayPeers]) {
+            relaySend(p, '{"k":"_ping"}');
+            if (Date.now() - (seen[p] || 0) > 10000) { relayPeers.delete(p); if (link.onLeave) link.onLeave(p); }
+          }
+        }, 3000);
+        relayOff = () => { ref.off('child_added', cb); ref.remove().catch(() => {}); clearInterval(relayIv); };
+      },
+      addRelay(peer) { relayPeers.add(peer); seen[peer] = Date.now(); },
+      // pide a otro jugador que use el relevo conmigo
+      askRelay(peer) { link.addRelay(peer); relaySend(peer, '{"k":"_relay"}'); },
+      isRelay: (peer) => relayPeers.has(peer) && !chans[peer],
+      close() {
+        for (const c of Object.values(chans)) { try { c.close(); } catch (e) {} }
+        for (const p of pcs) { try { p.close(); } catch (e) {} }
+        if (relayOff) relayOff();
+        relayPeers.clear();
+      },
       add(peer, ch, pc) {
         chans[peer] = ch;
         pcs.push(pc);
@@ -1105,7 +1185,7 @@ PB.Online = (() => {
         ch.onclose = gone;
         pc.addEventListener('connectionstatechange', () => { if (pc.connectionState === 'failed' || pc.connectionState === 'closed') gone(); });
       },
-      peers: () => Object.keys(chans),
+      peers: () => [...new Set(Object.keys(chans).concat([...relayPeers]))],
     };
     const pcs = [];
     return link;
@@ -1115,6 +1195,9 @@ PB.Online = (() => {
   async function hostConnect(mid, others, link, onPeer) {
     const sig = rtdb.ref('signal/' + mid);
     const ok = new Set();
+    link.startRelay(mid);
+    // con quien no conecte directo, se juega por relevo (no se queda nadie fuera)
+    const relay = (peer) => { tr('relevo con', peer.slice(0, 5)); link.askRelay(peer); ok.add(peer); if (onPeer) onPeer(peer); };
     await Promise.all(others.map(async (peer) => {
       const pc = new RTCPeerConnection({ iceServers: ICE });
       const ch = pc.createDataChannel('g', { ordered: true });
@@ -1129,9 +1212,9 @@ PB.Online = (() => {
       });
       const a = await got;
       tr('respuesta de', peer.slice(0, 5), !!a);
-      if (!a) { pc.close(); return; }
+      if (!a) { pc.close(); return relay(peer); }
       await pc.setRemoteDescription(JSON.parse(a));
-      if (await opened) { link.add(peer, ch, pc); ok.add(peer); if (onPeer) onPeer(peer); } else pc.close();
+      if (await opened) { link.add(peer, ch, pc); ok.add(peer); if (onPeer) onPeer(peer); } else { pc.close(); relay(peer); }
     }));
     setTimeout(() => sig.remove().catch(() => {}), 5000);
     return ok;
@@ -1139,6 +1222,17 @@ PB.Online = (() => {
 
   // jugador: espera la oferta del anfitrión y contesta
   async function clientConnect(mid, host, link) {
+    link.startRelay(mid);
+    let relayed = false;
+    const relayP = new Promise((res) => { link.onRelay = (p) => { if (p === host) { relayed = true; res(true); } }; setTimeout(() => res(false), 45000); });
+    const direct = clientDirect(mid, host, link);
+    // lo primero que funcione: directo o relevo (si lo directo falla, se espera al relevo)
+    const ok = await Promise.race([direct.then((d) => d || relayP), relayP]);
+    link.onRelay = null;
+    tr(ok ? (relayed ? 'conectado por relevo' : 'conectado directo') : 'sin conexión');
+    return ok;
+  }
+  async function clientDirect(mid, host, link) {
     const sig = rtdb.ref('signal/' + mid);
     const offRef = sig.child(uid + '/' + host + '/offer');
     const offer = await new Promise((res) => {
@@ -1256,7 +1350,7 @@ PB.Online = (() => {
     on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); },
     account, loginGoogle, emailAccount, resetPassword, logout, saveCloud,
     me: async () => (await start(), viewUser(uid, myDoc)),
-    topPlayers, topClans,
+    topPlayers, topClans, topByPokemon, topForPokemon, getUser,
     searchClans, getClan, myClan, createClan, joinClan, leaveClan, clanRequests, answerClanRequest,
     chat, sendChat,
     watchChat, sendGlobalChat, deleteChat, banChat, sendPartyChat, inviteToPlay, sendVoice, getVoice,
@@ -1270,5 +1364,6 @@ PB.Online = (() => {
     get live() { return live; },
     now: () => now(),
     trace,
+    _testLink: (me, db) => makeLink(me, db), // para las pruebas del relevo
   };
 })();

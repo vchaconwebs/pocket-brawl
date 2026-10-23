@@ -928,8 +928,11 @@ PB.Lobby = (() => {
     $('#pf-avatars').classList.add('hidden');
     PB.Online.myClan().then((c) => { $('#pf-clan').textContent = c ? 'Clan: ' + c.name : 'Sin clan'; });
     const st = d.stats;
+    const bestId = Object.keys(d.copas || {}).filter((id) => PB.brawlerById(id)).sort((a, b) => d.copas[b] - d.copas[a])[0];
+    const bestB = bestId && d.copas[bestId] > 0 ? PB.brawlerById(bestId) : null;
     const rows = [
       ['Copas totales', PB.Save.totalCopas()],
+      ['Mejor Pokémon', bestB ? bestB.name + ' · ' + d.copas[bestId] : '—'],
       ['Partidas', st.played || 0],
       ['Victorias', st.wins || 0],
       ['K.O.', st.kills || 0],
@@ -1028,7 +1031,7 @@ PB.Lobby = (() => {
   let frTab = 'list';
   const avatar = (p) => portrait(PB.brawlerById(p.fav) || PB.BRAWLERS[0]);
   const prow = (p, extra) =>
-    `<div class="prow${p.me ? ' me' : ''}">` +
+    `<div class="prow${p.me ? ' me' : ''}${p.id && !p.isClan ? ' click' : ''}"${p.id && !p.isClan ? ` data-uid="${p.id}"` : ''}>` +
     (p.pos ? `<span class="pos">${p.pos}</span>` : '') +
     `<img class="av" src="${p.avatar || avatar(p)}" alt="">` +
     `<div class="pinfo"><b>${p.name}</b><small>${p.sub || ''}</small></div>` +
@@ -1193,8 +1196,45 @@ PB.Lobby = (() => {
     log.scrollTop = log.scrollHeight;
   }
 
+  // ------------------------------------------------------------------ perfil de otro jugador
+  // Se abre tocando a alguien en el ranking, en amigos, en el clan o desde el chat.
+  async function showPlayer(id) {
+    if (!id) return;
+    if (id === PB.Online.myUid) return showProfile();
+    PB.Audio.play('ui');
+    const u = await PB.Online.getUser(id).catch(() => null);
+    if (!u) return toast(PB.T('Este jugador juega como invitado y no tiene perfil público.'));
+    const fav = PB.brawlerById(u.fav) || PB.BRAWLERS[0];
+    $('#pv-av').src = portrait(fav);
+    $('#pv-name').textContent = u.name;
+    $('#pv-sub').innerHTML = esc(u.tag) + ' · ' + (u.clanName ? esc(u.clanName) : PB.T('Sin clan')) + ' · ' + (u.online ? '<span class="on">● ' + PB.T('En línea') + '</span>' : '<span class="off">● ' + PB.T('Desconectado') + '</span>');
+    const st = [['Copas totales', u.copas], ['Partidas', u.played], ['Victorias', u.wins], ['Pokémon', u.owned]];
+    $('#pv-stats').innerHTML = st.map(([k, v]) => `<div><small>${PB.T(k)}</small><b>${(v || 0).toLocaleString('es-ES')}</b></div>`).join('');
+    $('#pv-best').innerHTML = u.best.map((x, i) => {
+      const b = PB.brawlerById(x.id);
+      return `<div class="pv-mon${i === 0 ? ' top' : ''}"><img src="${portrait(b)}" alt=""><b>${esc(b.name)}</b><span><img class="cup" src="${cupIcon()}" alt="">${x.c.toLocaleString('es-ES')}</span></div>`;
+    }).join('') || `<p class="empty">${PB.T('Aún no tiene copas.')}</p>`;
+    $('#pv-acts').innerHTML = (u.friend ? '' : `<button class="act blue" id="pv-add">➕ ${PB.T('Añadir amigo')}</button>`) + `<button class="act gold" id="pv-inv">🎮 ${PB.T('Invitar a jugar')}</button>`;
+    if ($('#pv-add')) $('#pv-add').onclick = async () => {
+      if (PB.Online.isGuest()) return toast(PB.T('Crea una cuenta (gratis) para tener amigos.'));
+      const r = await PB.Online.addFriend(id).catch(() => ({ error: PB.T('No se ha podido enviar.') }));
+      toast(r.error || PB.T('Solicitud de amistad enviada'));
+    };
+    $('#pv-inv').onclick = async () => {
+      const r = await PB.Online.inviteToPlay(id).catch(() => ({ error: PB.T('No se ha podido enviar.') }));
+      toast(r.error || PB.T('¡Invitación enviada! Si acepta, entrará en tu grupo.'));
+    };
+    $('#pview').classList.remove('hidden');
+  }
+  const esc = (t) => String(t || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  document.addEventListener('click', (e) => {
+    const row = e.target.closest && e.target.closest('.prow[data-uid]');
+    if (!row || e.target.closest('button')) return;
+    showPlayer(row.dataset.uid);
+  });
+
   // ------------------------------------------------------------------ ranking
-  let rkTab = 'players';
+  let rkTab = 'players', rkMon = '';
   async function showRanking(tab) {
     if (tab) rkTab = tab;
     setTab('#rk-tabs', rkTab);
@@ -1206,10 +1246,27 @@ PB.Lobby = (() => {
       const mine = list.find((p) => p.me);
       const top = list.slice(0, 50);
       box.innerHTML = top.map((p) => prow({ ...p, sub: p.clanName || 'Sin clan' })).join('') + (mine && (mine.pos === '50+' || mine.pos > 50) ? '<p class="sep">…</p>' + prow({ ...mine, sub: 'Tú' }) : '');
+    } else if (rkTab === 'mons') {
+      // elige un Pokémon (o «el mejor de cada jugador») y sale quién tiene más copas con él
+      const opts = PB.BRAWLERS.slice().sort((a, b) => a.name.localeCompare(b.name));
+      const pickHtml = `<div class="rk-pick"><select id="rk-mon"><option value="">${PB.T('Mejor Pokémon de cada jugador')}</option>` +
+        opts.map((b) => `<option value="${b.id}"${b.id === rkMon ? ' selected' : ''}>${b.name}</option>`).join('') + '</select></div>';
+      const empty = `<p class="empty">${PB.T('Aún no hay datos. Juega partidas para salir aquí.')}</p>`;
+      let rows;
+      if (!rkMon) {
+        const list = (await PB.Online.topByPokemon()).filter((p) => p.best.length);
+        rows = list.map((p) => { const b = PB.brawlerById(p.best[0].id); return prow({ ...p, copas: p.best[0].c, avatar: portrait(b), sub: b.name + ' · ' + p.name }); }).join('');
+      } else {
+        const b = PB.brawlerById(rkMon);
+        const list = await PB.Online.topForPokemon(rkMon);
+        rows = list.map((p) => prow({ ...p, copas: p.c, avatar: portrait(b), sub: p.clanName || PB.T('Sin clan') })).join('');
+      }
+      box.innerHTML = pickHtml + (rows || empty);
+      $('#rk-mon').onchange = (e) => { rkMon = e.target.value; PB.Audio.play('ui'); showRanking('mons'); };
     } else {
       const list = await PB.Online.topClans();
       const my = await PB.Online.myClan();
-      box.innerHTML = list.slice(0, 50).map((c) => prow({ name: c.name, copas: c.copas, pos: c.pos, avatar: clanIcon(c), sub: c.count + '/' + PB.META.clanMax + ' miembros', me: my && my.id === c.id })).join('');
+      box.innerHTML = list.slice(0, 50).map((c) => prow({ name: c.name, copas: c.copas, pos: c.pos, avatar: clanIcon(c), sub: c.count + '/' + PB.META.clanMax + ' miembros', me: my && my.id === c.id, isClan: true })).join('');
     }
   }
 
@@ -1829,6 +1886,7 @@ PB.Lobby = (() => {
     };
     $('#update-go').onclick = () => { PB.Audio.play('ui'); location.reload(); };
     $('#btn-news').onclick = () => { PB.Audio.play('ui'); showPatchNotes(0); };
+    $('#pv-close').onclick = () => { PB.Audio.play('uiBack'); $('#pview').classList.add('hidden'); };
     // sobre el creador
     $('#btn-about').onclick = () => { PB.Audio.play('ui'); $('#about').classList.remove('hidden'); };
     $('#ab-close').onclick = () => { PB.Audio.play('uiBack'); $('#about').classList.add('hidden'); };
@@ -1906,5 +1964,5 @@ PB.Lobby = (() => {
     window.addEventListener('resize', () => { if (current === 'chestopen') resizeFx(); });
   }
 
-  return { init, show, tick, openSettings, toast, refresh: refreshLobby, playPressed, get current() { return current; } };
+  return { showPlayer, init, show, tick, openSettings, toast, refresh: refreshLobby, playPressed, get current() { return current; } };
 })();

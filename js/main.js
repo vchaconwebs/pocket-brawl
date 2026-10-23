@@ -372,13 +372,20 @@
         const full = net.fullT <= 0;
         if (full) net.fullT = 4;
         const snap = net.host.snapshot(full);
-        for (const [peer, idx] of Object.entries(net.seats)) net.link.send(peer, Object.assign({ k: 's', ack: net.remotes[idx] ? net.remotes[idx].ack : 0 }, snap));
+        // por relevo (sin conexión directa) va una foto de cada dos: 10 por segundo
+        net.odd = !net.odd;
+        for (const [peer, idx] of Object.entries(net.seats)) {
+          if (net.odd && !full && net.link.isRelay && net.link.isRelay(peer)) continue;
+          net.link.send(peer, Object.assign({ k: 's', ack: net.remotes[idx] ? net.remotes[idx].ack : 0 }, snap));
+        }
       }
     } else if (net.client) {
       const inp = read && mode === 'play' && !paused ? read.input : {};
       net.inT -= dt;
       const key = Math.round((inp.mx || 0) * 10) + ',' + Math.round((inp.my || 0) * 10);
-      if (inp.attack || inp.super || key !== net.lastIn || net.inT <= 0) {
+      // por relevo, el movimiento como mucho 15 veces por segundo (ataques y súper, siempre)
+      const slow = net.link.isRelay && net.link.isRelay(net.hostPeer) && net.inT > 0.1 - 1 / 15;
+      if (inp.attack || inp.super || (key !== net.lastIn && !slow) || net.inT <= 0) {
         net.inT = 0.1;
         net.lastIn = key;
         net.link.send(net.hostPeer, Object.assign({ k: 'i' }, net.client.input(inp)));
@@ -531,7 +538,7 @@
     // recompensas: fichas, cofres nuevos y misiones
     // en el dúo el puesto es de la pareja (1 a 5): para las copas cuenta como el puesto equivalente de 10
     const rank = M.duo ? Math.min(10, (me.rank || 5) * 2 - 1) : me.rank;
-    const win = M.ffa ? (rank || 99) <= 4 : game.winner === me.team;
+    const win = M.ffa ? (rank || 99) <= 3 : game.winner === me.team;
     const reward = PB.Save.applyMatch({ win, draw: game.winner === 'draw', rank, mode: M.id, me });
     const d = PB.Save.get();
     const pct = Math.round((100 * d.tokens) / PB.META.tokensPerChest);

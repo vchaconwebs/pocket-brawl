@@ -704,4 +704,13 @@ PB.I18N = {
   'Dúo': ['Duo', 'Dupla', 'Duo', 'Duo', 'Duo'],
   '🎮 Mando conectado': ['🎮 Controller connected', '🎮 Controle conectado', '🎮 Manette connectée', '🎮 Controller collegato', '🎮 Controller verbunden'],
   'Mando: stick izquierdo moverte · stick derecho apuntar · RT o ✕ atacar · LT o ○ súper · Start pausa': ['Controller: left stick move · right stick aim · RT or ✕ attack · LT or ○ super · Start pause', 'Controle: analógico esquerdo mover · direito mirar · RT ou ✕ atacar · LT ou ○ super · Start pausa', 'Manette : stick gauche bouger · stick droit viser · RT ou ✕ attaquer · LT ou ○ super · Start pause', 'Controller: stick sinistro muoviti · destro mira · RT o ✕ attacca · LT o ○ super · Start pausa', 'Controller: linker Stick bewegen · rechter Stick zielen · RT oder ✕ angreifen · LT oder ○ Super · Start Pause'],
+  'Por Pokémon': ['By Pokémon', 'Por Pokémon', 'Par Pokémon', 'Per Pokémon', 'Nach Pokémon'],
+  'Sus mejores Pokémon': ['Their best Pokémon', 'Seus melhores Pokémon', 'Ses meilleurs Pokémon', 'I suoi migliori Pokémon', 'Seine besten Pokémon'],
+  'Mejor Pokémon': ['Best Pokémon', 'Melhor Pokémon', 'Meilleur Pokémon', 'Miglior Pokémon', 'Bestes Pokémon'],
+  'Ver perfil': ['View profile', 'Ver perfil', 'Voir le profil', 'Vedi profilo', 'Profil ansehen'],
+  'Aún no tiene copas.': ['No trophies yet.', 'Ainda não tem troféus.', 'Pas encore de trophées.', 'Ancora nessun trofeo.', 'Noch keine Pokale.'],
+  'Aún no hay datos. Juega partidas para salir aquí.': ['No data yet. Play matches to show up here.', 'Ainda não há dados. Jogue partidas para aparecer aqui.', 'Pas encore de données. Joue des matchs pour apparaître ici.', 'Ancora nessun dato. Gioca partite per comparire qui.', 'Noch keine Daten. Spiel Matches, um hier zu erscheinen.'],
+  'Este jugador juega como invitado y no tiene perfil público.': ['This player is a guest and has no public profile.', 'Este jogador joga como convidado e não tem perfil público.', 'Ce joueur est invité et n’a pas de profil public.', 'Questo giocatore è ospite e non ha un profilo pubblico.', 'Dieser Spieler ist Gast und hat kein öffentliches Profil.'],
+  'En línea': ['Online', 'Online', 'En ligne', 'Online', 'Online'],
+  'Mejor Pokémon de cada jugador': ['Best Pokémon of each player', 'Melhor Pokémon de cada jogador', 'Meilleur Pokémon de chaque joueur', 'Miglior Pokémon di ogni giocatore', 'Bestes Pokémon jedes Spielers'],
 };

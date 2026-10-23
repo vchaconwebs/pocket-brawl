@@ -153,6 +153,7 @@ PB.Chat = (() => {
       if (menuFor === m.id) {
         menu = '<div class="gc-menu">';
         if (!m.mine) {
+          menu += `<button data-prof="${esc(m.uid)}">👤 ${PB.T('Ver perfil')}</button>`;
           if (!PB.Online.isFriend(m.uid)) menu += `<button data-friend="${esc(m.uid)}">➕ ${PB.T('Añadir amigo')}</button>`;
           if (!inMine) menu += `<button data-inv="${esc(m.uid)}">🎮 ${PB.T('Invitar a jugar')}</button>`;
           menu += `<button data-mute="${esc(m.uid)}">🔇 ${PB.T('Silenciar')}</button>`;
@@ -182,6 +183,7 @@ PB.Chat = (() => {
       PB.Lobby.toast(r.error || PB.T('¡Invitación enviada! Si acepta, entrará en tu grupo.'));
     });
     log.querySelectorAll('.gc-play').forEach((b) => (b.onclick = () => playVoice(b)));
+    act('[data-prof]', (b) => PB.Lobby.showPlayer(b.dataset.prof));
     act('[data-mute]', (b) => { setMuted(b.dataset.mute, true); PB.Lobby.toast(PB.T('No verás más sus mensajes')); });
     act('[data-del]', (b) => PB.Online.deleteChat(b.dataset.del));
     act('[data-ban]', async (b) => { await PB.Online.banChat(b.dataset.ban); PB.Lobby.toast(PB.T('Bloqueado del chat')); });

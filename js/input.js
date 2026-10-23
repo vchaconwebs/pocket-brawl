@@ -197,7 +197,7 @@ PB.Input = class {
   padLayer() {
     const vis = (e) => e && !e.classList.contains('hidden') && e.offsetParent !== null;
     // primero las ventanas que van por encima (aviso, nota de parche, chat...), luego la pantalla
-    for (const sel of ['#modal', '#patch', '#about', '#feedback', '#gchat']) { const e = document.querySelector(sel); if (vis(e) || (e && !e.classList.contains('hidden') && sel === '#modal')) return e; }
+    for (const sel of ['#modal', '#pview', '#patch', '#about', '#feedback', '#gchat']) { const e = document.querySelector(sel); if (vis(e) || (e && !e.classList.contains('hidden') && sel === '#modal')) return e; }
     return document.querySelector('.screen:not(.hidden)');
   }
   padItems(layer) {

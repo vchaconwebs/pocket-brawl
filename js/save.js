@@ -15,6 +15,9 @@ PB.META = {
     lose: { coins: 10, points: 11, rainbow: 1 },
   },
   bonusWins: 3, // las 3 primeras victorias del día dan el doble de fichas
+  // premio de cada modo según lo que dura (fichas, monedas, puntos y pase): por minuto jugado,
+  // más o menos igual en todos. Niebla dura ~35 s; Voltorbol y Eliminación ~1 min; el resto ~2 min.
+  modeReward: { showdown: 0.55, duo: 0.7, ball: 1, knockout: 1, gems: 1.4, heist: 1.4, zone: 1.4, brawl: 1.4 },
   // cofres (Pokéballs): tiradas de premio y probabilidad de Pokémon nuevo en cada tirada
   chests: {
     poke: { name: 'Poké Ball', rolls: 2, pokemon: 0.1, color: '#e8331c' },
@@ -50,14 +53,16 @@ PB.statsAt = (def, lvl) => {
 };
 
 // Copas que se ganan o pierden según las copas que ya tiene ese Pokémon
-PB.copasDelta = (copas, result, rank) => {
+// Modos largos (unos 2 minutos): su victoria vale más para que compense jugarlos tanto como Niebla
+PB.LONG_MODES = ['gems', 'heist', 'zone', 'brawl'];
+PB.copasDelta = (copas, result, rank, mode) => {
   if (rank) {
-    // Niebla Tóxica: según el puesto (1 a 10)
-    const table = copas < 100 ? [10, 8, 7, 6, 4, 2, 0, -1, -2, -3] : copas < 400 ? [9, 7, 5, 4, 2, 0, -2, -3, -4, -5] : [8, 6, 4, 2, 0, -2, -4, -5, -6, -7];
+    // Niebla Tóxica (y Dúo): según el puesto (1 a 10). Las partidas duran poco, así que dan menos
+    const table = copas < 100 ? [6, 4, 3, 1, 0, -1, -2, -3, -4, -5] : copas < 400 ? [5, 3, 2, 0, -1, -2, -3, -4, -5, -6] : [4, 2, 1, -1, -2, -3, -4, -5, -6, -7];
     return table[Math.max(0, Math.min(9, rank - 1))];
   }
   if (result === 'draw') return 0;
-  if (result === 'win') return copas < 100 ? 10 : copas < 400 ? 8 : copas < 800 ? 7 : 6;
+  if (result === 'win') return (copas < 100 ? 10 : copas < 400 ? 8 : copas < 800 ? 7 : 6) + (PB.LONG_MODES.includes(mode) ? 2 : 0);
   // perder siempre quita algo (nunca se baja de 0)
   return copas < 30 ? -2 : copas < 100 ? -4 : copas < 400 ? -5 : copas < 800 ? -6 : -7;
 };
@@ -425,25 +430,28 @@ PB.Save = (() => {
     const me = r.me, id = me.def.id;
     // copas
     const before = copas(id);
-    const delta = PB.copasDelta(before, r.win ? 'win' : r.draw ? 'draw' : 'lose', r.mode === 'showdown' || r.mode === 'duo' ? r.rank || 10 : 0);
+    const delta = PB.copasDelta(before, r.win ? 'win' : r.draw ? 'draw' : 'lose', r.mode === 'showdown' || r.mode === 'duo' ? r.rank || 10 : 0, r.mode);
+    const k = PB.META.modeReward[r.mode] || 1;
     d.copas[id] = Math.max(0, before + delta);
     // fichas y cofres
     let tokens;
     if (r.mode === 'showdown' || r.mode === 'duo') tokens = [0, 50, 40, 40, 30, 30, 20, 20, 15, 10, 10][r.rank || 10] || 10;
     else tokens = r.win ? 40 : r.draw ? 25 : 15;
-    // las primeras victorias del día dan fichas dobles
-    const won = r.mode === 'showdown' || r.mode === 'duo' ? (r.rank || 10) <= 4 : r.win;
+    tokens = Math.max(5, Math.round(tokens * k));
+    // las primeras victorias del día dan fichas dobles (en Niebla, quedar entre los 3 primeros)
+    const won = r.mode === 'showdown' || r.mode === 'duo' ? (r.rank || 10) <= 3 : r.win;
     const today = new Date().toDateString();
     if (d.bonusDay !== today) { d.bonusDay = today; d.bonusLeft = PB.META.bonusWins; }
     let bonus = false;
     if (won && d.bonusLeft > 0) { d.bonusLeft--; tokens *= 2; bonus = true; }
     d.tokens += tokens;
     // monedas, Puntos Pokémon y Monedas Arcoíris de la partida
-    const MR = PB.META.matchReward[won ? 'win' : 'lose'];
+    const R0 = PB.META.matchReward[won ? 'win' : 'lose'];
+    const MR = { coins: Math.round(R0.coins * k), points: Math.round(R0.points * k), rainbow: Math.round((R0.rainbow || 0) * k) };
     d.coins += MR.coins;
     d.points += MR.points;
-    d.rainbow = (d.rainbow || 0) + (MR.rainbow || 0);
-    const passXp = won ? PB.META.pass.xpWin : PB.META.pass.xpLose;
+    d.rainbow = (d.rainbow || 0) + MR.rainbow;
+    const passXp = Math.round((won ? PB.META.pass.xpWin : PB.META.pass.xpLose) * k);
     const passBefore = pass().level;
     addPassXp(passXp);
     const passUp = pass().level > passBefore;

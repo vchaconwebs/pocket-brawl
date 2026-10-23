@@ -235,7 +235,7 @@ PB.MODES = {
     },
     result(g, me) {
       if (me.rank === 1 || g.winner === me.team) return { title: '¡PRIMER PUESTO!', cls: 'win' };
-      return { title: 'PUESTO #' + (me.rank || '?'), cls: me.rank <= 4 ? '' : 'lose' };
+      return { title: 'PUESTO #' + (me.rank || '?'), cls: me.rank <= 3 ? '' : 'lose' };
     },
   },
 

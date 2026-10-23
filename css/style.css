@@ -2012,3 +2012,31 @@ body.pad #help .pc, body.pad #help .mobile { display: none !important; }
 .pad-focus { outline: 5px solid #ffffff !important; outline-offset: 3px; box-shadow: 0 0 0 8px rgba(90, 168, 255, 0.55), 0 0 18px 8px rgba(255, 255, 255, 0.35) !important; position: relative; z-index: 2; animation: padPulse 1s ease-in-out infinite; }
 @keyframes padPulse { 50% { outline-color: #8ec2ff; } }
 body:not(.pad) .pad-focus { outline: none !important; box-shadow: none !important; }
+
+/* perfil de otro jugador */
+.prow.click { cursor: pointer; }
+.prow.click:hover { filter: brightness(1.12); }
+#pview { z-index: 62; }
+.pv-av { width: 56px; height: 56px; image-rendering: pixelated; background: #1a2242; border-radius: 10px; }
+.pv-who { flex: 1; min-width: 0; }
+.pv-who h2 { margin: 0; font-weight: 400; font-size: 26px; color: #ffe066; }
+.pv-who small { color: #a9b6d8; font-size: 13px; }
+.pv-who .on { color: #7dff8f; } .pv-who .off { color: #8a96b0; }
+.pv-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 4px 0 12px; }
+.pv-stats div { background: rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 6px 8px; text-align: center; }
+.pv-stats small { display: block; color: #a9b6d8; font-size: 12px; }
+.pv-stats b { font-weight: 400; font-size: 20px; color: #fff; }
+.pv-h { margin: 0 0 6px; font-weight: 400; font-size: 18px; color: #ffd84a; }
+.pv-best { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.pv-mon { display: flex; flex-direction: column; align-items: center; gap: 2px; background: rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 8px 4px; }
+.pv-mon.top { background: rgba(255, 210, 60, 0.16); box-shadow: inset 0 0 0 2px rgba(255, 210, 60, 0.5); }
+.pv-mon > img { width: 48px; height: 48px; image-rendering: pixelated; }
+.pv-mon b { font-weight: 400; font-size: 15px; color: #fff; text-align: center; }
+.pv-mon span { color: #ffe066; font-size: 15px; display: flex; align-items: center; gap: 3px; }
+.pv-mon .cup { width: 16px; height: 16px; }
+.pv-acts { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+@media (max-height: 500px) { .pv-av { width: 40px; height: 40px; } .pv-who h2 { font-size: 21px; } .pv-stats { margin-bottom: 6px; } .pv-stats div { padding: 3px 6px; } .pv-stats b { font-size: 16px; } .pv-mon { padding: 4px; flex-direction: row; justify-content: center; gap: 6px; } .pv-mon > img { width: 30px; height: 30px; } .pv-mon b { font-size: 13px; } .pv-h { font-size: 15px; margin-bottom: 4px; } .pv-best { margin-bottom: 8px; } }
+
+/* ranking por Pokémon: selector */
+.rk-pick { margin: 0 0 8px; }
+.rk-pick select { width: 100%; font: 15px system-ui, sans-serif; color: #f1f4fb; background: #11152a; border: 2px solid #33416a; border-radius: 10px; padding: 7px 10px; }

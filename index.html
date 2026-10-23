@@ -32,7 +32,7 @@
    "offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
   </script>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=101">
+  <link rel="stylesheet" href="css/style.css?v=105">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -173,6 +173,17 @@
       <div class="gc-log" id="gc-log"></div>
       <p class="gc-rules">Toca un nombre para añadirle o invitarle a jugar. Sé respetuoso y no compartas datos personales.</p>
       <div class="gc-in"><button class="gc-mic" id="gc-mic" title="Nota de voz (máx. 6 s)">🎤</button><button class="gc-x hidden" id="gc-cancel" title="Cancelar">✕</button><input id="gc-q" maxlength="120" autocomplete="off" enterkeyhint="send" placeholder="Escribe a todos…"><button class="act blue" id="gc-send">Enviar</button></div>
+    </div>
+  </div>
+
+  <!-- PERFIL DE OTRO JUGADOR -->
+  <div id="pview" class="patch hidden" role="dialog" aria-modal="true" aria-labelledby="pv-name">
+    <div class="panel patch-panel pv-panel">
+      <div class="patch-head"><img class="pv-av" id="pv-av" alt=""><div class="pv-who"><h2 id="pv-name"></h2><small id="pv-sub"></small></div><button class="fb-close" id="pv-close" aria-label="Cerrar">✕</button></div>
+      <div class="pv-stats" id="pv-stats"></div>
+      <h3 class="pv-h">Sus mejores Pokémon</h3>
+      <div class="pv-best" id="pv-best"></div>
+      <div class="pv-acts" id="pv-acts"></div>
     </div>
   </div>
 
@@ -381,6 +392,7 @@
       <div class="tabs" id="rk-tabs">
         <button data-tab="players" class="sel">Jugadores</button>
         <button data-tab="clans">Clanes</button>
+        <button data-tab="mons">Por Pokémon</button>
       </div>
       <div id="rk-list" class="plist"></div>
     </div>
@@ -473,32 +485,32 @@
     <p>Gira el móvil para jugar</p>
   </div>
 
-  <script src="js/sprite-data.js?v=101"></script>
-  <script src="js/data.js?v=101"></script>
-  <script src="js/news.js?v=101"></script>
-  <script src="js/roster-data.js?v=101"></script>
-  <script src="js/i18n-data.js?v=101"></script>
-  <script src="js/i18n-names.js?v=101"></script>
-  <script src="js/i18n.js?v=101"></script>
-  <script src="js/sprites.js?v=101"></script>
-  <script src="js/vfx.js?v=101"></script>
-  <script src="js/roster.js?v=101"></script>
-  <script src="js/pokeball.js?v=101"></script>
-  <script src="js/tiles.js?v=101"></script>
-  <script src="js/world.js?v=101"></script>
-  <script src="js/game.js?v=101"></script>
-  <script src="js/net.js?v=101"></script>
-  <script src="js/modes.js?v=101"></script>
-  <script src="js/ai.js?v=101"></script>
-  <script src="js/audio.js?v=101"></script>
-  <script src="js/render.js?v=101"></script>
-  <script src="js/input.js?v=101"></script>
-  <script src="js/settings.js?v=101"></script>
-  <script src="js/pixui.js?v=101"></script>
-  <script src="js/save.js?v=101"></script>
-  <script src="js/online.js?v=101"></script>
-  <script src="js/chat.js?v=101"></script>
-  <script src="js/lobby.js?v=101"></script>
-  <script src="js/main.js?v=101"></script>
+  <script src="js/sprite-data.js?v=105"></script>
+  <script src="js/data.js?v=105"></script>
+  <script src="js/news.js?v=105"></script>
+  <script src="js/roster-data.js?v=105"></script>
+  <script src="js/i18n-data.js?v=105"></script>
+  <script src="js/i18n-names.js?v=105"></script>
+  <script src="js/i18n.js?v=105"></script>
+  <script src="js/sprites.js?v=105"></script>
+  <script src="js/vfx.js?v=105"></script>
+  <script src="js/roster.js?v=105"></script>
+  <script src="js/pokeball.js?v=105"></script>
+  <script src="js/tiles.js?v=105"></script>
+  <script src="js/world.js?v=105"></script>
+  <script src="js/game.js?v=105"></script>
+  <script src="js/net.js?v=105"></script>
+  <script src="js/modes.js?v=105"></script>
+  <script src="js/ai.js?v=105"></script>
+  <script src="js/audio.js?v=105"></script>
+  <script src="js/render.js?v=105"></script>
+  <script src="js/input.js?v=105"></script>
+  <script src="js/settings.js?v=105"></script>
+  <script src="js/pixui.js?v=105"></script>
+  <script src="js/save.js?v=105"></script>
+  <script src="js/online.js?v=105"></script>
+  <script src="js/chat.js?v=105"></script>
+  <script src="js/lobby.js?v=105"></script>
+  <script src="js/main.js?v=105"></script>
 </body>
 </html>

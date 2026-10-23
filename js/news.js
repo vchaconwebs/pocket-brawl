@@ -1,9 +1,33 @@
 // Versión del juego y notas de parche. Al publicar una actualización con novedades:
 // sube PB.VERSION y añade su nota ARRIBA del todo en PB.PATCH_NOTES (la primera es la que se enseña).
 // Cada jugador la ve una sola vez al entrar a la lobby (se guarda en localStorage 'pb.seenVersion').
-PB.VERSION = '1.4';
+PB.VERSION = '1.5';
 
 PB.PATCH_NOTES = [
+  {
+    v: '1.5',
+    date: '23/10/2026',
+    es: {
+      title: 'Novedades de la versión 1.5',
+      items: [
+        ['🤝', 'Arreglado un fallo importante al jugar con amigos: a veces el jefe del grupo entraba solo y los demás se quedaban fuera esperando. Ahora, si vuestra conexión no deja conectar directo, la partida va por otro camino y entráis todos.'],
+        ['🏆', '¡Rankings por Pokémon! En el ranking, la pestaña «Por Pokémon» te deja elegir cualquier Pokémon y ver quién tiene más copas con él.'],
+        ['👤', 'Ver el perfil de los demás: toca a cualquier jugador en el ranking, en amigos, en tu clan o en el chat y verás sus estadísticas y sus mejores Pokémon. En tu perfil sale tu Pokémon con más copas.'],
+        ['🎮', 'Soporte de mando (Xbox, PlayStation…): ✕ ataque, ○ súper, sticks para moverte y apuntar, y las flechas para moverte por los menús.'],
+        ['⚖️', 'Premios más justos entre modos: Niebla Tóxica da menos copas y fichas (sus partidas son muy cortas) y los modos largos (Atrapa Pokéballs, Snorlax, Territorio y Duelo) dan más. Juega a lo que más te guste.'],
+      ],
+    },
+    en: {
+      title: "What's new in version 1.5",
+      items: [
+        ['🤝', 'Fixed an important bug when playing with friends: sometimes the group leader joined alone and the others were left waiting. Now, if your connection can’t link directly, the match goes another way and everyone gets in.'],
+        ['🏆', 'Rankings by Pokémon! In the ranking, the «By Pokémon» tab lets you pick any Pokémon and see who has the most trophies with it.'],
+        ['👤', 'See other players’ profiles: tap anyone in the ranking, friends, your clan or the chat to see their stats and best Pokémon. Your profile shows your Pokémon with the most trophies.'],
+        ['🎮', 'Controller support (Xbox, PlayStation…): ✕ attack, ○ super, sticks to move and aim, and the D-pad to move through menus.'],
+        ['⚖️', 'Fairer rewards between modes: Toxic Fog gives fewer trophies and tokens (its matches are very short) and the long modes (Catch Pokéballs, Snorlax, Territory and Team Duel) give more. Play what you enjoy most.'],
+      ],
+    },
+  },
   {
     v: '1.4',
     date: '23/10/2026',
