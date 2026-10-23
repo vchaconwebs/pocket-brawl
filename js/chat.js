@@ -9,6 +9,8 @@ PB.Chat = (() => {
   const hm = (t) => { const d = new Date(t || Date.now()); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); };
   // el creador del juego (Fl3xix) sale con su etiqueta
   const OWNER = 'ULFnTGBapaaIUhxmHKgCh9TIm6G3';
+  // ayudantes del creador (JuanmitaDinamita y Diosbombi): llevan su propio tag en el chat
+  const HELPERS = ['JEs9NfqgO6OYw7UKCyDSsqRnk0S2', 'A94AesIOIvTO6sPgxVXuLotD4em2'];
 
   // ------------------------------------------------------------ filtro
   // Insultos fuertes (es/en): se tapan con asteriscos. Se comparan sin tildes, sin letras
@@ -147,7 +149,7 @@ PB.Chat = (() => {
     const msgs = msgsOf(tab).filter((m) => !isMuted(m.uid));
     const p = PB.Online.party();
     log.innerHTML = msgs.map((m) => {
-      const own = m.uid === OWNER;
+      const own = m.uid === OWNER, helper = HELPERS.includes(m.uid);
       const inMine = p && p.members.some((x) => x.id === m.uid);
       let menu = '';
       if (menuFor === m.id) {
@@ -163,8 +165,8 @@ PB.Chat = (() => {
         if (admin && !m.mine && tab === 'global') menu += `<button data-ban="${esc(m.uid)}">⛔ ${PB.T('Bloquear')}</button>`;
         menu += '</div>';
       }
-      return `<div class="gc-m${m.mine ? ' mine' : ''}${own ? ' owner' : ''}"><img src="${portrait(m.av)}" alt="">` +
-        `<div class="gc-b"><button class="gc-n" data-id="${esc(m.id)}">${esc(m.name)}</button>${own ? '<span class="gc-tag">CREADOR</span>' : ''}<small>${hm(m.t)}</small>` +
+      return `<div class="gc-m${m.mine ? ' mine' : ''}${own ? ' owner' : ''}${helper ? ' helper' : ''}"><img src="${portrait(m.av)}" alt="">` +
+        `<div class="gc-b"><button class="gc-n" data-id="${esc(m.id)}">${esc(m.name)}</button>${own ? '<span class="gc-tag">CREADOR</span>' : helper ? '<span class="gc-tag helper">ESCLAVIZADOR</span>' : ''}<small>${hm(m.t)}</small>` +
         (m.au ? `<p><button class="gc-play" data-au="${esc(m.au)}">▶ 🎤 ${m.dur ? m.dur.toFixed(0) + ' s' : ''}</button></p>` : `<p>${esc(filter(m.text, 120) || '***')}</p>`) + `${menu}</div></div>`;
     }).join('') || `<p class="gc-empty">${PB.T(tab === 'party' ? 'Habla con los de tu grupo. Solo lo veis vosotros.' : 'Aún no hay mensajes. ¡Saluda!')}</p>`;
     const act = (sel, fn) => log.querySelectorAll(sel).forEach((b) => (b.onclick = async (e) => {
