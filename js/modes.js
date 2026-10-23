@@ -207,8 +207,10 @@ PB.MODES = {
     },
     botPlan(bot, info) {
       const g = bot.g, b = bot.b, gas = g.gas;
-      // fuera (o casi) de la niebla: volver hacia el centro
-      if (dist(b, gas) > gas.r - 110) return { goal: { x: gas.x + Math.cos(b.idx) * 80, y: gas.y + Math.sin(b.idx) * 80 }, retreat: !!info.foe && info.hpF < 0.5 };
+      // fuera (o casi) de la niebla: volver hacia dentro (el margen depende de lo grande que sea la zona:
+      // al final queda muy poca y si no, se creerían siempre fuera y no pelearían)
+      const edge = Math.min(110, gas.r * 0.35), off = Math.min(80, gas.r * 0.3);
+      if (dist(b, gas) > gas.r - edge) return { goal: { x: gas.x + Math.cos(b.idx) * off, y: gas.y + Math.sin(b.idx) * off }, retreat: !!info.foe && info.hpF < 0.5 };
       const r = retreatPlan(bot, info);
       if (r) return r;
       // caramelos sueltos cerca
@@ -221,6 +223,8 @@ PB.MODES = {
       // solo va a por otros si va bien de vida y no es más débil (al principio prefiere las cajas)
       const stronger = info.foe && b.power >= (info.foe.power || 0);
       if (info.foe && info.fd < 380 && info.hpF > 0.6 && stronger && (g.time > 60 || b.power >= 3)) return { goal: info.foe };
+      // al final (zona pequeña o quedan pocos) se pelea siempre con el que tenga cerca
+      if (info.foe && info.fd < 500 && (gas.r < 400 || g.brawlers.filter((o) => !o.dead).length <= 3)) return { goal: info.foe };
       // romper la caja más cercana
       const T = PB.TILE, W = g.world;
       let crate = null, crd = Infinity;
