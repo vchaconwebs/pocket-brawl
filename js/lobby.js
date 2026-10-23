@@ -2274,6 +2274,8 @@ PB.Lobby = (() => {
     };
     $('#update-go').onclick = () => { PB.Audio.play('ui'); location.reload(); };
     $('#btn-news').onclick = () => { PB.Audio.play('ui'); showPatchNotes(0); };
+    // botón de novedades en la lobby (las notas de parche de todas las versiones)
+    $('#btn-notes').onclick = () => { PB.Audio.play('ui'); showPatchNotes(0); };
     $('#pv-close').onclick = () => { PB.Audio.play('uiBack'); $('#pview').classList.add('hidden'); };
     // sobre el creador
     $('#btn-about').onclick = () => { PB.Audio.play('ui'); $('#about').classList.remove('hidden'); };
