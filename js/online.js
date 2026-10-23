@@ -1218,7 +1218,8 @@ PB.Online = (() => {
     await Promise.all(others.map(async (peer) => {
       const pc = new RTCPeerConnection({ iceServers: ICE });
       const ch = pc.createDataChannel('g', { ordered: true });
-      const opened = new Promise((res) => { ch.onopen = () => res(true); setTimeout(() => res(false), 15000); });
+      // (si en 9 s no se abre la conexión directa, se pasa al relevo)
+      const opened = new Promise((res) => { ch.onopen = () => res(true); setTimeout(() => res(false), 9000); });
       await pc.setLocalDescription(await pc.createOffer());
       await waitIce(pc);
       await sig.child(peer + '/' + uid).set({ offer: JSON.stringify(pc.localDescription) });

@@ -738,8 +738,9 @@
       return startMatch();
     }
     if (j.role === 'client') {
-      // si el anfitrión no empieza en unos segundos, partida con bots
-      setTimeout(() => { if (net && net.role === 'client' && !net.client) { endNet(); PB.Lobby.toast(PB.T('No se ha podido conectar. Juegas con bots.')); startMatch(); } }, 15000);
+      // si el anfitrión no empieza, partida con bots. Hay que esperar bastante: si no se puede conectar directo
+      // (misma wifi en clase, redes que lo bloquean...) el anfitrión tarda unos segundos en pasar al relevo
+      setTimeout(() => { if (net && net.role === 'client' && !net.client) { endNet(); PB.Lobby.toast(PB.T('No se ha podido conectar. Juegas con bots.')); startMatch(); } }, 50000);
     }
     startNetMatch(j);
   }
