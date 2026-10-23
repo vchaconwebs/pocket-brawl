@@ -702,4 +702,6 @@ PB.I18N = {
   'El audio es demasiado largo.': ['The audio is too long.', 'O áudio é muito longo.', 'L’audio est trop long.', 'L’audio è troppo lungo.', 'Das Audio ist zu lang.'],
   'Solo': ['Solo', 'Solo', 'Solo', 'Solo', 'Solo'],
   'Dúo': ['Duo', 'Dupla', 'Duo', 'Duo', 'Duo'],
+  '🎮 Mando conectado': ['🎮 Controller connected', '🎮 Controle conectado', '🎮 Manette connectée', '🎮 Controller collegato', '🎮 Controller verbunden'],
+  'Mando: stick izquierdo moverte · stick derecho apuntar · RT o A atacar · LT o X súper · Start pausa': ['Controller: left stick move · right stick aim · RT or A attack · LT or X super · Start pause', 'Controle: analógico esquerdo mover · direito mirar · RT ou A atacar · LT ou X super · Start pausa', 'Manette : stick gauche bouger · stick droit viser · RT ou A attaquer · LT ou X super · Start pause', 'Controller: stick sinistro muoviti · destro mira · RT o A attacca · LT o X super · Start pausa', 'Controller: linker Stick bewegen · rechter Stick zielen · RT oder A angreifen · LT oder X Super · Start Pause'],
 };

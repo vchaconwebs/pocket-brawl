@@ -9,6 +9,10 @@ PB.Input = class {
     this.touch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     this.sticks = { move: null, attack: null, super: null };
     this.enabled = false;
+    // mando: botones del fotograma anterior (para saber cuándo se acaba de pulsar uno)
+    this.padPrev = [];
+    this.padOn = false;
+    window.addEventListener('gamepadconnected', () => { if (PB.Lobby && PB.Lobby.toast) PB.Lobby.toast(PB.T('🎮 Mando conectado')); });
 
     window.addEventListener('keydown', (e) => {
       if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return; // escribiendo en el chat
@@ -159,8 +163,52 @@ PB.Input = class {
     return { x: d ? dx / d : 0, y: d ? dy / d : 0, len: Math.min(1, d / r) };
   }
 
+  // Mando (distribución estándar de Xbox / PlayStation):
+  //   stick izquierdo o cruceta: moverse · stick derecho: apuntar
+  //   RT, RB o A: atacar (mantener = seguido) · LT, LB o X: súper · Start: pausa
+  //   En los menús: A = jugar / volver a jugar / aceptar · B = atrás
+  pollPad() {
+    const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter((g) => g && g.connected) : [];
+    const gp = pads[0];
+    if (!gp) { this.pad = null; return null; }
+    const now = gp.buttons.map((b) => !!(b && (b.pressed || b.value > 0.5)));
+    const prev = this.padPrev;
+    this.padPrev = now;
+    const down = (i) => now[i] && !prev[i];
+    const dz = (x, y) => {
+      const l = Math.hypot(x, y);
+      return l < 0.22 ? { x: 0, y: 0, len: 0 } : { x: x / l, y: y / l, len: Math.min(1, (l - 0.22) / 0.78) };
+    };
+    const L = dz(gp.axes[0] || 0, gp.axes[1] || 0), R = dz(gp.axes[2] || 0, gp.axes[3] || 0);
+    const dx = (now[15] ? 1 : 0) - (now[14] ? 1 : 0), dy = (now[13] ? 1 : 0) - (now[12] ? 1 : 0);
+    if (now.some(Boolean) || L.len || R.len) {
+      // en cuanto se usa el mando, fuera los joysticks táctiles y la ayuda del mando
+      this.padOn = true;
+      this.touch = false;
+      document.body.classList.add('pad');
+    }
+    this.pad = { L, R, dx, dy, now, down, gp };
+    this.padMenus();
+    return this.pad;
+  }
+
+  // Botones del mando en los menús (solo lo básico: jugar, volver a jugar, pausa y atrás)
+  padMenus() {
+    const P = this.pad, vis = (s) => { const e = document.querySelector(s); return e && !e.classList.contains('hidden'); };
+    const click = (s) => { const e = document.querySelector(s); if (e && !e.disabled) e.click(); };
+    const A = P.down(0), B = P.down(1), start = P.down(9);
+    if (!A && !B && !start) return;
+    if (vis('#patch')) { if (A || B || start) click('#patch-ok'); return; }
+    if (vis('#end')) { if (A) click('#again'); else if (B) click('#back'); return; }
+    if (vis('#pause')) { if (A || B || start) click('#pz-resume'); return; }
+    if (this.enabled && start) { click('#btn-pause'); return; }
+    if (PB.Lobby && PB.Lobby.current === 'lobby' && vis('#lobby') && (A || start) && !document.querySelector('.patch:not(.hidden), #gchat:not(.hidden)')) click('#play');
+    else if (B && PB.Lobby && PB.Lobby.current !== 'lobby' && !this.enabled) { const back = document.querySelector('.screen:not(.hidden) .back'); if (back) back.click(); }
+  }
+
   // Devuelve el input del jugador y lo necesario para dibujar el apuntado.
   read(game, renderer) {
+    const pad = this.pollPad();
     const me = game.player;
     const out = { input: { mx: 0, my: 0, attack: null, super: null }, aim: null };
     if (!me || !this.enabled) {
@@ -211,12 +259,27 @@ PB.Input = class {
     if (this.pending.attack) inp.attack = fromFrac(this.pending.attack, false);
     if (this.pending.super) inp.super = fromFrac(this.pending.super, true);
     this.pending = { attack: null, super: null };
+    // mando
+    const usePad = !!(pad && this.padOn);
+    if (usePad) {
+      const { L, R, dx, dy, now, down } = pad;
+      if (L.len) { inp.mx = L.x * Math.min(1, L.len * 1.3); inp.my = L.y * Math.min(1, L.len * 1.3); }
+      else if (dx || dy) { const l = Math.hypot(dx, dy); inp.mx = dx / l; inp.my = dy / l; }
+      const superHeld = now[6] || now[4] || now[2];
+      // apuntado con el stick derecho; sin tocarlo, al rival más cercano (o hacia donde mira)
+      const aimOf = (isSuper) => (R.len ? { dx: R.x, dy: R.y, dist: rangeOf(isSuper) * Math.max(0.3, R.len) } : PB.Settings.get('autoAim') ? { auto: true } : { facing: true });
+      if (R.len) out.aim = { isSuper: superHeld && me.superCharge >= 1, ang: Math.atan2(R.y, R.x), dist: rangeOf(superHeld) * Math.max(0.3, R.len), strong: true };
+      const atkBtn = [7, 5, 0];
+      if (atkBtn.some((i) => down(i))) inp.attack = aimOf(false);
+      else if (atkBtn.some((i) => now[i])) inp.attack = Object.assign({ held: true }, aimOf(false));
+      if ([6, 4, 2].some((i) => down(i))) inp.super = aimOf(true);
+    }
     // vista girada (equipo rojo): arriba en pantalla es abajo en el mapa
     // (el ratón ya se pasa al mapa con la vista girada; los joysticks y el teclado, no)
     if (renderer.flip) {
       inp.mx = -inp.mx;
       inp.my = -inp.my;
-      if (this.touch) {
+      if (this.touch || usePad) {
         for (const k of ['attack', 'super']) if (inp[k] && inp[k].dx !== undefined) inp[k] = Object.assign({}, inp[k], { dx: -inp[k].dx, dy: -inp[k].dy });
         if (out.aim && !out.aim.cancel) out.aim.ang += Math.PI;
       }

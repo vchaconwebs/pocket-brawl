@@ -61,5 +61,9 @@ PB.safe = () => {
 
 // Vibración respetando el ajuste
 PB.vibrate = (ms) => {
-  if (PB.Settings.get('vibration') && navigator.vibrate) navigator.vibrate(ms);
+  if (!PB.Settings.get('vibration')) return;
+  if (navigator.vibrate) navigator.vibrate(ms);
+  // mando con vibración
+  const gp = navigator.getGamepads ? [...navigator.getGamepads()].find((g) => g && g.connected && g.vibrationActuator) : null;
+  if (gp) gp.vibrationActuator.playEffect('dual-rumble', { duration: Math.min(400, ms * 2), strongMagnitude: 0.6, weakMagnitude: 0.4 }).catch(() => {});
 };

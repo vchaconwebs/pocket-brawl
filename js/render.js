@@ -1398,7 +1398,7 @@ PB.Renderer = class {
   }
 
   drawDesktopSuper(me, game) {
-    this.superButton(this.cw - 72, this.ch - 72, 44, me.superCharge, game.clock, 'E');
+    this.superButton(this.cw - 72, this.ch - 72, 44, me.superCharge, game.clock, document.body.classList.contains('pad') ? 'LT' : 'E');
   }
 
   // Botón de súper pixel: anillo con 16 casillas que se van encendiendo y un rayo en el centro
