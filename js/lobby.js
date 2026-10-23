@@ -1247,22 +1247,32 @@ PB.Lobby = (() => {
       const top = list.slice(0, 50);
       box.innerHTML = top.map((p) => prow({ ...p, sub: p.clanName || 'Sin clan' })).join('') + (mine && (mine.pos === '50+' || mine.pos > 50) ? '<p class="sep">…</p>' + prow({ ...mine, sub: 'Tú' }) : '');
     } else if (rkTab === 'mons') {
-      // elige un Pokémon (o «el mejor de cada jugador») y sale quién tiene más copas con él
-      const opts = PB.BRAWLERS.slice().sort((a, b) => a.name.localeCompare(b.name));
-      const pickHtml = `<div class="rk-pick"><select id="rk-mon"><option value="">${PB.T('Mejor Pokémon de cada jugador')}</option>` +
-        opts.map((b) => `<option value="${b.id}"${b.id === rkMon ? ' selected' : ''}>${b.name}</option>`).join('') + '</select></div>';
-      const empty = `<p class="empty">${PB.T('Aún no hay datos. Juega partidas para salir aquí.')}</p>`;
-      let rows;
-      if (!rkMon) {
-        const list = (await PB.Online.topByPokemon()).filter((p) => p.best.length);
-        rows = list.map((p) => { const b = PB.brawlerById(p.best[0].id); return prow({ ...p, copas: p.best[0].c, avatar: portrait(b), sub: b.name + ' · ' + p.name }); }).join('');
-      } else {
-        const b = PB.brawlerById(rkMon);
-        const list = await PB.Online.topForPokemon(rkMon);
-        rows = list.map((p) => prow({ ...p, copas: p.c, avatar: portrait(b), sub: p.clanName || PB.T('Sin clan') })).join('');
-      }
-      box.innerHTML = pickHtml + (rows || empty);
-      $('#rk-mon').onchange = (e) => { rkMon = e.target.value; PB.Audio.play('ui'); showRanking('mons'); };
+      // ranking de un Pokémon: se busca por su nombre (por defecto, el tuyo)
+      if (!PB.brawlerById(rkMon)) rkMon = PB.Save.get().selected || PB.BRAWLERS[0].id;
+      const b = PB.brawlerById(rkMon);
+      box.innerHTML = `<div class="rk-pick"><img src="${portrait(b)}" alt=""><b>${b.name}</b>` +
+        `<input id="rk-q" type="search" autocomplete="off" placeholder="${PB.T('Busca un Pokémon…')}"></div><div class="rk-sug hidden" id="rk-sug"></div><div id="rk-rows"><p class="empty">${PB.T('Cargando…')}</p></div>`;
+      const norm = (t) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const q = $('#rk-q'), sug = $('#rk-sug');
+      q.oninput = () => {
+        const t = norm(q.value.trim());
+        if (!t) { sug.classList.add('hidden'); return; }
+        // también por el nombre de sus evoluciones (Charizard -> la familia de Charmander)
+        const hits = [];
+        for (const x of PB.BRAWLERS) {
+          const names = [x.name].concat([].concat(...(x.alts || [x.line])).map((d) => (PB.DEX[d] || {}).name).filter(Boolean));
+          const m = names.map((n) => [n, norm(n).indexOf(t)]).filter(([, k]) => k >= 0).sort((a2, b2) => a2[1] - b2[1])[0];
+          if (m) hits.push({ x, name: m[0], k: m[1] });
+        }
+        hits.sort((a2, b2) => a2.k - b2.k || a2.name.localeCompare(b2.name));
+        sug.innerHTML = hits.slice(0, 12).map(({ x, name }) => `<button data-mon="${x.id}"><img src="${portrait(x)}" alt="">${name}${name !== x.name ? ` <small>(${x.name})</small>` : ''}</button>`).join('') || `<p class="empty">${PB.T('No hay ningún Pokémon con ese nombre.')}</p>`;
+        sug.classList.remove('hidden');
+        sug.querySelectorAll('[data-mon]').forEach((e) => (e.onclick = () => { rkMon = e.dataset.mon; PB.Audio.play('ui'); showRanking('mons'); }));
+      };
+      q.onkeydown = (e) => { if (e.key === 'Enter') { const f = sug.querySelector('[data-mon]'); if (f) f.click(); } };
+      const list = await PB.Online.topForPokemon(rkMon);
+      const rows = $('#rk-rows');
+      if (rows) rows.innerHTML = list.map((p) => prow({ ...p, copas: p.c, avatar: portrait(b), sub: p.clanName || PB.T('Sin clan') })).join('') || `<p class="empty">${PB.T('Nadie tiene copas con este Pokémon todavía. ¡Sé el primero!')}</p>`;
     } else {
       const list = await PB.Online.topClans();
       const my = await PB.Online.myClan();

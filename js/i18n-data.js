@@ -713,4 +713,7 @@ PB.I18N = {
   'Este jugador juega como invitado y no tiene perfil público.': ['This player is a guest and has no public profile.', 'Este jogador joga como convidado e não tem perfil público.', 'Ce joueur est invité et n’a pas de profil public.', 'Questo giocatore è ospite e non ha un profilo pubblico.', 'Dieser Spieler ist Gast und hat kein öffentliches Profil.'],
   'En línea': ['Online', 'Online', 'En ligne', 'Online', 'Online'],
   'Mejor Pokémon de cada jugador': ['Best Pokémon of each player', 'Melhor Pokémon de cada jogador', 'Meilleur Pokémon de chaque joueur', 'Miglior Pokémon di ogni giocatore', 'Bestes Pokémon jedes Spielers'],
+  'Busca un Pokémon…': ['Search a Pokémon…', 'Busque um Pokémon…', 'Cherche un Pokémon…', 'Cerca un Pokémon…', 'Pokémon suchen…'],
+  'No hay ningún Pokémon con ese nombre.': ['No Pokémon with that name.', 'Nenhum Pokémon com esse nome.', 'Aucun Pokémon avec ce nom.', 'Nessun Pokémon con quel nome.', 'Kein Pokémon mit diesem Namen.'],
+  'Nadie tiene copas con este Pokémon todavía. ¡Sé el primero!': ['Nobody has trophies with this Pokémon yet. Be the first!', 'Ninguém tem troféus com este Pokémon ainda. Seja o primeiro!', 'Personne n’a encore de trophées avec ce Pokémon. Sois le premier !', 'Nessuno ha ancora trofei con questo Pokémon. Sii il primo!', 'Noch niemand hat Pokale mit diesem Pokémon. Sei der Erste!'],
 };

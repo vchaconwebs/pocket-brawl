@@ -2037,6 +2037,14 @@ body:not(.pad) .pad-focus { outline: none !important; box-shadow: none !importan
 .pv-acts { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 @media (max-height: 500px) { .pv-av { width: 40px; height: 40px; } .pv-who h2 { font-size: 21px; } .pv-stats { margin-bottom: 6px; } .pv-stats div { padding: 3px 6px; } .pv-stats b { font-size: 16px; } .pv-mon { padding: 4px; flex-direction: row; justify-content: center; gap: 6px; } .pv-mon > img { width: 30px; height: 30px; } .pv-mon b { font-size: 13px; } .pv-h { font-size: 15px; margin-bottom: 4px; } .pv-best { margin-bottom: 8px; } }
 
-/* ranking por Pokémon: selector */
-.rk-pick { margin: 0 0 8px; }
-.rk-pick select { width: 100%; font: 15px system-ui, sans-serif; color: #f1f4fb; background: #11152a; border: 2px solid #33416a; border-radius: 10px; padding: 7px 10px; }
+/* ranking por Pokémon: el Pokémon elegido y el buscador */
+.rk-pick { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+.rk-pick > img { width: 40px; height: 40px; image-rendering: pixelated; background: #1a2242; border-radius: 8px; }
+.rk-pick b { font-weight: 400; font-size: 20px; color: #ffe066; white-space: nowrap; }
+.rk-pick input { flex: 1; min-width: 0; font: 15px system-ui, sans-serif; color: #f1f4fb; background: #11152a; border: 2px solid #33416a; border-radius: 10px; padding: 7px 10px; }
+.rk-pick input:focus { outline: none; border-color: #ffd84a; }
+.rk-sug { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; margin-bottom: 10px; }
+.rk-sug button { display: flex; align-items: center; gap: 6px; font: inherit; font-size: 15px; padding: 4px 8px; border-radius: 10px; border: 2px solid #33416a; background: #1a2242; color: #fff; cursor: pointer; text-align: left; }
+.rk-sug button:hover { border-color: #ffd84a; }
+.rk-sug img { width: 30px; height: 30px; image-rendering: pixelated; }
+.rk-sug small { color: #8a96b0; font-size: 12px; }
