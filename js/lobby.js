@@ -1836,6 +1836,38 @@ PB.Lobby = (() => {
     if (ios) show();
   }
 
+  // Para qué sirve cada moneda: al pasar el ratón por encima o al tocarla sale una explicación
+  function moneyTips() {
+    const TIPS = {
+      coins: 'Monedas: para subir de nivel a tus Pokémon (más vida y más daño). Se ganan jugando, con las misiones y en los cofres.',
+      points: 'Puntos Pokémon: para desbloquear el Pokémon que tú quieras. Se ganan jugando, con las misiones y en los cofres.',
+      rainbow: 'Monedas Arcoíris: para comprar skins shiny. Salen en los cofres Super Ball y Ultra Ball.',
+    };
+    let tip = null, hideT = 0;
+    const hide = () => { if (tip) { tip.remove(); tip = null; } clearTimeout(hideT); };
+    const showTip = (pill, key) => {
+      hide();
+      tip = document.createElement('div');
+      tip.className = 'money-tip';
+      tip.textContent = PB.T(TIPS[key]);
+      document.body.appendChild(tip);
+      const r = pill.getBoundingClientRect(), w = tip.offsetWidth;
+      tip.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
+      tip.style.top = r.bottom + 8 + 'px';
+      hideT = setTimeout(hide, 4500);
+    };
+    for (const key of Object.keys(TIPS)) {
+      const pill = $('#' + key) && $('#' + key).closest('.pill');
+      if (!pill) continue;
+      pill.removeAttribute('title');
+      pill.style.cursor = 'help';
+      pill.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') showTip(pill, key); });
+      pill.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') hide(); });
+      pill.addEventListener('click', (e) => { e.stopPropagation(); if (tip && tip.dataset.k === key) hide(); else { showTip(pill, key); tip.dataset.k = key; } });
+    }
+    document.addEventListener('click', hide);
+  }
+
   function init(a) {
     api = a;
     PB.Save.load();
@@ -1919,6 +1951,7 @@ PB.Lobby = (() => {
     if (sala) PB.Online.joinByCode(sala).then((r) => { if (r.error) toast(r.error); history.replaceState(null, '', location.pathname); });
     $('#ps-all').onclick = claimAllPass;
     fillIcons();
+    moneyTips();
     // la Pokéball como imagen para el CSS (cabeceras, botón de jugar, tarjetas)
     document.documentElement.style.setProperty('--ico-ball', 'url("' + ballIcon('poke', 2) + '")');
     document.documentElement.style.setProperty('--ico-ball-great', 'url("' + ballIcon('great', 2) + '")');
