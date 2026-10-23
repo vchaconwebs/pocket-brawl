@@ -802,7 +802,11 @@
         case 'ko':
           // los K.O. ya salen en el registro de arriba a la derecha: aquí solo suena
           if (ev.killer === me) PB.Audio.play('ko', { mine: true });
-          else if (ev.b === me) PB.Audio.play('ko', { me: true });
+          else if (ev.b === me) {
+            PB.Audio.play('ko', { me: true });
+            // en red, al quedar eliminado se sigue mirando hasta que acabe (el resultado sale al final)
+            if (game.online && game.mode.ffa && me.out) renderer.announce(PB.T('¡Eliminado!'), '#ff8080', PB.T('Puesto #{n} · mira cómo acaba la partida', { n: me.rank || '?' }), 2.6);
+          }
           else if (near(ev.b)) PB.Audio.play('ko');
           break;
         case 'evolve':

@@ -570,6 +570,8 @@ PB.I18N = {
   '3 contra 3 a lo bestia durante dos minutos y medio: cada rival debilitado es un punto y gana el equipo con más K.O.': ['All-out 3v3 for two and a half minutes: every knockout is a point and the team with the most KOs wins.', '3 contra 3 sem trégua por dois minutos e meio: cada rival derrotado é um ponto e vence o time com mais K.O.', 'Un 3 contre 3 sans pitié pendant deux minutes et demie : chaque K.O. rapporte un point et l’équipe avec le plus de K.O. gagne.', '3 contro 3 senza tregua per due minuti e mezzo: ogni K.O. è un punto e vince la squadra con più K.O.', '3 gegen 3 ohne Gnade, zweieinhalb Minuten lang: jeder K.O. ist ein Punkt, das Team mit den meisten K.O. gewinnt.'],
   '¡K.O. DE ORO!': ['GOLDEN KO!', 'K.O. DE OURO!', 'K.O. EN OR !', 'K.O. D’ORO!', 'GOLDENER K.O.!'],
   'El próximo K.O. gana': ['Next KO wins', 'O próximo K.O. vence', 'Le prochain K.O. gagne', 'Il prossimo K.O. vince', 'Der nächste K.O. gewinnt'],
+  '¡Eliminado!': ['Eliminated!', 'Eliminado!', 'Éliminé !', 'Eliminato!', 'Ausgeschieden!'],
+  'Puesto #{n} · mira cómo acaba la partida': ['Place #{n} · watch how the match ends', 'Posição #{n} · veja como a partida termina', 'Place n°{n} · regarde la fin de la partie', 'Posto #{n} · guarda come finisce la partita', 'Platz #{n} · schau dir das Ende an'],
   'Súper cancelado': ['Super cancelled', 'Super cancelado', 'Super annulé', 'Super annullato', 'Super abgebrochen'],
   'Quedan {n}': ['{n} left', 'Restam {n}', 'Restants : {n}', 'Restano {n}', 'Noch {n}'],
   'Tu equipo': ['Your team', 'Sua equipe', 'Ton équipe', 'La tua squadra', 'Dein Team'],

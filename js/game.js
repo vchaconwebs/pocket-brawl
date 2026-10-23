@@ -14,6 +14,8 @@ PB.Game = class {
     this.mapIdx = Math.max(0, Math.min(maps.length - 1, opts.mapIdx | 0));
     const map = maps[this.mapIdx];
     this.mapName = map.name || '';
+    // partida en red (con otras personas): que te eliminen no acaba la partida de los demás
+    this.online = !!opts.humans;
     this.world = new PB.World(map.quad ? PB.buildQuadMap(map.quad) : PB.buildMap(map.top));
     this.world.theme = map.theme || ''; // otono, nieve, arena (cambia suelo, árboles, rocas e hierba)
     this.rules = Object.assign({}, PB.RULES, this.mode.rules || {});

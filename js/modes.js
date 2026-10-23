@@ -203,7 +203,7 @@ PB.MODES = {
       b.out = true;
       b.rank = g.brawlers.filter((o) => !o.dead).length + 1;
       g.dropCandy(b.x, b.y, Math.max(1, b.power));
-      if (b.isPlayer && !g.winner) g.end('out');
+      if (b.isPlayer && !g.winner && !g.online) g.end('out');
     },
     botPlan(bot, info) {
       const g = bot.g, b = bot.b, gas = g.gas;
@@ -580,7 +580,7 @@ PB.MODES.duo = Object.assign({}, PB.MODES.showdown, {
     if (mates.every((o) => o.dead)) {
       const left = new Set(g.brawlers.filter((o) => !o.dead).map((o) => o.team)).size;
       for (const o of mates) o.rank = left + 1;
-      if (mates.some((o) => o.isPlayer) && !g.winner) g.end('out');
+      if (mates.some((o) => o.isPlayer) && !g.winner && !g.online) g.end('out');
     }
   },
   botPlan(bot, info) {
