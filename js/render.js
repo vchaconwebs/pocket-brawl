@@ -1,4 +1,12 @@
 // Dibujado en Canvas 2D.
+// Red de seguridad: un efecto que pida un círculo de radio negativo (un fotograma tarde en red, por ejemplo)
+// se dibuja con radio 0 en vez de lanzar un error y cortar el fotograma
+(() => {
+  const P = CanvasRenderingContext2D.prototype, arc = P.arc, ell = P.ellipse;
+  P.arc = function (x, y, r, a0, a1, ccw) { return arc.call(this, x, y, r > 0 ? r : 0, a0, a1, ccw); };
+  P.ellipse = function (x, y, rx, ry, rot, a0, a1, ccw) { return ell.call(this, x, y, rx > 0 ? rx : 0, ry > 0 ? ry : 0, rot, a0, a1, ccw); };
+})();
+
 PB.Renderer = class {
   constructor(canvas) {
     this.cv = canvas;
@@ -781,7 +789,7 @@ PB.Renderer = class {
   drawPuddle(z, t, team) {
     const ctx = this.ctx;
     const T = PB.VFX.PAL[z.atk.type] ? z.atk.type : 'poison', P = PB.VFX.PAL[T];
-    const k = Math.min(1, (z.life - z.t) * 6, z.t * 2), r = z.r * (0.5 + 0.5 * k);
+    const k = Math.max(0, Math.min(1, (z.life - z.t) * 6, z.t * 2)), r = z.r * (0.5 + 0.5 * k); // (en el otro jugador puede llegar un fotograma tarde)
     ctx.fillStyle = this.hexA(P[1], 0.55 * k);
     ctx.beginPath();
     ctx.ellipse(z.x, z.y, r, r * 0.7, 0, 0, Math.PI * 2);

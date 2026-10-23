@@ -204,6 +204,23 @@ PB.Online = (() => {
     if (ready) await ready;
     return !!uid;
   }
+  // Regalos del creador: si hay uno para mí, se borra (para no cobrarlo dos veces) y se dan los premios
+  async function claimGifts() {
+    const ref = fs.collection('gifts').doc(uid);
+    const s = await ref.get();
+    if (!s.exists) return;
+    const g = s.data();
+    await ref.delete();
+    const got = PB.Save.applyGift(Array.isArray(g.items) ? g.items.slice(0, 20) : []);
+    if (got.length) emit('gift', { items: got, msg: clean(g.msg || '', 120) });
+  }
+  // (solo el creador) mandar un regalo a un jugador: items = [{ kind: 'pokemon', id } | { kind: 'coins'|'points'|'rainbow', n }]
+  async function sendGift(toUid, items, msg) {
+    if (!(await start())) return err('Sin conexión.');
+    await fs.collection('gifts').doc(String(toUid)).set({ items, msg: msg || '', t: Date.now() });
+    return { ok: true };
+  }
+
   // con sesión: presencia, invitaciones y perfil
   function setup(u) {
     user = u;
@@ -213,6 +230,7 @@ PB.Online = (() => {
       listenInvites();
       await syncProfile(true).catch(() => {});
       processAccepted().catch(() => {});
+      claimGifts().catch(() => {});
       emit('ready');
     })();
     return ready;
@@ -1415,7 +1433,7 @@ PB.Online = (() => {
     party: () => party, createParty, invite, joinByCode, setReady, updateMe, kick, leaveParty,
     voteRematch, cancelRematch, rematchGo, rematchLeft,
     friends, requests, searchPlayers, addFriend, answerRequest, removeFriend,
-    findMatch, cancelMatch, joinMatch, migrate, clanAction,
+    findMatch, cancelMatch, joinMatch, migrate, clanAction, sendGift,
     get searching() { return !!search; },
     countMatch, setPlaying, setSearching, sendFeedback, reportPlayer,
     get live() { return live; },

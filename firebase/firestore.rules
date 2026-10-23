@@ -19,6 +19,12 @@ service cloud.firestore {
       }
     }
 
+    // Regalos del creador (Fl3xix): solo él los escribe; cada jugador lee y borra el suyo al recogerlo
+    match /gifts/{uid} {
+      allow read, delete: if signed() && me() == uid;
+      allow create, update: if signed() && me() == 'ULFnTGBapaaIUhxmHKgCh9TIm6G3';
+    }
+
     // Nombres únicos: el documento es el nombre en minúsculas; nadie puede quitarle el suyo a otro
     match /names/{key} {
       allow read: if signed();

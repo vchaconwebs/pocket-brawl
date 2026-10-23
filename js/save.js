@@ -509,6 +509,21 @@ PB.Save = (() => {
     return res;
   }
 
+  // Regalo del creador: Pokémon (si no lo tiene) y monedas. Devuelve lo que se ha dado de verdad.
+  function applyGift(items) {
+    const d = get(), got = [];
+    for (const it of items) {
+      if (!it) continue;
+      if (it.kind === 'pokemon' && PB.brawlerById(it.id) && !owned(it.id)) { d.owned[it.id] = 1; got.push({ kind: 'pokemon', id: it.id }); }
+      const n = Math.max(0, Math.min(100000, it.n | 0));
+      if (it.kind === 'coins' && n) { d.coins += n; got.push({ kind: 'coins', n }); }
+      if (it.kind === 'points' && n) { d.points += n; got.push({ kind: 'points', n }); }
+      if (it.kind === 'rainbow' && n) { d.rainbow = (d.rainbow || 0) + n; got.push({ kind: 'rainbow', n }); }
+    }
+    if (got.length) persist();
+    return got;
+  }
+
   // ---------------------------------------------------------------- Zona Safari
   const SAFARI_REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Teselia', 'Kalos', 'Alola', 'Galar', 'Paldea'];
   function safariRegions() {
@@ -766,6 +781,6 @@ PB.Save = (() => {
     load, get, persist, setName, owned, level, copas, totalCopas, select, upgradeCost, upgrade, unlockCost, unlock, spendCoins,
     pass, claimPass, claimPassExtra,
     needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, isFav, toggleFav, regionSkins, hasRegion, buyRegion, branch, lineOf, setBranch, kit, setKit, kitOwned, buyKit, kitCost,
-    importJSON, openChest, nextChest, safariRegions, safariReady, openSafari, applyMatch, applyAbandon, abandonWait, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
+    importJSON, applyGift, openChest, nextChest, safariRegions, safariReady, openSafari, applyMatch, applyAbandon, abandonWait, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
   };
 })();

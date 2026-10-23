@@ -2217,6 +2217,13 @@ PB.Lobby = (() => {
       setWelcomed();
       show('lobby');
     };
+    // regalo del creador: aviso con lo que ha llegado
+    PB.Online.on('gift', ({ items, msg }) => {
+      const names = items.map((it) => (it.kind === 'pokemon' ? PB.brawlerById(it.id).name : '+' + it.n + ' ' + PB.T({ coins: 'monedas', points: 'Puntos Pokémon', rainbow: 'Monedas Arcoíris' }[it.kind])));
+      PB.Audio.play('win');
+      refreshLobby();
+      modal('🎁 ' + PB.T('¡Regalo del creador! Has recibido: {list}', { list: names.join(', ') }) + (msg ? '\n\n«' + msg + '»' : ''));
+    });
     // con sesión de Google o correo ya abierta, directo a la lobby
     PB.Online.on('auth', (a) => {
       const acct = !!(a && !a.anonymous);
