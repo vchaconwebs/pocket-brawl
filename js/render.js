@@ -174,7 +174,8 @@ PB.Renderer = class {
     for (const tu of game.turrets) this.up(tu.x, tu.y, () => this.drawTurret(tu, t));
 
     // indicador de apuntado (debajo de los personajes)
-    if (view.aim && !view.aim.cancel && focus && !focus.dead && game.started) this.drawAim(focus, view.aim);
+    // (solo si el que se ve es tu Pokémon: espectando a otro no se dibuja tu apuntado)
+    if (view.aim && !view.aim.cancel && focus && focus === view.player && !focus.dead && game.started) this.drawAim(focus, view.aim);
 
     // objetos ordenados por Y
     const items = [];
@@ -1823,6 +1824,7 @@ PB.Renderer = class {
     if (b.action) { anim = b.action.anim; len = b.action.len; at = b.action.t; }
     const mega = b.megaT > 0 && !spawning;
     if (mega && !ghostPass) this.megaAura(b, t, true);
+    if (b.shiny && !spawning && !ghostPass && b.stealthT <= 0) this.shinyTrail(b, t);
     const sc = mega && !b.megaSkin ? 2.2 : 2; // sin sprite de mega: un poco más grande
     if (mega && !b.evoT && b.stealthT <= 0) {
       // contorno brillante: la silueta en rosa y dorado, latiendo
@@ -1967,6 +1969,37 @@ PB.Renderer = class {
       const a = t * 3 + b.idx;
       PB.VFX.draw(ctx, 'star', 'electric', b.x + Math.cos(a) * 30, b.y - 30 + Math.sin(a * 1.3) * 20, { scale: 0.6, frame: Math.floor(t * 8) });
     }
+  }
+
+  // Skin shiny: estela de estrellitas doradas y blancas al moverse (y algún destello suelto quieto)
+  shinyTrail(b, t) {
+    const ctx = this.ctx;
+    // estrella de 4 puntas en pixel art, con borde oscuro para que se vea también en la nieve
+    const star = (x, y, s, col, a) => {
+      ctx.globalAlpha = a;
+      x = Math.round(x); y = Math.round(y);
+      ctx.fillStyle = 'rgba(40,24,0,0.75)';
+      ctx.fillRect(x - s - 1, y - 1, s * 2 + 3, 3);
+      ctx.fillRect(x - 1, y - s - 1, 3, s * 2 + 3);
+      ctx.fillStyle = col;
+      ctx.fillRect(x - s, y, s * 2 + 1, 1);
+      ctx.fillRect(x, y - s, 1, s * 2 + 1);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x, y, 1, 1);
+    };
+    const prev = ctx.globalAlpha;
+    const back = b.facing + Math.PI;
+    const n = b.moving ? 7 : 2;
+    for (let i = 0; i < n; i++) {
+      const ph = (t * (b.moving ? 1.8 : 0.6) + i / n + b.idx * 0.17) % 1;
+      const wob = Math.sin(i * 12.9 + b.idx) * 14;
+      const d = b.moving ? 10 + ph * 46 : 18;
+      const x = b.x + Math.cos(back) * d - Math.sin(back) * wob;
+      const y = b.y - 18 + Math.sin(back) * d * 0.6 + Math.cos(back) * wob * 0.5 - (b.moving ? 0 : ph * 26);
+      const a = (1 - ph) * (b.moving ? 0.95 : 0.8 * Math.max(0, Math.sin(ph * Math.PI)));
+      star(x, y, i % 3 === 0 ? 4 : 3, i % 2 ? '#ffd23a' : '#fff6a8', a);
+    }
+    ctx.globalAlpha = prev;
   }
 
   // Aura de la megaevolución: llamas del color del tipo con un borde rosa (detrás) y chispas de colores (delante).

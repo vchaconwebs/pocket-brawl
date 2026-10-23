@@ -429,6 +429,15 @@
     } catch (e) {}
   }
 
+  // Android: al tocar la pantalla fuera de la partida también se vuelve a poner en pantalla completa
+  // (si el sistema la quitó al deslizar, por ejemplo). Una vez cada pocos segundos como mucho.
+  let fsAskT = 0;
+  document.addEventListener('pointerup', () => {
+    if (!isTouch || document.fullscreenElement || /iPhone|iPad|iPod/.test(navigator.userAgent) || Date.now() - fsAskT < 4000) return;
+    fsAskT = Date.now();
+    goLandscape();
+  }, { passive: true });
+
   const help = () => $('#help');
 
   function hideScreens() {

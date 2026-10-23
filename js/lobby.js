@@ -1292,7 +1292,7 @@ PB.Lobby = (() => {
   let frTab = 'list';
   const avatar = (p) => portrait(PB.brawlerById(p.fav) || PB.BRAWLERS[0]);
   const prow = (p, extra) =>
-    `<div class="prow${p.me ? ' me' : ''}${p.id && !p.isClan ? ' click' : ''}"${p.id && !p.isClan ? ` data-uid="${p.id}"` : ''}>` +
+    `<div class="prow${p.me ? ' me' : ''}${(p.id && !p.isClan) || p.clanId ? ' click' : ''}"${p.id && !p.isClan ? ` data-uid="${p.id}"` : ''}${p.clanId ? ` data-clan="${p.clanId}"` : ''}>` +
     (p.pos ? `<span class="pos">${p.pos}</span>` : '') +
     `<img class="av" src="${p.avatar || avatar(p)}" alt="">` +
     `<div class="pinfo"><b>${p.name}</b><small>${p.sub || ''}</small></div>` +
@@ -1414,11 +1414,29 @@ PB.Lobby = (() => {
 
   async function showMyClan(c) {
     $('#cl-title').textContent = c.name;
+    const iLead = c.leader === PB.Online.myUid;
+    // botones del líder en cada miembro: ascender / bajar, pasar el liderazgo y expulsar
+    const clanBtns = (m) => (m.rank === 1
+      ? `<button class="mini" data-ca="demote" data-cid="${m.id}" title="${PB.T('Bajar a miembro')}">⬇</button><button class="mini ok" data-ca="leader" data-cid="${m.id}" title="${PB.T('Hacer líder')}">👑</button>`
+      : `<button class="mini ok" data-ca="promote" data-cid="${m.id}" title="${PB.T('Ascender a colíder')}">⬆</button>`) +
+      `<button class="mini no" data-ca="kick" data-cid="${m.id}" title="${PB.T('Expulsar')}">✕</button>`;
     $('#cl-body').innerHTML =
       `<div class="clan-head"><img class="av avbig" src="${clanIcon(c)}" alt=""><div><p>${c.desc || ''}</p><small>${c.count}/${PB.META.clanMax} miembros · ${c.type === 'invite' ? '🔒 Solo invitación' : '🌐 Público'} · <img class="cup" src="${cupIcon()}" alt="">${c.copas.toLocaleString('es-ES')}</small></div><button class="act gray" id="cl-leave">Abandonar</button></div>` +
-      `<div class="clan-grid"><div class="plist">${c.members.map((m, i) => prow({ ...m, pos: i + 1, sub: m.role + (m.me ? '' : m.online ? ' · <span class="on">●</span>' : ' · <span class="off">●</span>') })).join('')}</div>` +
+      `<div class="clan-grid"><div class="plist">${c.members.map((m, i) => prow({ ...m, pos: i + 1, sub: m.role + (m.me ? '' : m.online ? ' · <span class="on">●</span>' : ' · <span class="off">●</span>') }, iLead && !m.me ? clanBtns(m) : '')).join('')}</div>` +
       `<div class="chat"><div id="chat-log"></div><div class="chat-in"><input id="chat-q" maxlength="140" placeholder="Escribe al clan…"><button class="act blue" id="chat-send">Enviar</button></div></div></div>` +
       '<div id="cl-reqs"></div>';
+    const ASK = {
+      kick: '¿Expulsar a {name} del clan?', promote: '¿Ascender a {name} a colíder?', demote: '¿Bajar a {name} a miembro?',
+      leader: '¿Hacer líder a {name}? Tú pasarás a ser colíder.',
+    };
+    document.querySelectorAll('#cl-body [data-ca]').forEach((e) => (e.onclick = async (ev) => {
+      ev.stopPropagation();
+      const m = c.members.find((x) => x.id === e.dataset.cid);
+      if (!m || !(await modal(PB.T(ASK[e.dataset.ca], { name: m.name }), true))) return;
+      const r = await PB.Online.clanAction(e.dataset.ca, m.id);
+      if (r.error) toast(r.error);
+      showClan();
+    }));
     const meLead = c.members.some((m) => m.me && m.id === c.leader);
     if (meLead) {
       PB.Online.clanRequests().then((reqs) => {
@@ -1547,7 +1565,9 @@ PB.Lobby = (() => {
     } else {
       const list = await PB.Online.topClans();
       const my = await PB.Online.myClan();
-      box.innerHTML = list.slice(0, 50).map((c) => prow({ name: c.name, copas: c.copas, pos: c.pos, avatar: clanIcon(c), sub: c.count + '/' + PB.META.clanMax + ' miembros', me: my && my.id === c.id, isClan: true })).join('');
+      box.innerHTML = list.slice(0, 50).map((c) => prow({ name: c.name, copas: c.copas, pos: c.pos, avatar: clanIcon(c), sub: c.count + '/' + PB.META.clanMax + ' miembros', me: my && my.id === c.id, isClan: true, clanId: c.id })).join('');
+      // tocar un clan: ver sus miembros
+      box.querySelectorAll('[data-clan]').forEach((e) => (e.onclick = () => { PB.Audio.play('ui'); my && my.id === e.dataset.clan ? showClan() : showOtherClan(e.dataset.clan); }));
     }
   }
 
@@ -2084,12 +2104,15 @@ PB.Lobby = (() => {
           if (r && r.outcome === 'accepted') close();
           return;
         }
+        if (!ios) return modal(PB.T('En Android: abre el menú ⋮ de Chrome (arriba a la derecha) y pulsa «Instalar aplicación» o «Añadir a pantalla de inicio». Abre el juego desde ese icono y se verá a pantalla completa, como una app.'));
         await modal(PB.T('En iPhone, desde Safari: 1) pulsa Compartir (el cuadrado con la flecha ⬆️, abajo en el centro). 2) Desliza el menú hacia ARRIBA: «Añadir a pantalla de inicio» está más abajo de la lista. Si no sale, pulsa «Editar acciones» al final y actívalo. 3) Abre el juego desde ese icono: pantalla completa, como una app. (Si has entrado desde TikTok o Instagram, ábrelo antes en Safari con el botón ··· )'));
       };
     };
     window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); prompt = e; show(); });
     window.addEventListener('appinstalled', () => { const el = $('#install-tip'); if (el) el.remove(); try { localStorage.setItem('pb.installTip', '1'); } catch (e) {} });
     if (ios) show();
+    // Android sin el aviso de Chrome para instalar: el botón sale igual y explica cómo hacerlo desde el menú
+    else setTimeout(() => { if (!prompt) show(); }, 4000);
   }
 
   // Para qué sirve cada moneda: al pasar el ratón por encima o al tocarla sale una explicación

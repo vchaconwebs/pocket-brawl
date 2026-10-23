@@ -562,6 +562,7 @@ PB.Online = (() => {
   const viewClan = (id, c) => ({
     id, name: clean(c.name, 20), desc: clean(c.desc, 80), type: c.type === 'invite' ? 'invite' : 'public',
     icon: /^\d{4}$/.test(c.icon) ? c.icon : '0025', leader: c.leader, copas: c.copas | 0, count: (c.members || []).length, memberIds: c.members || [],
+    officers: (c.officers || []).filter((x) => (c.members || []).includes(x)),
   });
 
   async function clanFull(id) {
@@ -570,7 +571,8 @@ PB.Online = (() => {
     const c = viewClan(id, s.data());
     const members = await usersByIds(c.memberIds);
     await Promise.all(members.map(async (m) => { m.online = m.me || (await isOnline(m.id)); }));
-    c.members = members.map((m) => Object.assign(m, { role: m.id === c.leader ? PB.T('Líder') : PB.T('Miembro') })).sort((a, b) => b.copas - a.copas);
+    const rank = (m) => (m.id === c.leader ? 0 : c.officers.includes(m.id) ? 1 : 2);
+    c.members = members.map((m) => Object.assign(m, { rank: rank(m), role: PB.T(['Líder', 'Colíder', 'Miembro'][rank(m)]) })).sort((a, b) => a.rank - b.rank || b.copas - a.copas);
     // las copas del clan son la suma de las de sus miembros (las actualiza cualquiera que lo mire)
     const sum = members.reduce((s2, m) => s2 + m.copas, 0);
     if (sum !== c.copas && c.memberIds.includes(uid)) { c.copas = sum; fs.collection('clans').doc(id).update({ copas: sum }).catch(() => {}); }
@@ -663,6 +665,32 @@ PB.Online = (() => {
     stopChat();
     return { ok: true };
   }
+  // Gestión del clan (solo el líder): expulsar, ascender a colíder, bajar a miembro y pasar el liderazgo
+  async function clanAction(act, id) {
+    if (!(await start()) || !myDoc.clan) return err('Sin conexión.');
+    const ref = fs.collection('clans').doc(myDoc.clan);
+    const s = await ref.get();
+    if (!s.exists) return err('Ese clan ya no existe.');
+    const c = s.data();
+    if (c.leader !== uid) return err('Solo el líder puede hacer esto.');
+    if (id === uid || !(c.members || []).includes(id)) return err('Ese jugador ya no está en el clan.');
+    const officers = (c.officers || []).filter((x) => x !== id);
+    const who = clean(((await usersByIds([id]))[0] || {}).name || '', 16);
+    if (act === 'kick') {
+      await ref.update({ members: fb.firestore.FieldValue.arrayRemove(id), officers });
+      sysChat(myDoc.clan, PB.T('{name} ha sido expulsado del clan', { name: who }));
+    } else if (act === 'promote') {
+      await ref.update({ officers: officers.concat([id]) });
+      sysChat(myDoc.clan, PB.T('{name} ahora es colíder', { name: who }));
+    } else if (act === 'demote') {
+      await ref.update({ officers });
+    } else if (act === 'leader') {
+      await ref.update({ leader: id, officers: officers.concat([uid]) });
+      sysChat(myDoc.clan, PB.T('{name} es el nuevo líder del clan', { name: who }));
+    }
+    return { ok: true };
+  }
+
   // solicitudes para entrar (clanes solo por invitación): las ve y responde el líder
   async function clanRequests() {
     if (!(await start()) || !myDoc.clan) return [];
@@ -1387,7 +1415,7 @@ PB.Online = (() => {
     party: () => party, createParty, invite, joinByCode, setReady, updateMe, kick, leaveParty,
     voteRematch, cancelRematch, rematchGo, rematchLeft,
     friends, requests, searchPlayers, addFriend, answerRequest, removeFriend,
-    findMatch, cancelMatch, joinMatch, migrate,
+    findMatch, cancelMatch, joinMatch, migrate, clanAction,
     get searching() { return !!search; },
     countMatch, setPlaying, setSearching, sendFeedback, reportPlayer,
     get live() { return live; },
