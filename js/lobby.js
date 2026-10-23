@@ -320,7 +320,7 @@ PB.Lobby = (() => {
   }
 
   // ------------------------------------------------------------------ colección
-  const colFilter = { q: '', type: '', gen: '', rar: '', own: 'all' };
+  const colFilter = { q: '', type: '', gen: '', rar: '', own: 'all', sort: '' };
 
   function showCollection() {
     // filtros: tipo y generación (se rellenan una vez)
@@ -334,6 +334,7 @@ PB.Lobby = (() => {
       $('#col-rar').innerHTML = '<option value="">Todas las rarezas</option>' +
         Object.entries({ starter: 'Iniciales', common: 'Comunes', rare: 'Raros', epic: 'Épicos', legendary: 'Legendarios' }).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
       $('#col-rar').onchange = () => { colFilter.rar = $('#col-rar').value; renderCollection(); };
+      $('#col-sort').onchange = () => { colFilter.sort = $('#col-sort').value; renderCollection(); };
       $('#col-gen').onchange = () => { colFilter.gen = $('#col-gen').value; renderCollection(); };
       $('#col-q').oninput = () => { colFilter.q = $('#col-q').value.trim().toLowerCase(); renderCollection(); };
       document.querySelectorAll('#col-own button').forEach((bt) => (bt.onclick = () => {
@@ -361,7 +362,11 @@ PB.Lobby = (() => {
       if (F.rar && b.rarity !== F.rar) return false;
       if (F.q && !names(b).includes(F.q)) return false;
       return true;
-    }).sort((x, y) => PB.Save.isFav(y.id) - PB.Save.isFav(x.id) || (PB.Save.owned(y.id) ? 1 : 0) - (PB.Save.owned(x.id) ? 1 : 0) || x.dex - y.dex);
+    });
+    // orden: favoritos primero, luego los tuyos; y dentro, por Pokédex, por copas o los últimos conseguidos
+    const got = Object.keys(d.owned), newest = (b) => got.indexOf(b.id);
+    const extra = F.sort === 'copas' ? (x, y) => PB.Save.copas(y.id) - PB.Save.copas(x.id) : F.sort === 'new' ? (x, y) => newest(y) - newest(x) : () => 0;
+    list.sort((x, y) => PB.Save.isFav(y.id) - PB.Save.isFav(x.id) || (PB.Save.owned(y.id) ? 1 : 0) - (PB.Save.owned(x.id) ? 1 : 0) || extra(x, y) || x.dex - y.dex);
     grid.innerHTML = list.map((b) => {
       const own = PB.Save.owned(b.id);
       const r = rarityOf(b);
@@ -796,7 +801,7 @@ PB.Lobby = (() => {
       `<button class="act blue" id="pt-copy">Copiar</button><button class="act blue" id="pt-share">Enviar</button></div>` +
       '<div class="pt-members">' + p.members.map((m) =>
         `<div class="pt-mem${m.me ? ' me' : ''}"><img src="${memberPortrait(m)}" alt=""><span><b>${m.me ? 'Tú' : m.name}${p.leader === m.id ? ' <i>★ jefe</i>' : ''}</b>` +
-        `<small>${(PB.brawlerById(m.fav) || {}).name || ''} · ${m.ready ? '¡Listo!' : 'Esperando…'}</small></span>` +
+        `<small>${(PB.brawlerById(m.fav) || {}).name || ''} · <img class="pt-cup" src="${PB.Icons.cup()}" alt="">${m.copas} · ${m.ready ? '¡Listo!' : 'Esperando…'}</small></span>` +
         (!m.me && !PB.Online.isGuest() && !PB.Online.isFriend(m.id) ? `<button class="mini ok" data-addf="${m.id}" title="Añadir amigo">＋ Amigo</button>` : '') +
         (lead && !m.me ? `<button class="mini" data-kick="${m.id}">Echar</button>` : '') + '</div>').join('') +
       Object.keys(p.invited || {}).map(() => '<div class="pt-mem invited"><span><small>Invitación enviada…</small></span></div>').join('') +

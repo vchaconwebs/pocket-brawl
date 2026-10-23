@@ -404,7 +404,7 @@
   };
 
   // ataques básicos nuevos puestos a mano: [forma, nombre, tipo] (movimientos que ese Pokémon aprende en los juegos)
-  const BASIC_NEW = { zeraora: ['melee', 'Cuchillada', 'normal'] };
+  const BASIC_NEW = { zeraora: ['melee', 'Cuchillada', 'normal'], slakoth: ['melee', 'Golpe Cuerpo', 'normal'] };
   // -> [forma (null = la del papel), nombre]
   const pickBasic = (type, roleId, id, avoid) => {
     const kit = KIT[type] || KIT.normal;

@@ -2122,3 +2122,4 @@ body:not(.pad) .pad-focus { outline: none !important; box-shadow: none !importan
 .panel > .pn-head { position: sticky; top: -4px; z-index: 6; }
 /* en la pantalla final el botón del chat va abajo (arriba tapaba tu fila y el MVP) */
 body:has(#end:not(.hidden)) #btn-mchat { top: auto; bottom: calc(10px + var(--sab, 0px)); }
+.pt-cup { width: 12px; height: 12px; vertical-align: -1px; margin-right: 2px; image-rendering: pixelated; }

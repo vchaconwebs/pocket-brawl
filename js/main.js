@@ -199,8 +199,10 @@
     PB.Settings.apply();
     gameMode = opts.mode;
     $('#loading h1').textContent = PB.T('Preparando a los Pokémon…');
+    $('#ld-cancel').classList.add('hidden');
     showScreen('loading');
-    await PB.Sprites.ensure(spritesFor(opts, null));
+    // (si alguna imagen no llega, no se queda esperando para siempre)
+    await Promise.race([PB.Sprites.ensure(spritesFor(opts, null)), new Promise((r) => setTimeout(r, 12000))]);
     newGame(null, opts, myIdx);
     PB.Online.countMatch(opts.mode);
     PB.Online.setPlaying(true, opts.mode);
@@ -750,9 +752,13 @@
   async function joinAndStart(mid, fromParty) {
     if (mode === 'play') return;
     if (partyWait) stopPartyWait();
-    searchScreen('¡Partida encontrada!', PB.T('Conectando con los demás jugadores…'), false);
+    searchScreen('¡Partida encontrada!', PB.T('Conectando con los demás jugadores…'), true);
+    // si se queda colgado conectando, se puede salir (y como mucho a los 25 s se juega con bots)
+    let gaveUp = false;
+    $('#ld-cancel').onclick = () => { gaveUp = true; if (net && mode !== 'play') endNet(); PB.Lobby.show('lobby'); };
     let j = { local: true };
-    try { j = await PB.Online.joinMatch(mid); } catch (e) { j = { local: true, failed: true }; }
+    try { j = await Promise.race([PB.Online.joinMatch(mid), new Promise((r) => setTimeout(() => r({ local: true, failed: true }), 25000))]); } catch (e) { j = { local: true, failed: true }; }
+    if (gaveUp || mode === 'play') return;
     if (j.local) {
       // los de una sala que no consiguen entrar a la partida del jefe vuelven a la lobby
       if (fromParty) { PB.Lobby.toast(PB.T('No se ha podido entrar en la partida de tu grupo.')); PB.Lobby.show('lobby'); return; }
