@@ -88,6 +88,12 @@ PB.Game = class {
     return b.def.speed * (b.stealthT > 0 || b.rageT > 0 ? s.speedMul || 1 : 1) * (b.buffT > 0 ? b.buffSpeed || 1 : 1) * (b.megaT > 0 ? PB.MEGA.speed : 1);
   }
 
+  // Tipos de un luchador: los de su fase o, con skin regional, los de esa forma (Vulpix de Alola es de Hielo)
+  typesFor(b) {
+    const reg = b.megaSkin ? b.skinBase : b.skin;
+    return PB.regionTypes(b.line, b.stage, reg) || PB.stageTypes(b, b.stage);
+  }
+
   // ---------------------------------------------------------------- megaevolución
   canMega(b) {
     return b.stage >= PB.evoSteps(b.def).length;
@@ -158,7 +164,7 @@ PB.Game = class {
     b.stage++;
     const after = PB.stageMul(b.def, b.stage);
     b.dex = b.line[b.stage];
-    b.types = PB.stageTypes(b, b.stage);
+    b.types = this.typesFor(b);
     // ramas que cambian de tipo (Eevee): ataques nuevos
     const nd = PB.retype(PB.brawlerById(b.def.id), b.line, b.stage, b.kit);
     const changed = nd.attack.name !== b.def.attack.name || nd.super.name !== b.def.super.name;
@@ -705,9 +711,8 @@ PB.Game = class {
     b.ultGlowT = tier === 2 ? 1.4 : 0.7;
     b.ultGlowPal = pal;
     this.shake = Math.max(this.shake, tier === 2 ? 9 : 5);
-    if (s.legend) return; // los legendarios ya llevan su rótulo
     if (s.special && tier === 2) this.legendFx(b, s, 'SÚPER ESPECIAL');
-    else this.fx.push({ kind: 'superName', x: b.x, y: b.y, name: s.name, pal, big: tier === 2, t: 0, life: 1.3 });
+    this.fx.push({ kind: 'superName', x: b.x, y: b.y, name: s.name, pal, big: tier === 2, t: 0, life: 1.3 });
   }
 
   spawnSpread(b, atk, ang, isSuper, mul) {
@@ -851,7 +856,7 @@ PB.Game = class {
   // La mecánica corre en el anfitrión; lo que se ve son efectos (fx) que también viajan por la red.
   legendFx(b, s, label) {
     const pal = s.pal || s.type || b.def.atkType;
-    this.fx.push({ kind: 'ultBanner', name: s.name, who: PB.stageName(b, b.stage), dex: b.dex, team: b.team, pal, label: label || 'SÚPER LEGENDARIO', x: b.x, y: b.y, t: 0, life: 1.8 });
+    // (sin el rótulo grande en pantalla: molestaba; el nombre sale pequeño encima del Pokémon)
     this.fx.push({ kind: 'ultIntro', x: b.x, y: b.y, pal, t: 0, life: 0.9 });
     this.shake = Math.max(this.shake, 10);
     this.events.push({ type: 'legend', b });

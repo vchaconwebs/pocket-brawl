@@ -101,6 +101,7 @@
     if (game.player) {
       game.player.shiny = PB.Save.skin(playerId) === 'shiny';
       game.player.skin = PB.Save.skin(playerId); // regional (alola, galar...) o normal/shiny
+      game.player.types = game.typesFor(game.player);
     }
     // nombre del entrenador de cada uno (para la pantalla final)
     const names = shuffle(PB.TRAINER_NAMES.slice());
@@ -146,6 +147,7 @@
       b.trainer = b.name = h ? h.name : names[i % names.length];
       b.shiny = !!(h && h.shiny);
       b.skin = h && h.skin ? h.skin : null;
+      b.types = game.typesFor(b);
       b.creator = !!(h && h.uid === PB.Chat.OWNER); // el creador del juego sale en dorado
       const lvl = h ? h.lvl || 1 : opts.botLvls ? opts.botLvls[i] : Math.max(1, Math.min(PB.META.maxLevel, avg + Math.floor(Math.random() * 3) - 1));
       b.lvl = lvl;

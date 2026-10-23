@@ -14,9 +14,9 @@
     fire: { basic: 'Ascuas', sup: [['spread', 'Lanzallamas'], ['turret', 'Fuego Fatuo'], ['wave', 'Onda Ígnea'], ['orbit', 'Giro Fuego']] },
     water: { basic: 'Pistola Agua', sup: [['shot', 'Hidrobomba'], ['vortex', 'Torbellino'], ['wave', 'Surf'], ['heal', 'Acua Aro', { dps: 350, heal: 750, d: 'un anillo de agua que cura mucho a tu equipo y daña algo a los rivales' }], ['ricochet', 'Rayo Burbuja']] },
     grass: { basic: 'Hoja Afilada', sup: [['heal', 'Drenadoras'], ['boomerang', 'Hoja Aguda'], ['orbit', 'Danza Pétalo'], ['hook', 'Látigo Cepa'], ['beam', 'Rayo Solar', { delay: 0.5, dmg: 1900, d: 'se carga un poco más que otros rayos, pero pega más fuerte' }]] },
-    electric: { basic: 'Impactrueno', sup: [['chain', 'Rayo'], ['dash', 'Placaje Eléctrico'], ['ricochet', 'Electrobola'], ['meteor', 'Trueno', { count: 4, flight: 0.45, stun: 0.5, d: 'rayos que caen del cielo sobre la zona elegida y aturden' }]] },
+    electric: { basic: 'Impactrueno', sup: [['chain', 'Rayo'], ['dash', 'Placaje Eléctrico'], ['ricochet', 'Bola Voltio'], ['meteor', 'Trueno', { count: 4, flight: 0.45, stun: 0.5, d: 'rayos que caen del cielo sobre la zona elegida y aturden' }]] },
     ice: { basic: 'Rayo Hielo', sup: [['freeze', 'Ventisca'], ['meteor', 'Granizo'], ['wave', 'Viento Hielo', { dmg: 780, knockback: 260, stun: 0.7, d: 'una ola helada que pasa por encima de los muros y congela un momento' }], ['ricochet', 'Bola Hielo']] },
-    fighting: { basic: 'Esfera Aural', sup: [['dash', 'A Bocajarro'], ['barrier', 'Corpulencia'], ['reflect', 'Contraataque'], ['leap', 'Patada S. Alta']] },
+    fighting: { basic: 'Esfera Aural', sup: [['dash', 'A Bocajarro'], ['barrier', 'Corpulencia'], ['reflect', 'Contraataque'], ['leap', 'Patada Salto Alta']] },
     poison: { basic: 'Residuos', sup: [['toxic', 'Tóxico'], ['mines', 'Púas Tóxicas'], ['tornado', 'Gas Venenoso', { pull: 0, speed: 110, dps: 950, radius: 105, d: 'una nube venenosa que avanza despacio y hace mucho daño a quien se quede dentro' }]] },
     ground: { basic: 'Disparo Lodo', sup: [['slam', 'Terremoto'], ['boomerang', 'Huesomerang'], ['leap', 'Excavar', { burrow: true, d: 'se mete bajo tierra y sale de golpe en la zona elegida' }], ['tornado', 'Bucle Arena']] },
     flying: { basic: 'Tornado', sup: [['gust', 'Vendaval'], ['dash', 'Pájaro Osado'], ['leap', 'Vuelo'], ['tornado', 'Huracán']] },
@@ -111,13 +111,13 @@
     draco: { kind: 'spread', count: 5, spread: 0.4, range: 330, speed: 620, dmg: 540, r: 20, pierce: true, scale: 1.8, d: 'cinco meteoros dracónicos que lo atraviesan todo' },
     // Ditto: si el rayo da a un rival, se convierte en él unos segundos (su aspecto, tipo, ataque y súper)
     transform: { kind: 'spread', count: 1, spread: 0, range: 380, speed: 760, dmg: 400, r: 22, transform: true, scale: 1.5, d: 'un rayo que, si da a un rival, te convierte en él durante 8 s con sus ataques' },
-    vortex: { kind: 'zone', range: 330, flight: 0.5, radius: 130, duration: 3, dps: 600, heal: 0, pull: 170, scale: 1.4, d: 'un remolino que arrastra a los rivales a su centro y los va dañando' },
+    vortex: { kind: 'zone', range: 330, flight: 0.5, radius: 130, duration: 3, dps: 520, heal: 0, pull: 130, scale: 1.4, d: 'un remolino que arrastra a los rivales a su centro y los va dañando' },
     meteor: { kind: 'meteor', range: 330, flight: 0.85, count: 5, spreadR: 85, radius: 54, dmg: 600, scale: 1.6, d: 'una lluvia de golpes que caen sobre la zona elegida' },
     nova: { kind: 'nova', count: 12, range: 280, speed: 540, dmg: 800, r: 16, pierce: true, scale: 1.4, d: 'una explosión de ataques en todas direcciones' },
     boomerang: { kind: 'boomerang', range: 340, speed: 660, dmg: 920, r: 24, scale: 2.4, d: 'un proyectil enorme que va y vuelve, golpeando a la ida y a la vuelta' },
     chain: { kind: 'chain', range: 380, hop: 250, count: 4, dmg: 1000, falloff: 0.85, stun: 0.4, d: 'un rayo que salta de un rival a otro y los aturde' },
     beam: { kind: 'beam', range: 440, width: 62, dmg: 1700, delay: 0.32, d: 'un rayo larguísimo que se carga un instante y lo atraviesa todo' },
-    mines: { kind: 'mines', range: 330, count: 3, spreadR: 70, trigger: 44, radius: 90, dmg: 1000, stun: 0.6, life: 14, scale: 1.4, d: 'tres trampas en el suelo que explotan y aturden al pisarlas' },
+    mines: { kind: 'mines', range: 330, count: 3, spreadR: 70, trigger: 44, radius: 90, dmg: 850, stun: 0.4, life: 14, scale: 1.4, d: 'tres trampas en el suelo que explotan y aturden al pisarlas' },
     turret: { kind: 'turret', place: 160, range: 330, dur: 6, rate: 0.55, dmg: 240, speed: 620, r: 12, scale: 1.2, d: 'deja un orbe que dispara solo a los rivales durante 6 s' },
     barrier: { kind: 'barrier', time: 4.5, reduce: 0.6, radius: 260, d: 'un escudo que reduce mucho el daño a él y a su equipo cercano' },
     wish: { kind: 'wish', radius: 300, heal: 0.33, d: 'cura de golpe a todo su equipo cercano y le quita el aturdimiento' },
@@ -125,12 +125,12 @@
     // --- formas nuevas (v1.3) ---
     wave: { kind: 'wave', width: 170, range: 380, speed: 460, dmg: 950, r: 22, knockback: 560, scale: 1.6, d: 'una ola enorme que pasa por encima de los muros y arrastra a los rivales' },
     tornado: { kind: 'tornado', range: 460, speed: 150, radius: 95, duration: 3.2, dps: 700, pull: 260, scale: 1.4, d: 'un torbellino que avanza despacio, atrapa a los rivales y los arrastra con él' },
-    orbit: { kind: 'orbit', count: 4, rad: 72, duration: 5, dmg: 420, spin: 4.2, scale: 1.4, d: 'orbes que giran a su alrededor: golpean a quien se acerque y paran disparos' },
+    orbit: { kind: 'orbit', count: 4, rad: 72, duration: 6, dmg: 520, spin: 4.2, scale: 1.4, d: 'orbes que giran a su alrededor: golpean a quien se acerque y paran disparos' },
     leap: { kind: 'leap', range: 340, flight: 0.6, radius: 150, dmg: 1400, knockback: 520, stun: 0.3, d: 'salta por encima de todo y cae sobre la zona elegida' },
     hook: { kind: 'hook', range: 380, speed: 950, r: 16, dmg: 700, stun: 0.7, scale: 1.3, d: 'atrapa al primer rival que toca y lo trae hasta él' },
     reflect: { kind: 'reflect', time: 3, radius: 52, d: 'un espejo que devuelve los disparos rivales durante 3 s' },
     rage: { kind: 'rage', time: 5, dmgMul: 1.35, speedMul: 1.3, reloadMul: 1.7, d: 'durante 5 s corre más, recarga antes y pega más fuerte' },
-    ricochet: { kind: 'ricochet', range: 900, speed: 720, r: 18, dmg: 820, bounces: 4, pierce: true, scale: 1.8, d: 'un disparo que rebota en los muros hasta 4 veces' },
+    ricochet: { kind: 'ricochet', range: 900, speed: 720, r: 18, dmg: 1000, bounces: 4, pierce: true, scale: 1.8, d: 'un disparo que rebota en los muros hasta 4 veces' },
   };
 
   // Súper del set "Clásico" de los Pokémon con súper propio. Con dos tipos, es del tipo que NO usa el súper
@@ -169,18 +169,18 @@
   // Súper de legendarios (v1.3): su movimiento característico, con una forma propia más espectacular
   // y sus colores (pal: paleta de vfx.js). [forma, nombre, tipo, cambios sobre la forma]
   const LEGEND_KIND = {
-    comet: { kind: 'comet', range: 420, flight: 1.15, radius: 190, dmg: 1700, knockback: 650, stun: 0.5, d: 'sube al cielo y cae como un cometa sobre la zona elegida; mientras tanto no le pueden tocar' },
+    comet: { kind: 'comet', range: 420, flight: 1.15, radius: 190, dmg: 1500, knockback: 650, stun: 0.5, d: 'sube al cielo y cae como un cometa sobre la zona elegida; mientras tanto no le pueden tocar' },
     fissure: { kind: 'fissure', range: 420, count: 8, step: 52, radius: 72, dmg: 1500, stun: 0.6, destroysWalls: true, d: 'una fila de pinchos gigantes sale del suelo hacia delante, aturde y rompe muros' },
-    megabeam: { kind: 'megabeam', range: 540, width: 96, charge: 0.55, dur: 0.8, dmg: 2000, d: 'se carga y suelta un rayo enorme durante casi un segundo (mientras, no se mueve)' },
-    judgment: { kind: 'judgment', range: 380, count: 11, spreadR: 220, radius: 62, dmg: 560, every: 0.08, delay: 0.45, d: 'una lluvia de golpes del cielo sobre una zona grande, con aviso en el suelo' },
-    rend: { kind: 'rend', range: 190, count: 3, len: 360, width: 56, dmg: 850, every: 0.15, d: 'tajos gigantes que rasgan el espacio delante de él' },
-    pulse: { kind: 'pulse', count: 3, radius: 290, every: 0.3, speed: 560, dmg: 620, knockback: 420, d: 'ondas enormes que salen de él y empujan a todos' },
+    megabeam: { kind: 'megabeam', range: 540, width: 96, charge: 0.55, dur: 0.8, dmg: 1750, d: 'se carga y suelta un rayo enorme durante casi un segundo (mientras, no se mueve)' },
+    judgment: { kind: 'judgment', range: 380, count: 9, spreadR: 220, radius: 62, dmg: 480, every: 0.08, delay: 0.45, d: 'una lluvia de golpes del cielo sobre una zona grande, con aviso en el suelo' },
+    rend: { kind: 'rend', range: 190, count: 3, len: 400, width: 56, dmg: 1000, every: 0.15, d: 'tajos gigantes que rasgan el espacio delante de él' },
+    pulse: { kind: 'pulse', count: 3, radius: 290, every: 0.3, speed: 560, dmg: 540, knockback: 420, d: 'ondas enormes que salen de él y empujan a todos' },
     inferno: { kind: 'inferno', range: 330, arc: 1.15, dur: 0.9, dmg: 1900, d: 'un mar de llamas en abanico que deja el suelo ardiendo (mientras, no se mueve)' },
-    storm: { kind: 'storm', radius: 400, count: 9, dur: 1.5, dmg: 470, hitR: 70, stun: 0.35, d: 'un nubarrón encima y rayos que caen sobre los rivales cercanos' },
-    void: { kind: 'void', range: 360, radius: 170, dur: 1.6, pull: 330, dps: 380, burst: 850, burstR: 140, d: 'un agujero que se traga a los rivales y luego estalla' },
-    frost: { kind: 'frost', radius: 240, dur: 0.6, dmg: 1000, stun: 1.3, d: 'congela el suelo a su alrededor y deja a los rivales atrapados en hielo' },
-    aura: { kind: 'aura', radius: 330, heal: 0.3, time: 5, dmgMul: 1.25, speedMul: 1.15, d: 'una columna de luz que cura y potencia a todo su equipo cercano' },
-    phantom: { kind: 'phantom', range: 460, hide: 0.6, radius: 130, dmg: 1650, stun: 0.4, d: 'desaparece y aparece junto al rival para golpearle por sorpresa' },
+    storm: { kind: 'storm', radius: 400, count: 6, dur: 1.5, dmg: 390, hitR: 70, stun: 0.2, d: 'un nubarrón encima y rayos que caen sobre los rivales cercanos' },
+    void: { kind: 'void', range: 360, radius: 170, dur: 1.6, pull: 330, dps: 320, burst: 750, burstR: 140, d: 'un agujero que se traga a los rivales y luego estalla' },
+    frost: { kind: 'frost', radius: 240, dur: 0.6, dmg: 850, stun: 0.9, d: 'congela el suelo a su alrededor y deja a los rivales atrapados en hielo' },
+    aura: { kind: 'aura', radius: 330, heal: 0.15, time: 3.5, dmgMul: 1.12, speedMul: 1.1, d: 'una columna de luz que cura y potencia a todo su equipo cercano' },
+    phantom: { kind: 'phantom', range: 460, hide: 0.6, radius: 130, dmg: 1450, stun: 0.3, d: 'desaparece y aparece junto al rival para golpearle por sorpresa' },
     bigorb: { kind: 'bigorb', range: 460, speed: 330, r: 42, dmg: 650, boom: 1000, boomR: 160, d: 'una esfera enorme y lenta que lo atraviesa todo y estalla al final' },
   };
   const LEGEND = {
@@ -197,7 +197,7 @@
     celebi: ['pulse', 'Lluevehojas', 'grass', { shape: 'leaf' }],
     regirock: ['fissure', 'Roca Afilada', 'rock', { shape: 'rock' }],
     regice: ['frost', 'Ventisca', 'ice', {}],
-    registeel: ['aura', 'Defensa Férrea', 'steel', { reduce: 0.5, dmgMul: 1, speedMul: 1, heal: 0.15, d: 'un escudo de acero para todo su equipo cercano: reciben la mitad de daño' }],
+    registeel: ['aura', 'Defensa Férrea', 'steel', { reduce: 0.3, dmgMul: 1, speedMul: 1, heal: 0.1, d: 'un escudo de acero para todo su equipo cercano: reciben bastante menos daño' }],
     latias: ['bigorb', 'Bola Neblina', 'psychic', { pal: 'space', shape: 'bubble' }],
     latios: ['megabeam', 'Resplandor', 'psychic', { pal: 'time' }],
     kyogre: ['pulse', 'Pulso Primigenio', 'water', { shape: 'drop', radius: 330 }],
@@ -213,13 +213,13 @@
     heatran: ['void', 'Lluvia Ígnea', 'fire', { pal: 'magma', dps: 520, burst: 600, pull: 240, d: 'un remolino de magma que atrapa a los rivales y luego estalla' }],
     regigigas: ['comet', 'Gigaimpacto', 'normal', { pal: 'gold' }],
     giratina: ['phantom', 'Golpe Umbrío', 'ghost', { pal: 'void' }],
-    cresselia: ['aura', 'Danza Lunar', 'psychic', { pal: 'moon', heal: 0.45 }],
+    cresselia: ['aura', 'Danza Lunar', 'psychic', { pal: 'moon', heal: 0.32 }],
     phione: ['pulse', 'Hidropulso', 'water', { count: 2, dmg: 700, shape: 'bubble' }],
-    manaphy: ['aura', 'Acua Aro', 'water', { heal: 0.4, dmgMul: 1.15 }],
+    manaphy: ['aura', 'Acua Aro', 'water', { heal: 0.3, dmgMul: 1.1 }],
     darkrai: ['void', 'Brecha Negra', 'dark', { pal: 'void', stun: 1.6, burst: 500, d: 'un agujero negro que se traga a los rivales y los deja dormidos' }],
-    shaymin: ['pulse', 'Fulgor Semilla', 'grass', { count: 1, radius: 300, dmg: 1500, shape: 'leaf' }],
+    shaymin: ['pulse', 'Fogonazo', 'grass', { count: 1, radius: 300, dmg: 1500, shape: 'leaf' }],
     arceus: ['judgment', 'Sentencia', 'normal', { pal: 'gold', shape: 'star', count: 13, radius: 66 }],
-    victini: ['rend', 'V de Fuego', 'fire', { pattern: 'v', dmg: 1100, width: 64, pal: 'sun' }],
+    victini: ['rend', 'V de Fuego', 'fire', { pattern: 'v', dmg: 1250, width: 64, pal: 'sun' }],
     cobalion: ['rend', 'Espada Santa', 'steel', { count: 1, len: 420, dmg: 1500, width: 70 }],
     terrakion: ['rend', 'Espada Santa', 'rock', { count: 1, len: 420, dmg: 1500, width: 70 }],
     virizion: ['rend', 'Espada Santa', 'grass', { count: 1, len: 420, dmg: 1500, width: 70 }],
@@ -228,8 +228,8 @@
     reshiram: ['inferno', 'Llama Azul', 'fire', { pal: 'blueflame' }],
     zekrom: ['comet', 'Rayo Fusión', 'electric', { pal: 'zekrom' }],
     landorus: ['judgment', 'Tierra Viva', 'ground', { shape: 'rock', pal: 'magma' }],
-    kyurem: ['frost', 'Glaciación', 'ice', { radius: 280, pal: 'aurora' }],
-    keldeo: ['rend', 'Espada Mística', 'water', { count: 2 }],
+    kyurem: ['frost', 'Mundo Gélido', 'ice', { radius: 280, pal: 'aurora' }],
+    keldeo: ['rend', 'Sable Místico', 'water', { count: 2 }],
     meloetta: ['pulse', 'Canto Arcaico', 'normal', { shape: 'note', stun: 1.2, pal: 'gold', d: 'ondas de música que empujan y, la última, duerme a los rivales' }],
     genesect: ['megabeam', 'Tecno Shock', 'normal', { pal: 'cosmic' }],
     xerneas: ['aura', 'Geocontrol', 'fairy', { pal: 'rainbow', dmgMul: 1.3, speedMul: 1.2 }],
@@ -237,13 +237,13 @@
     zygarde: ['judgment', 'Mil Flechas', 'ground', { shape: 'needle', pal: 'grass', count: 14, radius: 54, dmg: 460 }],
     diancie: ['judgment', 'Tormenta de Diamantes', 'rock', { shape: 'shard', pal: 'diamond' }],
     hoopa: ['phantom', 'Paso Dimensional', 'psychic', { pal: 'cosmic' }],
-    volcanion: ['megabeam', 'Vapor Explosivo', 'water', { pal: 'silver', width: 120 }],
+    volcanion: ['megabeam', 'Chorro de Vapor', 'water', { pal: 'silver', width: 120 }],
     typenull: ['rend', 'Multiataque', 'normal', {}],
-    tapukoko: ['storm', 'Electrocampo', 'electric', { pal: 'gold' }],
-    tapulele: ['pulse', 'Psicocampo', 'psychic', { pal: 'space' }],
-    tapubulu: ['aura', 'Campo de Hierba', 'grass', { heal: 0.4 }],
-    tapufini: ['aura', 'Campo de Niebla', 'fairy', { reduce: 0.45, heal: 0.2, dmgMul: 1, speedMul: 1, d: 'una niebla que cura algo y protege a su equipo: reciben mucho menos daño' }],
-    cosmog: ['comet', 'Meteoro Astral', 'steel', { pal: 'sun' }],
+    tapukoko: ['storm', 'Campo Eléctrico', 'electric', { pal: 'gold' }],
+    tapulele: ['pulse', 'Campo Psíquico', 'psychic', { pal: 'space' }],
+    tapubulu: ['aura', 'Campo de Hierba', 'grass', { heal: 0.3 }],
+    tapufini: ['aura', 'Campo de Niebla', 'fairy', { reduce: 0.35, heal: 0.15, dmgMul: 1, speedMul: 1, d: 'una niebla que cura algo y protege a su equipo: reciben mucho menos daño' }],
+    cosmog: ['comet', 'Asalto Estelar', 'steel', { pal: 'sun' }],
     necrozma: ['megabeam', 'Láser Prisma', 'psychic', { pal: 'rainbow', prism: true }],
     magearna: ['megabeam', 'Cañón Floral', 'fairy', { pal: 'diamond' }],
     marshadow: ['phantom', 'Robasombra', 'ghost', { pal: 'void' }],
@@ -254,9 +254,9 @@
     eternatus: ['megabeam', 'Cañón Dinamax', 'dragon', { pal: 'blood', width: 120 }],
     kubfu: ['rend', 'Azote Torrencial', 'fighting', { count: 5, every: 0.08, dmg: 420, len: 260 }],
     regieleki: ['storm', 'Electrojaula', 'electric', { radius: 340, count: 12, dur: 1.2, dmg: 380 }],
-    regidrago: ['megabeam', 'Energía Dragón', 'dragon', {}],
+    regidrago: ['megabeam', 'Dracoenergía', 'dragon', {}],
     glastrier: ['judgment', 'Lanza Glacial', 'ice', { shape: 'shard', pal: 'aurora' }],
-    spectrier: ['pulse', 'Orbe Espectral', 'ghost', { pal: 'void', shape: 'shadow' }],
+    spectrier: ['pulse', 'Orbes Espectro', 'ghost', { pal: 'void', shape: 'shadow' }],
     calyrex: ['aura', 'Gigadrenado', 'grass', { pal: 'gold', heal: 0.35 }],
     enamorus: ['void', 'Ciclón Primaveral', 'fairy', { pal: 'diamond', pull: 380, dps: 330 }],
     chiyu: ['inferno', 'Sofoco', 'fire', { arc: 1.4, range: 280 }],
@@ -324,17 +324,17 @@
     cone: (t, r) => ({ kind: 'spread', count: 7, spread: 0.95, range: Math.round(r.range * 1.1), speed: 480, dmg: t / 7 * 0.92, r: 12, scale: 0.9, d: 'Una llamarada corta en abanico.' }),
     burst3: (t, r) => ({ kind: 'burst', count: 3, delay: 0.1, range: r.range, speed: 860, dmg: t / 3, r: 11, scale: 1 }),
     orb: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: r.range, speed: 540, dmg: t * 1.05, r: 25, pierce: true, scale: 1.8 }),
-    homing: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 1.05), speed: 560, dmg: t * 0.8, r: 16, homing: 2.8, scale: 1.4 }),
+    homing: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 1.05), speed: 560, dmg: t * 0.72, r: 16, homing: 2.8, scale: 1.4 }),
     melee: (t, r) => ({ kind: 'melee', range: r.count > 3 ? 160 : 150, arc: 2.0, dmg: t * 1.32, scale: 1 }),
     twin: (t, r) => ({ kind: 'twin', gap: 13, range: r.range, speed: 720, dmg: t / 2, r: 12, scale: 1.1 }),
-    boomer: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 0.85), speed: 620, dmg: t * 0.78, r: 18, boomerang: true, pierce: true, scale: 1.6 }),
+    boomer: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 0.85), speed: 620, dmg: t * (r.count > 3 ? 0.68 : 0.78), r: 18, boomerang: true, pierce: true, scale: 1.6 }),
     // --- formas nuevas (v1.3) ---
     // rociada: muchos perdigones algo desordenados (de cerca entran casi todos)
     spray: (t, r) => ({ kind: 'spread', count: 9, spread: 0.75, jitter: 0.12, speedVar: 0.25, range: Math.round(r.range * 0.8), speed: 640, dmg: t / 9, r: 8, scale: 0.75 }),
     // lanza: fina, muy rápida y atraviesa
-    lance: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 1.15), speed: 1150, dmg: t * 0.88, r: 9, pierce: true, scale: 1.2, shape: 'needle' }),
+    lance: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 1.1), speed: 1150, dmg: t * 0.95, r: 13, pierce: true, scale: 1.2, shape: 'needle' }),
     // se parte en tres al chocar o al acabar su recorrido
-    split: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 0.65), speed: 600, dmg: t * 0.5, r: 16, scale: 1.5, split: { count: 3, spread: 0.9, dmg: t * 0.28, range: Math.round(r.range * 0.45), speed: 640, r: 10 } }),
+    split: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 0.85), speed: 640, dmg: t * 0.68, r: 18, scale: 1.5, split: { count: 3, spread: 0.7, dmg: t * 0.3, range: Math.round(r.range * 0.5), speed: 680, r: 12 } }),
     // rebota una vez en los muros
     bounce: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 1.25), speed: 760, dmg: t * 0.9, r: 14, bounces: 1, scale: 1.3 }),
     // avanza haciendo eses
@@ -342,11 +342,11 @@
     // onda corta y ancha (como la ola del súper, pero pequeña y se para en los muros)
     ripple: (t, r) => ({ kind: 'spread', count: 1, spread: 0, ripple: 90, range: Math.round(r.range * 0.8), speed: 520, dmg: t * 0.85, r: 14, pierce: true, knockback: 120, scale: 1 }),
     // golpe que da la vuelta entera
-    spin: (t, r) => ({ kind: 'melee', range: 125, arc: Math.PI * 2, dmg: t * 1.15, scale: 1 }),
+    spin: (t, r) => ({ kind: 'melee', range: 145, arc: Math.PI * 2, dmg: t * 1.22, scale: 1 }),
     // láser instantáneo y estrecho
-    laser: (t, r) => ({ kind: 'laser', range: Math.round(r.range * 1.05), width: 20, delay: 0.12, dmg: t * 0.9 }),
+    laser: (t, r) => ({ kind: 'laser', range: Math.round(r.range * 1.05), width: 20, delay: 0.12, dmg: t * 0.84 }),
     // lanzadores: estalla en el centro y luego en tres trozos alrededor
-    cluster: (t, r) => ({ kind: 'lob', range: r.range, flight: r.flight, radius: 46, dmg: t * 0.75, cluster: { count: 3, dist: 72, radius: 42, dmg: t * 0.35 }, scale: 1.3 }),
+    cluster: (t, r) => ({ kind: 'lob', range: r.range, flight: r.flight, radius: 46, dmg: t * 0.7, cluster: { count: 3, dist: 72, radius: 42, dmg: t * 0.3 }, scale: 1.3 }),
     // lanzadores: menos golpe, pero deja un charco que daña un rato
     puddle: (t, r) => ({ kind: 'lob', range: r.range, flight: r.flight, radius: r.radius, dmg: t * 0.7, puddle: { radius: 70, duration: 2.5, dps: t * 0.22 }, scale: 1.4 }),
   };
@@ -355,7 +355,7 @@
     cone: ['tank', 'fighter'], burst3: ['assassin', 'fighter', 'sniper'], orb: ['sniper', 'fighter', 'tank'],
     homing: ['sniper', 'fighter'], melee: ['tank', 'assassin', 'fighter'], twin: ['fighter', 'assassin', 'sniper'],
     boomer: ['fighter', 'assassin', 'tank'], spray: ['tank', 'fighter'], lance: ['sniper', 'assassin'],
-    split: ['fighter', 'sniper', 'tank'], bounce: ['fighter', 'sniper', 'assassin'], sine: ['fighter', 'sniper', 'tank'],
+    split: ['fighter', 'sniper', 'tank'], bounce: ['fighter', 'sniper', 'assassin'], sine: ['fighter', 'sniper'],
     ripple: ['tank', 'fighter'], spin: ['tank', 'fighter', 'assassin'], laser: ['sniper', 'fighter'],
     cluster: ['thrower'], puddle: ['thrower'],
   };
@@ -365,15 +365,15 @@
     normal: [['burst3', 'Ataque Rápido'], ['spin', 'Giro Rápido'], ['twin', 'Doble Bofetón'], ['ripple', 'Eco Voz'], ['split', 'Bomba Huevo']],
     fire: [['cone', 'Lanzallamas'], ['melee', 'Puño Fuego'], ['spin', 'Rueda Fuego'], ['split', 'Pirotecnia'], ['orb', 'Llamarada']],
     water: [['cone', 'Burbuja'], ['ripple', 'Hidropulso'], ['melee', 'Acua Cola'], ['spray', 'Escaldar'], ['lance', 'Shuriken de Agua']],
-    grass: [['boomer', 'Hoja Mágica'], ['spray', 'Recurrente'], ['split', 'Bomba Germen'], ['orb', 'Energibola']],
+    grass: [['boomer', 'Hoja Mágica'], ['spray', 'Semilladora'], ['split', 'Bomba Germen'], ['orb', 'Energibola']],
     electric: [['burst3', 'Chispa'], ['laser', 'Rayo Carga'], ['melee', 'Puño Trueno'], ['sine', 'Chispazo']],
     ice: [['twin', 'Canto Helado'], ['lance', 'Carámbano'], ['spray', 'Nieve Polvo'], ['melee', 'Colmillo Hielo'], ['laser', 'Rayo Aurora']],
     fighting: [['melee', 'Golpe Kárate'], ['spin', 'Patada Giro'], ['lance', 'Onda Vacío'], ['burst3', 'Ultrapuño']],
     poison: [['orb', 'Bomba Lodo'], ['spray', 'Ácido'], ['split', 'Bomba Ácida'], ['melee', 'Puya Nociva']],
     ground: [['boomer', 'Hueso Palo'], ['ripple', 'Terratemblor'], ['spray', 'Ataque Arena'], ['cluster', 'Tierra Viva'], ['puddle', 'Bomba Fango']],
     flying: [['twin', 'Picotazo'], ['ripple', 'Viento Cortante'], ['lance', 'Tajo Aéreo'], ['melee', 'Ataque Ala'], ['homing', 'Golpe Aéreo']],
-    psychic: [['homing', 'Psicorrayo'], ['orb', 'Confusión'], ['sine', 'Extrasensorial'], ['lance', 'Psicocorte']],
-    bug: [['twin', 'Doble Ataque'], ['spray', 'Pin Misil'], ['melee', 'Megacuerno'], ['boomer', 'Ida y Vuelta'], ['sine', 'Señal Rayo']],
+    psychic: [['homing', 'Psicorrayo'], ['orb', 'Confusión'], ['sine', 'Paranormal'], ['lance', 'Psicocorte']],
+    bug: [['twin', 'Doble Ataque'], ['spray', 'Pin Misil'], ['melee', 'Megacuerno'], ['boomer', 'Ida y Vuelta'], ['sine', 'Doble Rayo']],
     rock: [['cluster', 'Tumba Rocas'], ['lance', 'Joya de Luz'], ['split', 'Roca Afilada'], ['melee', 'Testarazo']],
     ghost: [['orb', 'Bola Sombra'], ['melee', 'Garra Umbría'], ['sine', 'Infortunio'], ['lance', 'Sombra Vil']],
     dragon: [['melee', 'Garra Dragón'], ['spin', 'Ciclón'], ['twin', 'Dracoflechas'], ['cone', 'Furia Dragón']],
@@ -545,8 +545,35 @@
     def.kitChoice = { atk: !sameMove(c.attack, def.attack), sup: !sameMove(c.super, def.super) };
   }
   PB.KIT_DEFAULT = { atk: 'nuevo', sup: 'nuevo' };
-  // kit de confianza (llega de la red o del guardado): solo 'nuevo' o 'clasico'
-  PB.validKit = (id, k) => ({ atk: k && k.atk === 'clasico' ? 'clasico' : 'nuevo', sup: k && k.sup === 'clasico' ? 'clasico' : 'nuevo' });
+  // Skins regionales: el Pokémon con esa forma tiene sus tipos regionales y puede elegir ataque y súper de ellos
+  // (tercera opción del set: 'region'). Tipos de la forma de esa fase o, si esa fase no tiene, de la primera que la tenga.
+  PB.REGIONS = ['alola', 'galar', 'hisui', 'paldea'];
+  PB.regionTypes = (line, stage, reg) => {
+    if (!reg || !PB.FORMS || !PB.REGIONS.includes(reg)) return null;
+    const f = PB.FORMS[line[stage] + '-' + reg] || line.map((dx) => PB.FORMS[dx + '-' + reg]).find((x) => x && x.types);
+    return f && f.types ? f.types : null;
+  };
+  const regionCache = {};
+  PB.regionMoves = (def, line, stage, reg) => {
+    const types = PB.regionTypes(line, stage, reg);
+    if (!types) return null;
+    const key = def.id + ':' + line.join('-') + ':' + stage + ':' + reg;
+    if (!regionCache[key]) {
+      const nb = build({ id: def.id, line, alts: def.alts }, types);
+      regionCache[key] = { attack: nb.attack, super: nb.super, types };
+    }
+    return regionCache[key];
+  };
+  // kit de confianza (llega de la red o del guardado): 'nuevo', 'clasico' o 'region' (+ reg: la región de la skin)
+  PB.validKit = (id, k) => {
+    const v = (x) => (x === 'clasico' || x === 'region' ? x : 'nuevo');
+    const out = { atk: k ? v(k.atk) : 'nuevo', sup: k ? v(k.sup) : 'nuevo' };
+    if (out.atk === 'region' || out.sup === 'region') {
+      if (k && PB.REGIONS.includes(k.reg)) out.reg = k.reg;
+      else { if (out.atk === 'region') out.atk = 'nuevo'; if (out.sup === 'region') out.sup = 'nuevo'; }
+    }
+    return out;
+  };
   // los bots eligen al azar entre los dos sets, así hay Pokémon iguales con movimientos distintos
   PB.randomKit = (id) => {
     const d = PB.brawlerById(id);
@@ -578,6 +605,11 @@
     if (kit && (kit.atk === 'clasico' || kit.sup === 'clasico')) {
       const c = classicMoves(def.id, line, stage, def.alts);
       n = Object.assign({}, n, kit.atk === 'clasico' && def.kitChoice && def.kitChoice.atk ? { attack: c.attack } : {}, kit.sup === 'clasico' && def.kitChoice && def.kitChoice.sup ? { super: c.super } : {});
+    }
+    // ataque y/o súper del tipo de su forma regional (con la skin puesta)
+    if (kit && kit.reg && (kit.atk === 'region' || kit.sup === 'region')) {
+      const r = PB.regionMoves(def, line, stage, kit.reg);
+      if (r) n = Object.assign({}, n, kit.atk === 'region' ? { attack: r.attack } : {}, kit.sup === 'region' ? { super: r.super } : {});
     }
     return n;
   };

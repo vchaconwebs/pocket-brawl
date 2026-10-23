@@ -391,12 +391,43 @@ PB.Save = (() => {
     return !!d.favs[id];
   }
   // set de movimientos de cada Pokémon: { atk: 'nuevo' | 'clasico', sup: 'nuevo' | 'clasico' }
-  const kit = (id) => PB.validKit(id, (get().kits || {})[id]);
+  // (los movimientos de región van con la skin: sin ella puesta, esa parte vuelve al set nuevo)
+  const kit = (id) => {
+    const k = PB.validKit(id, (get().kits || {})[id]);
+    if (k.reg && skin(id) !== k.reg) {
+      if (k.atk === 'region') k.atk = 'nuevo';
+      if (k.sup === 'region') k.sup = 'nuevo';
+      delete k.reg;
+    }
+    return k;
+  };
+  // Cambiar al otro set cuesta Puntos Pokémon una sola vez por Pokémon (el nuevo es gratis):
+  // 50 el ataque y 100 la súper. Los de región, igual, para cada región.
+  const kitKey = (part, value, reg) => part + ':' + value + (value === 'region' ? ':' + reg : '');
+  const kitCost = (part) => (part === 'atk' ? 50 : 100);
+  function kitOwned(id, part, value, reg) {
+    return value === 'nuevo' || ((get().kitsOwned || {})[id] || []).includes(kitKey(part, value, reg));
+  }
+  function buyKit(id, part, value, reg) {
+    const d = get();
+    if (kitOwned(id, part, value, reg)) return true;
+    if (!owned(id) || (d.points || 0) < kitCost(part)) return false;
+    d.points -= kitCost(part);
+    d.kitsOwned = d.kitsOwned || {};
+    (d.kitsOwned[id] = d.kitsOwned[id] || []).push(kitKey(part, value, reg));
+    persist();
+    return true;
+  }
   function setKit(id, part, value) {
+    const reg = value === 'region' ? skin(id) : null;
+    if (!kitOwned(id, part, value, reg)) return false;
     const d = get();
     d.kits = d.kits || {};
-    d.kits[id] = Object.assign(kit(id), { [part]: value === 'clasico' ? 'clasico' : 'nuevo' });
+    const k = Object.assign(kit(id), { [part]: value === 'clasico' || value === 'region' ? value : 'nuevo' });
+    if (reg) k.reg = reg;
+    d.kits[id] = k;
     persist();
+    return true;
   }
   function setSkin(id, sk) {
     if (sk === 'shiny' && !hasShiny(id)) return false;
@@ -665,7 +696,7 @@ PB.Save = (() => {
   return {
     load, get, persist, setName, owned, level, copas, totalCopas, select, upgradeCost, upgrade, unlockCost, unlock, spendCoins,
     pass, claimPass, claimPassExtra,
-    needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, isFav, toggleFav, regionSkins, hasRegion, buyRegion, branch, lineOf, setBranch, kit, setKit,
+    needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, isFav, toggleFav, regionSkins, hasRegion, buyRegion, branch, lineOf, setBranch, kit, setKit, kitOwned, buyKit, kitCost,
     importJSON, openChest, nextChest, applyMatch, applyAbandon, abandonWait, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
   };
 })();

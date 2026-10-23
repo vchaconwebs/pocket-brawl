@@ -408,7 +408,8 @@ PB.Lobby = (() => {
     $('#dt-role').textContent = sdef.role + ' · Generación ' + b.gen;
     $('#dt-rar').textContent = r.name;
     $('#dt-rar').style.background = r.color;
-    $('#dt-types').innerHTML = typeTags(b, PB.stageTypes(L, dtStage));
+    // (con skin regional, sus tipos regionales: Vulpix de Alola es de Hielo)
+    $('#dt-types').innerHTML = typeTags(b, PB.regionTypes(L.line, dtStage, PB.Save.skin(id)) || PB.stageTypes(L, dtStage));
     $('#dt-desc').textContent = sdef.descBase || sdef.desc; // el súper se explica en su recuadro (según el set elegido)
     // línea evolutiva: se puede tocar cada fase para verla
     const steps = PB.evoSteps(b);
@@ -444,14 +445,23 @@ PB.Lobby = (() => {
       `<tr><td>${si('hourglass')}Recarga</td><td>${now.reload} s</td></tr>` +
       `<tr><td>${si('target')}Alcance</td><td>${Math.round((now.range || b.super.radius || 0) / PB.TILE * 10) / 10} casillas</td></tr>`;
     // set de movimientos: si el ataque o el súper nuevos son distintos de los de la v1.2, se puede elegir
+    // con skin regional puesta: también el ataque y la súper de su tipo regional
+    const curSkin = PB.Save.skin(id);
+    const regMoves = PB.REGIONS.includes(curSkin) ? PB.regionMoves(b, L.line, 0, curSkin) : null;
+    const REGN = { alola: 'Alola', galar: 'Galar', hisui: 'Hisui', paldea: 'Paldea' };
     const pick = (part, label) => {
-      if (!b.kitChoice[part]) return '';
       const nw = part === 'atk' ? b.attack : b.super, cl = part === 'atk' ? b.classic.attack : b.classic.super;
+      const rg = regMoves && (part === 'atk' ? regMoves.attack : regMoves.super);
+      const hasReg = rg && rg.name !== nw.name && rg.name !== cl.name;
+      if (!b.kitChoice[part] && !hasReg) return '';
       // si los dos se llaman igual (Ascenso Draco de Rayquaza), se dice qué forma tiene cada uno
       const tag = (m) => (nw.name === cl.name ? ` (${PB.T(formName(m))})` : '');
+      // los que no son el de por defecto se desbloquean una vez con Puntos Pokémon
+      const price = (v) => (own && !PB.Save.kitOwned(id, part, v, curSkin) ? ` <i class="kit-cost">🔒 ${money(PB.Save.kitCost(part), starIcon)}</i>` : '');
       return `<div class="kit-pick" data-part="${part}"><small>${label}:</small>` +
         `<button class="${kit[part] === 'nuevo' ? 'sel' : ''}" data-v="nuevo">${typeIcon(nw.type || b.atkType)}${PB.T('Nuevo')} · ${nw.name}${tag(nw)}</button>` +
-        `<button class="${kit[part] === 'clasico' ? 'sel' : ''}" data-v="clasico">${typeIcon(cl.type || b.atkType)}${PB.T('Clásico')} · ${cl.name}${tag(cl)}</button></div>`;
+        (b.kitChoice[part] ? `<button class="${kit[part] === 'clasico' ? 'sel' : ''}" data-v="clasico">${typeIcon(cl.type || b.atkType)}${PB.T('Clásico')} · ${cl.name}${tag(cl)}${price('clasico')}</button>` : '') +
+        (hasReg ? `<button class="${kit[part] === 'region' ? 'sel' : ''}" data-v="region">${typeIcon(rg.type || regMoves.types[0])}${REGN[curSkin]} · ${rg.name}${price('region')}</button>` : '') + '</div>';
     };
     $('#dt-moves').innerHTML =
       `<div class="move"><b>${typeIcon(sdef.attack.type || sdef.atkType)}Ataque · ${sdef.attack.name}</b><span>${moveText(sdef.attack, false)}</span>${pick('atk', PB.T('Ataque'))}</div>` +
@@ -462,8 +472,17 @@ PB.Lobby = (() => {
         const nd = last > 0 ? PB.retype(b, L.line, last, kit) : kd;
         return nd.attack.name === kd.attack.name && nd.super.name === kd.super.name ? '' : `<div class="move evo"><b>Al evolucionar a ${PB.DEX[L.line[last]].name}</b><span>${nd.role}: ${nd.attack.name} y súper ${nd.super.name}.</span></div>`;
       })();
-    document.querySelectorAll('#dt-moves .kit-pick button').forEach((e) => (e.onclick = () => {
-      PB.Save.setKit(id, e.parentNode.dataset.part, e.dataset.v);
+    document.querySelectorAll('#dt-moves .kit-pick button').forEach((e) => (e.onclick = async () => {
+      const part = e.parentNode.dataset.part, v = e.dataset.v;
+      if (!own) return toast(PB.T('Primero desbloquea este Pokémon.'));
+      if (!PB.Save.kitOwned(id, part, v, curSkin)) {
+        const cost = PB.Save.kitCost(part);
+        if (!(await modal(PB.T('¿Desbloquear este movimiento por {n} Puntos Pokémon? Luego podrás cambiar gratis.', { n: cost }), true))) return;
+        if (!PB.Save.buyKit(id, part, v, curSkin)) return toast(PB.T('Te faltan Puntos Pokémon.'));
+        PB.Audio.play('candy');
+        refreshLobby();
+      }
+      PB.Save.setKit(id, part, v);
       PB.Audio.play('tick');
       renderDetail();
     }));
