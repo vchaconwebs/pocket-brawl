@@ -1828,7 +1828,7 @@ PB.Lobby = (() => {
           if (r && r.outcome === 'accepted') close();
           return;
         }
-        await modal(PB.T('En iPhone: pulsa el botón Compartir (el cuadrado con la flecha ⬆️) y luego «Añadir a pantalla de inicio». Abre el juego desde ese icono y se verá a pantalla completa, como una app.'));
+        await modal(PB.T('En iPhone, desde Safari: 1) pulsa Compartir (el cuadrado con la flecha ⬆️, abajo en el centro). 2) Desliza el menú hacia ARRIBA: «Añadir a pantalla de inicio» está más abajo de la lista. Si no sale, pulsa «Editar acciones» al final y actívalo. 3) Abre el juego desde ese icono: pantalla completa, como una app. (Si has entrado desde TikTok o Instagram, ábrelo antes en Safari con el botón ··· )'));
       };
     };
     window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); prompt = e; show(); });
