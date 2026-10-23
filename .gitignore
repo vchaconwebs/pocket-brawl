@@ -2,3 +2,8 @@
 __pycache__/
 tools/cache/
 videos/
+
+# campo de pruebas de Juanmita (solo en local)
+demo-super.html
+LEEME.md
+archivos-cambiados.zip

@@ -1,9 +1,43 @@
 // Versión del juego y notas de parche. Al publicar una actualización con novedades:
 // sube PB.VERSION y añade su nota ARRIBA del todo en PB.PATCH_NOTES (la primera es la que se enseña).
 // Cada jugador la ve una sola vez al entrar a la lobby (se guarda en localStorage 'pb.seenVersion').
-PB.VERSION = '1.6';
+PB.VERSION = '1.7';
 
 PB.PATCH_NOTES = [
+  {
+    v: '1.7',
+    date: '23/10/2026',
+    es: {
+      title: '¡La gran actualización 1.7!',
+      items: [
+        ['🧬', '¡MEGAEVOLUCIONES! Cuando tu Pokémon llega a su última evolución, llena la barra rosa y pulsa MEGA (F en PC, △ con mando): durante 7 s pega más, aguanta más y corre más. 40 Pokémon se transforman de verdad (Mega-Charizard, Mega-Gengar, Mega-Rayquaza…) y el resto se envuelve en un aura de poder.'],
+        ['⚔️', 'Ataques y súpers nuevos para casi todos: 21 formas de atacar (lanzas, rociadas, láseres, disparos que rebotan o se dividen…) y más de 100 súpers distintas: olas, torbellinos, orbes, saltos, látigos, espejos, furia… Hecho por JuanmitaDinamita.'],
+        ['👑', 'Cada legendario tiene ahora su súper propia y espectacular: Ascenso Draco de Rayquaza, Filo del Abismo de Groudon, Pulso Primigenio de Kyogre, Sentencia de Arceus…'],
+        ['✨', 'Súpers especiales para Pokémon famosos que crecen al evolucionar: los shurikens de Greninja, el Látigo Cepa de Bulbasaur (1, 2 y 3 látigos), la Bola Sombra de Gengar, el Lanzallamas de Charizard…'],
+        ['🔁', 'Elige los movimientos de cada Pokémon en su ficha: el set nuevo viene gratis y el clásico (el de antes) se desbloquea con Puntos Pokémon (50 el ataque, 100 la súper).'],
+        ['🌴', 'Skins regionales: Alola, Galar, Hisui y Paldea (54 formas). Se compran con Monedas Arcoíris o salen en cofres, y con la skin puesta tu Pokémon tiene sus tipos regionales y puede usar ataques de ese tipo (Vulpix de Alola es de Hielo y lanza Canto Helado).'],
+        ['🎰', '¡ZONA SAFARI! Una máquina de bolas que se llena con las fichas de tus partidas (sin quitárselas a las Poké Balls): cada 500 fichas eliges región y salen 10 premios con al menos 3 Pokémon que aún no tienes.'],
+        ['🗺️', 'Mapas nuevos: Gran Estadio en Voltorbol y Lago Tóxico en Niebla Tóxica, con una isla llena de cajas en el centro.'],
+        ['🛡️', 'Clanes: el líder puede ascender a colíder, pasar el liderazgo y expulsar; y en el ranking ya puedes tocar cualquier clan para ver quién está dentro.'],
+        ['🌟', 'Y más: estela de estrellas en las skins shiny, la flecha de volver se queda fija en las listas largas, pantalla completa en Android más fácil, ya no se ve el apuntado del que estás mirando y todos los ataques equilibrados (alcances y daño) con miles de partidas de prueba.'],
+      ],
+    },
+    en: {
+      title: 'The big 1.7 update!',
+      items: [
+        ['🧬', 'MEGA EVOLUTIONS! When your Pokémon reaches its final evolution, fill the pink bar and press MEGA (F on PC, △ on a controller): for 7 s it hits harder, takes less damage and runs faster. 40 Pokémon truly transform (Mega Charizard, Mega Gengar, Mega Rayquaza…) and the rest get a power aura.'],
+        ['⚔️', 'New attacks and supers for almost everyone: 21 ways to attack (lances, sprays, lasers, shots that bounce or split…) and over 100 different supers: waves, tornadoes, orbs, leaps, whips, mirrors, rage… Made by JuanmitaDinamita.'],
+        ['👑', 'Every legendary now has its own spectacular super: Rayquaza’s Dragon Ascent, Groudon’s Precipice Blades, Kyogre’s Origin Pulse, Arceus’s Judgment…'],
+        ['✨', 'Special supers for famous Pokémon that grow as they evolve: Greninja’s shuriken, Bulbasaur’s Vine Whip (1, 2 and 3 vines), Gengar’s Shadow Ball, Charizard’s Flamethrower…'],
+        ['🔁', 'Choose each Pokémon’s moves on its page: the new set is free and the classic one (the old moves) is unlocked with Pokémon Points (50 the attack, 100 the super).'],
+        ['🌴', 'Regional skins: Alola, Galar, Hisui and Paldea (54 forms). Buy them with Rainbow Coins or find them in chests; wearing one gives your Pokémon its regional types and moves of that type (Alolan Vulpix is Ice-type and uses Ice Shard).'],
+        ['🎰', 'SAFARI ZONE! A ball machine that fills up with the tokens from your matches (without taking them from Poké Balls): every 500 tokens, pick a region and get 10 rewards with at least 3 Pokémon you don’t have yet.'],
+        ['🗺️', 'New maps: Grand Stadium in Voltorb Ball and Toxic Lake in Toxic Fog, with an island full of crates in the middle.'],
+        ['🛡️', 'Clans: the leader can promote to co-leader, hand over leadership and kick; and in the ranking you can now tap any clan to see who’s inside.'],
+        ['🌟', 'And more: a star trail on shiny skins, the back arrow stays on screen in long lists, easier full screen on Android, you no longer see the aim of the player you’re watching, and every attack rebalanced (range and damage) with thousands of test matches.'],
+      ],
+    },
+  },
   {
     v: '1.6',
     date: '23/10/2026',
