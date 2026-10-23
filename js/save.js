@@ -68,8 +68,8 @@ PB.statsAt = (def, lvl) => {
 PB.LONG_MODES = ['gems', 'heist', 'zone', 'brawl'];
 PB.copasDelta = (copas, result, rank, mode) => {
   if (rank) {
-    // Niebla Tóxica (y Dúo): según el puesto (1 a 10). Las partidas duran poco, así que dan menos
-    const table = copas < 100 ? [6, 4, 3, 1, 0, -1, -2, -3, -4, -5] : copas < 400 ? [5, 3, 2, 0, -1, -2, -3, -4, -5, -6] : [4, 2, 1, -1, -2, -3, -4, -5, -6, -7];
+    // Niebla Tóxica (y Dúo): según el puesto (1 a 10). Ganar siempre da 8
+    const table = copas < 100 ? [8, 5, 4, 2, 0, -1, -2, -3, -4, -5] : copas < 400 ? [8, 4, 3, 1, -1, -2, -3, -4, -5, -6] : [8, 4, 2, 0, -2, -3, -4, -5, -6, -7];
     return table[Math.max(0, Math.min(9, rank - 1))];
   }
   if (result === 'draw') return 0;
