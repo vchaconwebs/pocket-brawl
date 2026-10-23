@@ -432,7 +432,7 @@
       `<div class="avg"><span>Partidas por jugador</span><b class="num">${p ? dec(m / p) : '0'}</b></div>`;
   }
 
-  // media de gente en línea de un día (fotos cada 10 minutos)
+  // media de gente en línea de un día (fotos cada 2 minutos)
   const avgOn = (r) => { const v = Object.values((r && r.online) || {}).filter((x) => typeof x === 'number'); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
   function avgToday() {
     const r = data[dayKey(new Date())] || {}, n = Object.keys(r.online || {}).length;

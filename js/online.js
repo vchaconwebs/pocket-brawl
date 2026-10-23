@@ -128,11 +128,11 @@ PB.Online = (() => {
       if (!testing) notePeak(all.length);
     });
     if (testing) return;
-    // media diaria: cada 10 minutos (hora de Madrid) se apunta cuánta gente hay; solo vale la primera foto
+    // media diaria: cada 2 minutos (hora de Madrid) se apunta cuánta gente hay; solo vale la primera foto
     let lastSlot = -1;
     setInterval(() => {
       const [h, m] = new Date(Date.now() + offset).toLocaleTimeString('en-GB', { timeZone: 'Europe/Madrid', hour12: false }).split(':').map(Number);
-      const slot = h * 6 + Math.floor(m / 10);
+      const slot = h * 30 + Math.floor(m / 2);
       if (slot === lastSlot || !live.total) return;
       lastSlot = slot;
       const ref = rtdb.ref('stats/' + day() + '/online/' + slot);
