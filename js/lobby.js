@@ -170,7 +170,10 @@ PB.Lobby = (() => {
   const money = (n, ico) => `<span class="money"><img src="${ico()}" alt="">${n}</span>`;
   const portrait = (b) => PB.Sprites.portraitURL(b.dex);
   const rarityOf = (b) => PB.RARITY[b.rarity] || PB.RARITY.common;
-  const typeTags = (b, types) => (types || b.types).map((ty) => `<i style="background:${PB.TYPE_INFO[ty].color}">${PB.TYPE_INFO[ty].name}</i>`).join('');
+  // icono pixel art del tipo (assets/icons/tipos.png, hecho en Aseprite: 18 iconos de 11 px en el orden de PB.TYPE_INFO)
+  const TYPE_ORDER = Object.keys(PB.TYPE_INFO);
+  const typeIcon = (ty) => `<span class="tico" style="--i:${TYPE_ORDER.indexOf(ty)}" title="${PB.TYPE_INFO[ty] ? PB.TYPE_INFO[ty].name : ''}"></span>`;
+  const typeTags = (b, types) => (types || b.types).map((ty) => `<i style="background:${PB.TYPE_INFO[ty].color}">${typeIcon(ty)}${PB.TYPE_INFO[ty].name}</i>`).join('');
 
   // ------------------------------------------------------------------ pantallas
   // El inicio sale nada más entrar si no tienes cuenta (Google o correo): ahí eliges invitado,
@@ -393,18 +396,20 @@ PB.Lobby = (() => {
     const lvl = own ? PB.Save.level(id) : 1;
     const r = rarityOf(b);
     const L = { line: PB.Save.lineOf(id) }; // línea con la rama elegida
+    const kit = PB.Save.kit(id); // set de movimientos elegido (nuevo / clásico)
+    const kd = PB.retype(b, L.line, 0, kit);
     const sm = PB.stageMul(b, dtStage);
     const scaleStats = (st) => Object.assign({}, st, { hp: Math.round(st.hp * sm), dmg: Math.round(st.dmg * sm), superDmg: Math.round(st.superDmg * sm) });
-    const now = scaleStats(PB.statsAt(b, lvl));
-    const next = lvl < PB.META.maxLevel ? scaleStats(PB.statsAt(b, lvl + 1)) : null;
+    const now = scaleStats(PB.statsAt(kd, lvl));
+    const next = lvl < PB.META.maxLevel ? scaleStats(PB.statsAt(kd, lvl + 1)) : null;
     const plus = (k) => (next && own && next[k] !== now[k] ? ` <em>+${next[k] - now[k]}</em>` : '');
     $('#dt-name').textContent = PB.stageName(L, dtStage);
-    const sdef = dtStage > 0 ? PB.retype(b, L.line, dtStage) : b;
+    const sdef = PB.retype(b, L.line, dtStage, kit);
     $('#dt-role').textContent = sdef.role + ' · Generación ' + b.gen;
     $('#dt-rar').textContent = r.name;
     $('#dt-rar').style.background = r.color;
     $('#dt-types').innerHTML = typeTags(b, PB.stageTypes(L, dtStage));
-    $('#dt-desc').textContent = sdef.desc;
+    $('#dt-desc').textContent = sdef.descBase || sdef.desc; // el súper se explica en su recuadro (según el set elegido)
     // línea evolutiva: se puede tocar cada fase para verla
     const steps = PB.evoSteps(b);
     const branchPick = b.alts
@@ -438,16 +443,31 @@ PB.Lobby = (() => {
       `<tr><td>${si('bolt')}Velocidad</td><td>${now.speed}</td></tr>` +
       `<tr><td>${si('hourglass')}Recarga</td><td>${now.reload} s</td></tr>` +
       `<tr><td>${si('target')}Alcance</td><td>${Math.round((now.range || b.super.radius || 0) / PB.TILE * 10) / 10} casillas</td></tr>`;
+    // set de movimientos: si el ataque o el súper nuevos son distintos de los de la v1.2, se puede elegir
+    const pick = (part, label) => {
+      if (!b.kitChoice[part]) return '';
+      const nw = part === 'atk' ? b.attack : b.super, cl = part === 'atk' ? b.classic.attack : b.classic.super;
+      // si los dos se llaman igual (Ascenso Draco de Rayquaza), se dice qué forma tiene cada uno
+      const tag = (m) => (nw.name === cl.name ? ` (${PB.T(formName(m))})` : '');
+      return `<div class="kit-pick" data-part="${part}"><small>${label}:</small>` +
+        `<button class="${kit[part] === 'nuevo' ? 'sel' : ''}" data-v="nuevo">${typeIcon(nw.type || b.atkType)}${PB.T('Nuevo')} · ${nw.name}${tag(nw)}</button>` +
+        `<button class="${kit[part] === 'clasico' ? 'sel' : ''}" data-v="clasico">${typeIcon(cl.type || b.atkType)}${PB.T('Clásico')} · ${cl.name}${tag(cl)}</button></div>`;
+    };
     $('#dt-moves').innerHTML =
-      `<div class="move"><b>Ataque · ${b.attack.name}</b><span>${moveText(b.attack, false)}</span></div>` +
-      `<div class="move super"><b>Súper · ${b.super.name}</b><span>${moveText(b.super, true)}</span></div>` +
+      `<div class="move"><b>${typeIcon(sdef.attack.type || sdef.atkType)}Ataque · ${sdef.attack.name}</b><span>${moveText(sdef.attack, false)}</span>${pick('atk', PB.T('Ataque'))}</div>` +
+      `<div class="move super"><b>${typeIcon(sdef.super.type || sdef.atkType)}Súper · ${sdef.super.name}</b><span>${moveText(sdef.super, true)}</span>${pick('sup', PB.T('Súper'))}</div>` +
       (() => {
-        // rama que cambia de tipo: al evolucionar cambian los ataques
+        // al evolucionar cambian los ataques (rama de otro tipo o súper especial de esa fase)
         const last = L.line.length - 1;
-        const nd = last > 0 ? PB.retype(b, L.line, last) : b;
-        return nd === b ? '' : `<div class="move evo"><b>Al evolucionar a ${PB.DEX[L.line[last]].name}</b><span>${nd.role}: ${nd.attack.name} y súper ${nd.super.name}.</span></div>`;
+        const nd = last > 0 ? PB.retype(b, L.line, last, kit) : kd;
+        return nd.attack.name === kd.attack.name && nd.super.name === kd.super.name ? '' : `<div class="move evo"><b>Al evolucionar a ${PB.DEX[L.line[last]].name}</b><span>${nd.role}: ${nd.attack.name} y súper ${nd.super.name}.</span></div>`;
       })();
-    // skins: normal, shiny (Monedas Arcoíris) y regionales (Alola, Galar, Hisui, Paldea: monedas)
+    document.querySelectorAll('#dt-moves .kit-pick button').forEach((e) => (e.onclick = () => {
+      PB.Save.setKit(id, e.parentNode.dataset.part, e.dataset.v);
+      PB.Audio.play('tick');
+      renderDetail();
+    }));
+    // skins: normal y shiny (se compra con Monedas Arcoíris)
     const sk = $('#dt-skins');
     const regions = PB.Save.regionSkins(id);
     const REG = { alola: 'Alola', galar: 'Galar', hisui: 'Hisui', paldea: 'Paldea' };
@@ -504,19 +524,42 @@ PB.Lobby = (() => {
     $('#dt-hero').classList.toggle('locked', !own);
   }
 
+  // nombre corto de la forma de un movimiento (para distinguir dos que se llaman igual)
+  function formName(m) {
+    const F = {
+      spread: (m.count || 1) > 1 ? 'abanico' : 'disparo', burst: 'ráfaga', melee: m.arc > 6 ? 'giro' : 'cuerpo a cuerpo', twin: 'doble', lob: 'lanzamiento',
+      laser: 'láser', zone: 'zona', dash: 'embestida', slam: 'golpe al suelo', stealth: 'invisible', nova: 'estallido', boomerang: 'bumerán',
+      chain: 'rayo en cadena', beam: 'rayo', mines: 'trampas', turret: 'torreta', barrier: 'escudo', wish: 'curación', meteor: 'lluvia',
+      wave: 'ola', tornado: 'torbellino', orbit: 'orbes', leap: 'salto', hook: 'látigo', reflect: 'espejo', rage: 'furia', ricochet: 'rebote',
+      comet: 'cometa', fissure: 'grieta', megabeam: 'megarrayo', judgment: 'lluvia de luz', rend: 'tajos', pulse: 'ondas', inferno: 'llamas',
+      storm: 'tormenta', void: 'agujero negro', frost: 'hielo', aura: 'aura', phantom: 'aparece y golpea', bigorb: 'esfera',
+    };
+    return F[m.engine || m.kind] || m.kind;
+  }
+
   function moveText(m, isSuper) {
+    // súper de legendarios: su propia descripción (roster.js, LEGEND)
+    if ((m.legend || m.special) && m.desc) return PB.T(m.legend ? 'Súper legendario' : 'Súper especial') + ': ' + m.desc.charAt(0).toUpperCase() + m.desc.slice(1) + '.';
     switch (m.kind) {
       case 'spread': {
         // frase por partes (cada una se traduce)
         const T = PB.T;
         const extra = [m.pierce && !m.boomerang ? T('Atraviesa') : '', m.destroysWalls ? T('Rompe muros') : '', m.knockback ? T('Empuja') : '', m.stun ? T('Congela un momento') : ''].filter(Boolean);
-        const main = m.count > 1 ? T('{n} proyectiles en abanico', { n: m.count }) : m.boomerang ? T('Un proyectil que va y vuelve') : m.homing ? T('Un proyectil teledirigido que persigue al rival') : T('Un proyectil');
+        const main = m.jitter ? T('Una rociada de {n} perdigones a corta distancia', { n: m.count })
+          : m.count > 1 ? T('{n} proyectiles en abanico', { n: m.count })
+          : m.ripple ? T('Una onda corta y ancha')
+          : m.split ? T('Un proyectil que se parte en {n} al chocar o al llegar al final', { n: m.split.count })
+          : m.sine ? T('Un proyectil que avanza haciendo eses')
+          : m.bounces && !isSuper ? T('Un proyectil que rebota una vez en los muros')
+          : m.boomerang ? T('Un proyectil que va y vuelve') : m.homing ? T('Un proyectil teledirigido que persigue al rival') : T('Un proyectil');
         return main + '.' + (extra.length ? ' ' + extra.join('. ') + '.' : '');
       }
       case 'burst': return `Ráfaga de ${m.count} disparos rápidos.`;
-      case 'melee': return 'Golpe cuerpo a cuerpo que barre a todos los que tiene delante.';
+      case 'melee': return m.arc > 6 ? 'Gira sobre sí mismo y golpea a todos los que tiene alrededor.' : 'Golpe cuerpo a cuerpo que barre a todos los que tiene delante.';
+      case 'laser': return 'Un láser instantáneo y estrecho que golpea a todo lo que haya en la línea.';
       case 'twin': return 'Dos disparos a la vez, en paralelo.';
-      case 'lob': return 'Lanza por encima de los muros y explota al caer.';
+      case 'lob': return m.cluster ? 'Lanza por encima de los muros: explota al caer y luego estallan trozos alrededor.'
+        : m.puddle ? 'Lanza por encima de los muros: explota al caer y deja un charco que daña.' : 'Lanza por encima de los muros y explota al caer.';
       case 'zone': return m.heal ? 'Crea una zona que daña a los rivales y cura a tu equipo.' : 'Deja un charco venenoso que hace mucho daño a los rivales.';
       case 'dash': return 'Embestida rápida que daña y aturde.';
       case 'slam': return m.destroysWalls ? 'Golpe al suelo alrededor: daña, empuja y rompe muros.' : 'Onda alrededor que daña y lanza lejos a los rivales.';
@@ -530,6 +573,14 @@ PB.Lobby = (() => {
       case 'barrier': return 'Escudo para ti y tu equipo cercano: recibís mucho menos daño.';
       case 'wish': return 'Cura de golpe a todo tu equipo cercano y le quita el aturdimiento.';
       case 'meteor': return 'Una lluvia de golpes cae sobre la zona que elijas.';
+      case 'wave': return m.stun ? 'Una ola helada y ancha que pasa por encima de los muros y congela un momento.' : 'Una ola enorme que pasa por encima de los muros y arrastra a los rivales.';
+      case 'tornado': return m.pull ? 'Un torbellino que avanza despacio, atrapa a los rivales y los arrastra con él.' : 'Una nube que avanza despacio y hace mucho daño a quien se quede dentro.';
+      case 'orbit': return `${m.count} orbes giran a tu alrededor ${m.duration} s: golpean a quien se acerque y paran los disparos.`;
+      case 'leap': return m.burrow ? 'Te metes bajo tierra y sales de golpe en la zona que elijas.' : 'Saltas por encima de todo y caes sobre la zona que elijas. En el aire no te pueden dañar.';
+      case 'hook': return 'Atrapa al primer rival que toca, lo aturde y lo trae hasta ti.';
+      case 'reflect': return `Un espejo que devuelve los disparos rivales durante ${m.time} s.`;
+      case 'rage': return `Durante ${m.time} s corres más, recargas antes y pegas más fuerte.`;
+      case 'ricochet': return `Un disparo que rebota en los muros hasta ${m.bounces} veces y atraviesa a los rivales.`;
     }
     return isSuper ? 'Ataque especial.' : '';
   }

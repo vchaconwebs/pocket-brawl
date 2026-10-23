@@ -390,6 +390,14 @@ PB.Save = (() => {
     persist();
     return !!d.favs[id];
   }
+  // set de movimientos de cada Pokémon: { atk: 'nuevo' | 'clasico', sup: 'nuevo' | 'clasico' }
+  const kit = (id) => PB.validKit(id, (get().kits || {})[id]);
+  function setKit(id, part, value) {
+    const d = get();
+    d.kits = d.kits || {};
+    d.kits[id] = Object.assign(kit(id), { [part]: value === 'clasico' ? 'clasico' : 'nuevo' });
+    persist();
+  }
   function setSkin(id, sk) {
     if (sk === 'shiny' && !hasShiny(id)) return false;
     if (REGIONS.includes(sk) && !hasRegion(id, sk)) return false;
@@ -657,7 +665,7 @@ PB.Save = (() => {
   return {
     load, get, persist, setName, owned, level, copas, totalCopas, select, upgradeCost, upgrade, unlockCost, unlock, spendCoins,
     pass, claimPass, claimPassExtra,
-    needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, isFav, toggleFav, regionSkins, hasRegion, buyRegion, branch, lineOf, setBranch,
+    needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, isFav, toggleFav, regionSkins, hasRegion, buyRegion, branch, lineOf, setBranch, kit, setKit,
     importJSON, openChest, nextChest, applyMatch, applyAbandon, abandonWait, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
   };
 })();

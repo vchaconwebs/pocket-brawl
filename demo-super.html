@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Campo de pruebas</title>
+  <!-- Campo de pruebas de ataques y súper: elige un Pokémon y pruébalo contra sacos de entrenamiento.
+       Usa el motor de verdad (js/game.js, js/render.js...), así lo que se ve aquí es lo que sale en partida. -->
+  <style>
+    @font-face { font-family: 'Jersey 10'; src: url('assets/fonts/Jersey10.ttf') format('truetype'); }
+    :root { --bg: #14182a; --panel: rgba(16, 20, 36, 0.92); --line: #2e3a5c; --txt: #eef2ff; --mut: #9aa6c8; --gold: #ffd23a; --new: #5dff7a; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--txt); font-family: 'Jersey 10', system-ui, sans-serif; font-size: 18px; }
+    canvas#game { position: fixed; inset: 0; display: block; }
+    #panel { position: fixed; top: 12px; left: 12px; bottom: 12px; width: 330px; background: var(--panel); border: 2px solid var(--line); border-radius: 10px; display: flex; flex-direction: column; z-index: 5; }
+    #panel.closed { bottom: auto; }
+    #panel.closed .body { display: none; }
+    .head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 2px solid var(--line); }
+    .head h1 { font-size: 24px; margin: 0; flex: 1; font-weight: 400; color: var(--gold); }
+    button { font: inherit; color: var(--txt); background: #26304e; border: 2px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+    button:hover { border-color: var(--gold); }
+    button.on { background: #3b4a7a; border-color: var(--gold); }
+    .body { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+    .row { display: flex; gap: 6px; padding: 8px 12px 0; flex-wrap: wrap; align-items: center; }
+    .row label { color: var(--mut); }
+    select { font: inherit; color: var(--txt); background: #26304e; border: 2px solid var(--line); border-radius: 6px; padding: 2px 6px; }
+    input[type=search] { font: inherit; width: 100%; padding: 5px 8px; border-radius: 6px; border: 2px solid var(--line); background: #0d1120; color: var(--txt); }
+    #kinds { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 12px; }
+    #kinds button { font-size: 15px; padding: 2px 7px; }
+    #kinds button .n { color: var(--mut); margin-left: 4px; }
+    #kinds button.nw { border-color: #2f7a44; }
+    #list { overflow-y: auto; flex: 1; padding: 0 6px 8px; }
+    .mon { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; background: none; border-radius: 6px; padding: 3px 6px; }
+    .mon:hover, .mon.sel { background: #26304e; }
+    .mon img { width: 36px; height: 36px; image-rendering: pixelated; object-fit: contain; }
+    .mon .sn { color: var(--mut); font-size: 15px; }
+    .tag { font-size: 13px; color: #0b1a10; background: var(--new); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+    #info { position: fixed; right: 12px; top: 12px; width: 300px; background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 10px 12px; z-index: 5; }
+    #info h2 { margin: 0; font-size: 24px; font-weight: 400; }
+    #info .sup { color: var(--gold); font-size: 21px; margin-top: 2px; }
+    #info #i-atk { color: #9fd0ff; font-size: 19px; }
+    .tico { display: inline-block; width: 22px; height: 22px; margin-right: 5px; vertical-align: -5px; background: url(assets/icons/tipos.png) no-repeat; background-size: 396px 22px; background-position: calc(var(--i) * -22px) 0; image-rendering: pixelated; }
+    #info p { margin: 6px 0 0; color: var(--mut); font-size: 16px; line-height: 1.15; }
+    #info .bar { height: 10px; background: #0d1120; border-radius: 5px; margin-top: 8px; overflow: hidden; }
+    #info .bar i { display: block; height: 100%; width: 0; background: var(--gold); }
+    #keys { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); background: var(--panel); border: 2px solid var(--line); border-radius: 8px; padding: 4px 12px; color: var(--mut); font-size: 16px; z-index: 5; white-space: nowrap; }
+    #keys b { color: var(--txt); font-weight: 400; }
+    #shoot { position: fixed; right: 150px; bottom: 18px; z-index: 6; font-size: 22px; padding: 10px 18px; background: #1f3f6b; border-color: #9fd0ff; }
+    #cast { position: fixed; right: 18px; bottom: 18px; z-index: 6; font-size: 22px; padding: 10px 18px; background: #6b4a00; border-color: var(--gold); }
+    @media (max-width: 760px) {
+      #panel { width: auto; right: 12px; bottom: 45%; }
+      #info { top: auto; bottom: 80px; left: 12px; right: 12px; width: auto; }
+      #keys { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="panel">
+    <div class="head"><h1>Campo de pruebas</h1><button id="fold" title="Plegar">–</button></div>
+    <div class="body">
+      <div class="row">
+        <label>Ver:</label>
+        <button data-view="super" class="on">Súper</button>
+        <button data-view="atk">Ataque básico</button>
+        <button data-view="leg">Legendarios</button>
+        <button data-view="esp">Especiales</button>
+      </div>
+      <div class="row">
+        <label>Fase:</label>
+        <button data-stage="0" class="on">1ª</button>
+        <button data-stage="1">2ª</button>
+        <button data-stage="2">3ª</button>
+        <select id="branch" title="Rama de evolución" hidden></select>
+      </div>
+      <div class="row">
+        <label>Ataque:</label>
+        <button data-kit="atk:nuevo" class="on">Nuevo</button>
+        <button data-kit="atk:clasico">Clásico</button>
+        <label>Súper:</label>
+        <button data-kit="sup:nuevo" class="on">Nuevo</button>
+        <button data-kit="sup:clasico">Clásico</button>
+      </div>
+      <div class="row"><input id="q" type="search" placeholder="Buscar Pokémon, ataque o súper…" autocomplete="off"></div>
+      <div class="row">
+        <label>Rivales:</label>
+        <button data-foes="still" class="on">Quietos</button>
+        <button data-foes="move">Se mueven</button>
+        <button data-foes="fight">Atacan</button>
+      </div>
+      <div class="row">
+        <label>Mapa:</label>
+        <button data-map="0" class="on">Abierto</button>
+        <button data-map="1">Con muros</button>
+      </div>
+      <div id="kinds"></div>
+      <div id="list"></div>
+    </div>
+  </div>
+
+  <div id="info"><h2 id="i-name">—</h2><div class="sup" id="i-sup"></div><div class="sup" id="i-atk"></div><p id="i-desc"></p><div class="bar"><i id="i-bar"></i></div></div>
+  <div id="keys"><b>WASD</b> moverse · <b>clic</b> atacar · mantén <b>E</b> y suelta para apuntar el súper · <b>Q</b> súper automático · <b>espacio</b> ataque automático · munición infinita</div>
+  <button id="cast">¡Súper!</button>
+  <button id="shoot">¡Ataque!</button>
+
+  <script src="js/sprite-data.js?v=102"></script>
+  <script src="js/data.js?v=102"></script>
+  <script src="js/roster-data.js?v=102"></script>
+  <script src="js/i18n-data.js?v=102"></script>
+  <script src="js/i18n-names.js?v=102"></script>
+  <script src="js/i18n.js?v=102"></script>
+  <script src="js/sprites.js?v=102"></script>
+  <script src="js/vfx.js?v=102"></script>
+  <script src="js/roster.js?v=102"></script>
+  <script src="js/pokeball.js?v=102"></script>
+  <script src="js/tiles.js?v=102"></script>
+  <script src="js/world.js?v=102"></script>
+  <script src="js/game.js?v=102"></script>
+  <script src="js/modes.js?v=102"></script>
+  <script src="js/ai.js?v=102"></script>
+  <script src="js/render.js?v=102"></script>
+  <script src="js/input.js?v=102"></script>
+  <script src="js/settings.js?v=102"></script>
+  <script src="js/pixui.js?v=102"></script>
+  <script>
+  (function () {
+    const $ = (s) => document.querySelector(s);
+    // formas nuevas de esta versión (salen marcadas)
+    const NEW = {
+      super: new Set(['wave', 'tornado', 'orbit', 'leap', 'hook', 'reflect', 'rage', 'ricochet']),
+      atk: new Set(['spray', 'lance', 'split', 'bounce', 'sine', 'ripple', 'spin', 'laser', 'cluster', 'puddle']),
+      esp: new Set(),
+      leg: new Set(['comet', 'fissure', 'megabeam', 'judgment', 'rend', 'pulse', 'inferno', 'storm', 'void', 'frost', 'aura', 'phantom', 'bigorb']),
+    };
+    const KIND_NAME = {
+      super: {
+        wave: 'Ola', tornado: 'Torbellino móvil', orbit: 'Orbes', leap: 'Salto', hook: 'Látigo', reflect: 'Espejo', rage: 'Furia', ricochet: 'Rebote',
+        spread: 'Abanico', zone: 'Zona', dash: 'Embestida', slam: 'Golpe al suelo', nova: 'Estallido', boomerang: 'Bumerán', chain: 'Rayo en cadena',
+        beam: 'Rayo', mines: 'Trampas', turret: 'Orbe torreta', barrier: 'Escudo', wish: 'Curación', meteor: 'Lluvia', stealth: 'Invisible',
+      },
+      esp: {
+        thunderchain: 'Impactrueno', emberfan: 'Ascuas', flamestream: 'Lanzallamas', swift: 'Rapidez', darkpulse: 'Pulso Umbrío', moonblast: 'Fuerza Lunar',
+        shadowball: 'Bola Sombra', aurabarrage: 'Esfera Aural', hyperbeam: 'Hiperrayo', hydrocannon: 'Hidrobomba', watergun: 'Pistola Agua', splash: 'Salpicadura',
+        shuriken: 'Shuriken de Agua', lullaby: 'Canto', telekinesis: 'Psíquico', crunch: 'Triturar', vinewhip: 'Látigo Cepa', disguise: 'Carantoña',
+        icebeam: 'Rayo Hielo', payday: 'Día de Pago', blazekick: 'Patada Ígnea', dragonclaw: 'Garra Dragón',
+      },
+      leg: {
+        comet: 'Cometa', fissure: 'Grieta', megabeam: 'Megarrayo', judgment: 'Juicio', rend: 'Tajo espacial', pulse: 'Ondas',
+        inferno: 'Infierno', storm: 'Tormenta', void: 'Agujero negro', frost: 'Glaciación', aura: 'Aura', phantom: 'Fantasma', bigorb: 'Esfera',
+      },
+      atk: {
+        spray: 'Rociada', lance: 'Lanza', split: 'Se divide', bounce: 'Rebote', sine: 'Eses', ripple: 'Onda', spin: 'Giro', laser: 'Láser',
+        cluster: 'Racimo', puddle: 'Charco', tank: 'Abanico (tanque)', assassin: 'Doble (asesino)', sniper: 'Disparo (tirador)',
+        fighter: 'Triple (luchador)', thrower: 'Lanzamiento', cone: 'Llamarada', burst3: 'Ráfaga', orb: 'Esfera', homing: 'Teledirigido',
+        melee: 'Cuerpo a cuerpo', twin: 'Doble paralelo', boomer: 'Va y vuelve',
+      },
+    };
+    // forma de lo que se está mirando: súper o ataque básico (los 6 hechos a mano no tienen "style")
+    const formOf = (b) => (view === 'atk' ? b.attack.style || b.attack.kind : b.super.kind);
+    const moveOf = (b) => (view === 'atk' ? b.attack : b.super);
+    // en la vista de legendarios solo salen ellos
+    const shown = () => PB.BRAWLERS.filter((b) => (view !== 'leg' || b.super.legend) && (view !== 'esp' || b.super.special));
+    const renderer = new PB.Renderer($('#game'));
+    const input = new PB.Input($('#game'));
+    input.enabled = true;
+    let game = null, bots = [], cur = null, filterKind = null, foes = 'still', mapIdx = 0, superCd = 0, view = 'super', stage = 0;
+    const kit = { atk: 'nuevo', sup: 'nuevo' }; // set de movimientos (nuevo v1.3 / clásico v1.2)
+
+    // ---------------------------------------------------------------- lista
+    function renderKinds() {
+      const counts = {};
+      for (const b of shown()) counts[formOf(b)] = (counts[formOf(b)] || 0) + 1;
+      const isNew = (k) => NEW[view].has(k);
+      const kinds = Object.keys(counts).sort((a, b) => (isNew(b) - isNew(a)) || counts[b] - counts[a]);
+      $('#kinds').innerHTML = `<button data-k="" class="on">Todos<span class="n">${shown().length}</span></button>` +
+        kinds.map((k) => `<button data-k="${k}" class="${isNew(k) ? 'nw' : ''}">${KIND_NAME[view][k] || k}<span class="n">${counts[k]}</span></button>`).join('');
+    }
+    $('#kinds').onclick = (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      filterKind = btn.dataset.k || null;
+      document.querySelectorAll('#kinds button').forEach((x) => x.classList.toggle('on', x === btn));
+      renderList();
+    };
+    $('#q').oninput = renderList;
+    function renderList() {
+      const q = $('#q').value.trim().toLowerCase();
+      const isNew = (b) => NEW[view].has(formOf(b));
+      const list = shown().filter((b) => (!filterKind || formOf(b) === filterKind) &&
+        (!q || b.name.toLowerCase().includes(q) || b.super.name.toLowerCase().includes(q) || b.attack.name.toLowerCase().includes(q)));
+      // primero las formas nuevas, luego por nombre del movimiento
+      list.sort((a, b) => (isNew(b) - isNew(a)) || moveOf(a).name.localeCompare(moveOf(b).name) || a.name.localeCompare(b.name));
+      $('#list').innerHTML = list.slice(0, 250).map((b) =>
+        `<button class="mon${cur === b.id ? ' sel' : ''}" data-id="${b.id}"><img loading="lazy" src="${PB.Sprites.portraitURL(b.dex)}" alt="">` +
+        `<span>${b.name}<br><span class="sn">${moveOf(b).name}${isNew(b) ? '<span class="tag">nuevo</span>' : ''}</span></span></button>`).join('');
+    }
+    $('#list').onclick = (e) => {
+      const btn = e.target.closest('.mon');
+      if (btn) start(btn.dataset.id);
+    };
+    document.querySelectorAll('[data-view]').forEach((x) => (x.onclick = () => {
+      view = x.dataset.view;
+      filterKind = null;
+      document.querySelectorAll('[data-view]').forEach((y) => y.classList.toggle('on', y === x));
+      renderKinds();
+      renderList();
+    }));
+    $('#fold').onclick = () => { $('#panel').classList.toggle('closed'); $('#fold').textContent = $('#panel').classList.contains('closed') ? '+' : '–'; };
+    document.querySelectorAll('[data-foes]').forEach((x) => (x.onclick = () => {
+      foes = x.dataset.foes;
+      document.querySelectorAll('[data-foes]').forEach((y) => y.classList.toggle('on', y === x));
+      if (cur) start(cur);
+    }));
+    document.querySelectorAll('[data-map]').forEach((x) => (x.onclick = () => {
+      mapIdx = +x.dataset.map;
+      document.querySelectorAll('[data-map]').forEach((y) => y.classList.toggle('on', y === x));
+      if (cur) start(cur);
+    }));
+    $('#shoot').onclick = () => { input.pending.attack = { auto: true }; };
+    // fase de evolución con la que empieza (para ver cómo crece el súper)
+    document.querySelectorAll('[data-stage]').forEach((x) => (x.onclick = () => {
+      stage = +x.dataset.stage;
+      document.querySelectorAll('[data-stage]').forEach((y) => y.classList.toggle('on', y === x));
+      if (cur) start(cur, true);
+    }));
+    $('#branch').onchange = () => { if (cur) start(cur, true); };
+    document.querySelectorAll('[data-kit]').forEach((x) => (x.onclick = () => {
+      const [part, v] = x.dataset.kit.split(':');
+      kit[part] = v;
+      document.querySelectorAll(`[data-kit^="${part}:"]`).forEach((y) => y.classList.toggle('on', y === x));
+      if (cur) start(cur, true);
+    }));
+    $('#cast').onclick = () => { input.pending.super = { auto: true }; };
+
+    // ---------------------------------------------------------------- partida de prueba
+    // Mapa abierto: una explanada con unos pocos muros para ver rebotes y saltos.
+    const OPEN = [
+      'TTTTTTTTTTTTTTTTTTTTT',
+      'T.........R.........T',
+      'T...................T',
+      'T...................T',
+      'T...................T',
+      'T....#.........#....T',
+      'T....#.........#....T',
+      'T...................T',
+      'T...................T',
+      'T...................T',
+    ];
+    const DUMMIES = ['snorlax', 'onix', 'machop'];
+
+    // casilla libre más cercana a (x, y)
+    function freeSpot(w, x, y) {
+      for (let r = 0; r < 400; r += 16) for (let a = 0; a < 6.28; a += 0.5) {
+        const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+        if (!w.circleSolid(px, py, 24)) return { x: px, y: py };
+      }
+      return { x, y };
+    }
+
+    function start(id, keepBranch) {
+      cur = id;
+      const def = PB.brawlerById(id);
+      // rama de evolución (Eevee -> Umbreon, Sylveon...)
+      const br = $('#branch');
+      if (!keepBranch) {
+        br.hidden = !def.alts;
+        br.innerHTML = (def.alts || []).map((l, i) => `<option value="${i}">${PB.DEX[l[l.length - 1]].name}</option>`).join('');
+      }
+      const line = def.alts ? def.alts[+br.value || 0] : def.line;
+      const red = DUMMIES.map((d) => (PB.brawlerById(d) ? d : PB.BRAWLERS[0].id));
+      const opts = { mode: 'gems', blue: [id], red, playerInBlue: true, noCountdown: true, mapIdx: 0, lines: [line], kits: [Object.assign({}, kit)] };
+      if (mapIdx === 0) {
+        PB.MODES.__demo = Object.assign({}, PB.MODES.gems, { map: '__demo', update: null, timeUp: null, setup: null });
+        opts.mode = '__demo';
+      }
+      PB.Sprites.ensure([].concat(line, ...red.map((r) => PB.brawlerById(r).line)));
+      game = new PB.Game(opts);
+      game.rules.matchTime = 1e9;
+      game.rules.respawn = 1;
+      const me = game.player, W = game.world;
+      while (me.stage < stage && me.stage < PB.evoSteps(me.def).length) game.evolve(me);
+      me.evoT = 0;
+      me.shieldT = 0;
+      // todos en el centro del mapa: tú abajo, los sacos delante
+      const cx = W.pixelW / 2, cy = W.pixelH / 2;
+      Object.assign(me, freeSpot(W, cx, cy + 200));
+      me.facing = -Math.PI / 2;
+      me.superCharge = 1;
+      const foesAt = [[-200, -110], [0, -60], [200, -110]];
+      game.brawlers.filter((b) => b.team !== me.team).forEach((b, i) => {
+        Object.assign(b, freeSpot(W, cx + foesAt[i][0], cy + foesAt[i][1]));
+        b.home = { x: b.x, y: b.y };
+        b.name = 'Saco ' + (i + 1);
+      });
+      bots = foes === 'still' ? [] : game.brawlers.filter((b) => !b.isPlayer).map((b) => new PB.Bot(game, b, 0.35));
+      renderer.cam.x = me.x;
+      renderer.cam.y = me.y;
+      superCd = 0;
+      const md = me.def;
+      $('#i-name').textContent = PB.stageName(me, me.stage) + ' · ' + md.role + ' · fase ' + (me.stage + 1) + '/' + me.line.length;
+      const tico = (ty) => `<span class="tico" style="--i:${Object.keys(PB.TYPE_INFO).indexOf(ty)}" title="${PB.TYPE_INFO[ty].name}"></span>`;
+      $('#i-sup').textContent = (md.super.legend ? 'Súper legendario: ' : md.super.special ? 'Súper especial: ' : 'Súper: ') + md.super.name + (NEW.super.has(md.super.kind) || md.super.legend || md.super.special ? '  (nuevo)' : '');
+      $('#i-sup').insertAdjacentHTML('afterbegin', tico(md.super.type || md.atkType));
+      $('#i-atk').textContent = 'Ataque: ' + md.attack.name + (NEW.atk.has(md.attack.style) ? '  (nuevo)' : '') + (def.kitChoice.atk || def.kitChoice.sup ? '' : '  · sin set clásico distinto');
+      $('#i-atk').insertAdjacentHTML('afterbegin', tico(md.attack.type || md.atkType));
+      $('#i-desc').textContent = (md.super.desc ? md.super.desc.charAt(0).toUpperCase() + md.super.desc.slice(1) + '. ' : '') + ['Súper sencillo (1ª fase).', 'Súper con más efectos (2ª fase).', 'Súper con todos los efectos (última fase).'][game.superTier(me)];
+      renderList();
+    }
+    // mapas del modo de prueba: el abierto (ida y vuelta para que el mapa sea simétrico como los demás)
+    PB.mapsOf = ((orig) => (name) => (name === '__demo' ? [{ name: 'Prueba', top: OPEN }] : orig(name)))(PB.mapsOf);
+
+    // ---------------------------------------------------------------- bucle
+    let last = performance.now();
+    function frame(now) {
+      tick(Math.min(1 / 30, (now - last) / 1000));
+      last = now;
+      requestAnimationFrame(frame);
+    }
+    function tick(dt) {
+      if (game) {
+        const read = input.read(game, renderer);
+        const me = game.player;
+        const inputs = {};
+        for (const bot of bots) {
+          const inp = bot.think(dt);
+          if (foes === 'move') { inp.attack = null; inp.super = null; }
+          inputs[bot.b.idx] = inp;
+        }
+        inputs[me.idx] = read.input;
+        const before = me.superCharge;
+        game.update(dt, inputs);
+        // el súper se recarga solo un momento después de usarlo
+        if (before >= 1 && me.superCharge < 1) superCd = 0.8;
+        if (superCd > 0) { superCd -= dt; if (superCd <= 0) me.superCharge = 1; }
+        for (const b of game.brawlers) {
+          if (b.isPlayer || b.dead) continue;
+          // sacos: no se quedan sin vida y, si se van muy lejos, vuelven a su sitio
+          if (b.hp < b.maxHp * 0.15) b.hp = b.maxHp;
+          if (foes === 'still' && b.home && !b.leap && Math.hypot(b.kx, b.ky) < 5 && Math.hypot(b.x - b.home.x, b.y - b.home.y) > 4) {
+            b.x += (b.home.x - b.x) * Math.min(1, dt * 1.5);
+            b.y += (b.home.y - b.y) * Math.min(1, dt * 1.5);
+          }
+        }
+        if (me.hp < me.maxHp * 0.3) me.hp = me.maxHp;
+        me.ammo = game.rules.maxAmmo; // munición infinita
+        game.events.length = 0;
+        $('#i-bar').style.width = Math.round(me.superCharge * 100) + '%';
+        renderer.draw(game, { flip: false, focus: me, team: me.team, player: me, aim: read.aim, touch: input.touch, inputState: input, hud: false });
+      }
+    }
+    renderKinds();
+    renderList();
+    // empieza con uno de los nuevos para que se vea algo al abrir
+    const first = PB.BRAWLERS.find((b) => b.super.kind === 'tornado') || PB.BRAWLERS[0];
+    start(new URLSearchParams(location.search).get('p') || first.id);
+    requestAnimationFrame(frame);
+    // para probar desde la consola: demo.game, demo.start('pidgey')
+    window.demo = { get game() { return game; }, start, tick };
+  })();
+  </script>
+</body>
+</html>
