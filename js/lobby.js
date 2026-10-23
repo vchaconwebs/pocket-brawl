@@ -1208,12 +1208,14 @@ PB.Lobby = (() => {
     $('#pv-av').src = portrait(fav);
     $('#pv-name').textContent = u.name;
     $('#pv-sub').innerHTML = esc(u.tag) + ' · ' + (u.clanName ? esc(u.clanName) : PB.T('Sin clan')) + ' · ' + (u.online ? '<span class="on">● ' + PB.T('En línea') + '</span>' : '<span class="off">● ' + PB.T('Desconectado') + '</span>');
-    const st = [['Copas totales', u.copas], ['Partidas', u.played], ['Victorias', u.wins], ['Pokémon', u.owned]];
-    $('#pv-stats').innerHTML = st.map(([k, v]) => `<div><small>${PB.T(k)}</small><b>${(v || 0).toLocaleString('es-ES')}</b></div>`).join('');
+    // perfiles de antes de la v1.5: aún no tienen estas estadísticas (se completan cuando vuelve a entrar)
+    const old = !u.played && !u.best.length;
+    const st = [['Copas totales', u.copas], ['Partidas', old ? null : u.played], ['Victorias', old ? null : u.wins], ['Pokémon', old ? null : u.owned]];
+    $('#pv-stats').innerHTML = st.map(([k, v]) => `<div><small>${PB.T(k)}</small><b>${v == null ? '—' : (v || 0).toLocaleString('es-ES')}</b></div>`).join('');
     $('#pv-best').innerHTML = u.best.map((x, i) => {
       const b = PB.brawlerById(x.id);
       return `<div class="pv-mon${i === 0 ? ' top' : ''}"><img src="${portrait(b)}" alt=""><b>${esc(b.name)}</b><span><img class="cup" src="${cupIcon()}" alt="">${x.c.toLocaleString('es-ES')}</span></div>`;
-    }).join('') || `<p class="empty">${PB.T('Aún no tiene copas.')}</p>`;
+    }).join('') || `<p class="empty">${PB.T(old ? 'Aún no ha entrado con la última versión: sus estadísticas saldrán cuando vuelva a jugar.' : 'Aún no tiene copas.')}</p>`;
     $('#pv-acts').innerHTML = (u.friend ? '' : `<button class="act blue" id="pv-add">➕ ${PB.T('Añadir amigo')}</button>`) + `<button class="act gold" id="pv-inv">🎮 ${PB.T('Invitar a jugar')}</button>`;
     if ($('#pv-add')) $('#pv-add').onclick = async () => {
       if (PB.Online.isGuest()) return toast(PB.T('Crea una cuenta (gratis) para tener amigos.'));
