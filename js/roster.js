@@ -633,11 +633,11 @@
   // Al usarla, unos segundos más fuerte; los que tienen sprite de mega cambian de forma, los demás llevan un aura.
   PB.MEGA = {
     time: 7, // segundos que dura
-    perHit: 0.5, // por cada golpe que carga el súper, dividido entre los golpes que necesita (= unas 2 súpers)
-    perKO: 0.15,
-    passive: 0.004, // por segundo
+    perHit: 0.8, // por cada golpe que carga el súper, dividido entre los golpes que necesita (= algo más de 1 súper)
+    perKO: 0.25,
+    passive: 0.008, // por segundo
     // y aun así la primera les cuesta más a los que tienen menos evoluciones (1, 2 o 3 fases)
-    first: [2.8, 2.2, 1],
+    first: [1.8, 1.5, 1],
     dmg: 1.25, // daño que haces
     taken: 0.8, // daño que recibes
     speed: 1.12,
