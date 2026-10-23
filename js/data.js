@@ -701,11 +701,33 @@ PB.TRAINER_NAMES = (() => {
     'Fran', 'Judith', 'Mario', 'Noelia', 'Rafa', 'Silvia', 'Tomás', 'Vera', 'Yago', 'Ana', 'Berta', 'César', 'Dani', 'Eva', 'Félix',
     'Gema', 'Hugo', 'Iris', 'Joan', 'Kira', 'Luna', 'Miguel', 'Nil', 'Oriol', 'Pau', 'Quim', 'Rosa', 'Saúl', 'Tania', 'Uxue',
     'Víctor', 'Wendy', 'Yeray', 'Zaira', 'Cris', 'Jorge', 'Pilar', 'Ivan', 'Lucas', 'Bea', 'Joel', 'Mara', 'Neo', 'Ona', 'Rita',
+    'Aaron', 'Adrián', 'Alberto', 'Alicia', 'Amaia', 'Andrea', 'Ángel', 'Antonio', 'Ariadna', 'Arnau', 'Aurora', 'Blanca', 'Carlos', 'Celia', 'Chloe',
+    'Cristian', 'David', 'Dylan', 'Eduardo', 'Elsa', 'Eric', 'Esther', 'Fabio', 'Fátima', 'Fernando', 'Gisela', 'Gonzalo', 'Héctor', 'Ian', 'Iratxe',
+    'Isaac', 'Jana', 'Javi', 'Jesús', 'Jon', 'Josema', 'Juanma', 'Lidia', 'Lorena', 'Lorenzo', 'Manu', 'Marcel', 'María', 'Marina', 'Mateu',
+    'Maya', 'Mikel', 'Míriam', 'Moha', 'Nacho', 'Naia', 'Nahia', 'Natalia', 'Noah', 'Olga', 'Patri', 'Pedro', 'Quique', 'Ramón',
+    'Ricardo', 'Roberto', 'Rodri', 'Roi', 'Salma', 'Santi', 'Sofía', 'Susana', 'Tere', 'Toño', 'Valeria', 'Vicente', 'Xabi', 'Yaiza', 'Yolanda',
+    'Ainara', 'Aleix', 'Álvaro', 'Arturo', 'Asier', 'Carol', 'Dario', 'Eneko', 'Ernesto', 'Eloy', 'Ferran', 'Germán', 'Gorka', 'Hernán',
+    'Ibai', 'Itziar', 'Jacobo', 'Jairo', 'Jordi', 'Kevin', 'Laia', 'Leire', 'Lionel', 'Maite', 'Marc', 'Nuria', 'Omar', 'Pepe',
+    'Rebeca', 'Rocco', 'Ruth', 'Sheila', 'Telmo', 'Txema', 'Unax', 'Xènia', 'Yerai', 'Zuriñe', 'Amira', 'Bastian', 'Chiara', 'Dante', 'Ezra',
+    'Freya', 'Giulia', 'Hana', 'Ilan', 'Jade', 'Kenji', 'Lena', 'Milo', 'Nadia', 'Otto', 'Pia', 'Ravi', 'Selene', 'Tariq', 'Ulises',
+    'Yuki', 'Zack', 'Akira', 'Bianca', 'Caleb', 'Dalia', 'Elio', 'Flor', 'Gian', 'Haru', 'Ivy', 'Jules', 'Koa', 'Lupe', 'Maxi',
   ];
   const tags = [
     'Trainer', 'Master', 'Pro', 'GG', 'Play', 'Gamer', 'Poke', 'Kid', 'Star', 'King', 'Queen', 'Fire', 'Wave', 'Leaf', 'Bolt',
     'Shadow', 'Storm', 'Ace', 'Crack', 'Max', 'Neo', 'Ultra', 'Mega', 'Giga', 'Zen', 'Fox', 'Wolf', 'Drake', 'Nova', 'Pixel',
+    'Dark', 'Frost', 'Blaze', 'Volt', 'Rex', 'Tiger', 'Dragon', 'Ninja', 'Boss', 'Legend', 'Hero', 'Rush', 'Snipe', 'Tank', 'Lucky',
+    'Crazy', 'Epic', 'Toxic', 'Turbo', 'Retro', 'Cosmic', 'Lunar', 'Solar', 'Ghost', 'Rocket', 'Venom', 'Spark', 'Flash', 'Yolo', 'Zero',
   ];
+  // apodos sin nombre de persona (palabra + palabra): DarkPika, ElGranTaco, CapiSnorlax...
+  const pre = ['Dark', 'Shiny', 'Mega', 'Super', 'Hyper', 'Mini', 'Big', 'Little', 'Mister', 'Lord', 'Capi', 'Don', 'Doctor', 'Sir', 'Mad',
+    'Iron', 'Silent', 'Speedy', 'Sleepy', 'Angry', 'Happy', 'Brave', 'Wild', 'Golden', 'Silver', 'Crystal', 'Ruby', 'Emerald', 'Neon', 'Night',
+    'El', 'ElGran', 'Rey', 'Reina', 'Capitán', 'Profe', 'Señor', 'Dj', 'Xx', 'Lil'];
+  const noun = ['Pika', 'Charmi', 'Squirt', 'Bulba', 'Eevee', 'Snorlax', 'Gengar', 'Mewtwo', 'Lucario', 'Dragonite', 'Ditto', 'Psyduck', 'Magikarp',
+    'Gyarados', 'Rayquaza', 'Togepi', 'Jiggly', 'Meowth', 'Slowpoke', 'Onix', 'Machop', 'Abra', 'Vulpix', 'Zubat', 'Geodude', 'Pidgey',
+    'Taco', 'Churro', 'Croqueta', 'Patata', 'Nacho', 'Bocata', 'Pizza', 'Tortilla', 'Gazpacho', 'Paella', 'Flan', 'Turrón', 'Pollo', 'Melón',
+    'Wolf', 'Fox', 'Tiger', 'Panda', 'Koala', 'Shark', 'Eagle', 'Cobra', 'Ninja', 'Samurai', 'Pirata', 'Vikingo', 'Mago', 'Brujo', 'Robot',
+    'Rayo', 'Trueno', 'Tormenta', 'Volcán', 'Cometa', 'Meteoro', 'Galaxia', 'Planeta', 'Bosque', 'Desierto', 'Glaciar', 'Sombra', 'Llama', 'Ola'];
+  const ends = ['', '', '', '7', '10', '23', '99', '2k', 'YT', 'TV', 'HD', 'PRO', 'GG', '_', 'xd', 'ES', 'MX', '777', '01', 'OP'];
   const H = (i) => { let h = (i + 1) * 2654435761; h ^= h >>> 13; h = Math.imul(h, 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
   const out = new Set();
   base.forEach((n, i) => {
@@ -714,6 +736,11 @@ PB.TRAINER_NAMES = (() => {
     const styles = [n + '_' + num, n + t, t + n, n + '.' + t.toLowerCase(), n.toLowerCase() + num, 'xX' + n + 'Xx', n + '_' + t, 'El' + n];
     styles.forEach((s, k) => { if (H(i * 13 + k) < 0.45) out.add(s.slice(0, 16)); });
   });
+  pre.forEach((a, i) => noun.forEach((b, j) => {
+    const k = i * 101 + j;
+    if (H(k + 9000) < 0.55) out.add((a + b + ends[Math.floor(H(k + 12000) * ends.length)]).slice(0, 16));
+    if (H(k + 15000) < 0.12) out.add((b + a).slice(0, 16));
+  }));
   return [...out];
 })();
 

@@ -227,6 +227,10 @@ PB.Game = class {
       }
     }
     if (b.barrierT > 0) b.barrierT -= dt;
+    if (b.tfT > 0) {
+      b.tfT -= dt;
+      if (b.tfT <= 0) this.untransform(b);
+    }
     this.gainXp(b, PB.EVO.passive * dt);
     if (b.stealthT > 0) b.stealthT -= dt;
     if (b.action) {
@@ -561,8 +565,40 @@ PB.Game = class {
       r: atk.r || 12, dmg: atk.dmg * (mul || 1), team: b.team, owner: b, range: atk.range, traveled: 0,
       pierce: !!atk.pierce, hit: new Set(), look: atk.look || {}, atkType: (isSuper && atk.type) || b.def.atkType, charge: !isSuper,
       destroysWalls: !!atk.destroysWalls, knockback: atk.knockback || 0, stun: atk.stun || 0, isSuper, shotId: shotId || this.nextShotId++,
-      powered: (mul || 1) > 1, t: 0, trailT: 0, homing: atk.homing || 0, boomerang: !!atk.boomerang,
+      powered: (mul || 1) > 1, t: 0, trailT: 0, homing: atk.homing || 0, boomerang: !!atk.boomerang, transform: !!atk.transform,
     });
+  }
+
+  // ---------------------------------------------------------------- Transformación (Ditto)
+  transform(b, e) {
+    if (b.dead || e.dead) return;
+    if (!b.tfBase) b.tfBase = { def: b.def, dex: b.dex, types: b.types };
+    b.tf = { id: e.def.id, line: e.line, stage: e.stage || 0 };
+    b.def = PB.tfDef(b.tfBase.def, b.tf);
+    b.dex = e.dex;
+    b.types = e.types;
+    b.tfT = PB.TF_TIME;
+    b.ammo = Math.min(b.ammo, this.rules.maxAmmo);
+    b.evoFrom = b.tfBase.dex; // se ve como una evolución rápida: de Ditto a la nueva forma
+    b.evoT = PB.EVO_ANIM;
+    this.ring(b.x, b.y - 20, 10, 100, '#e0a0ff', 0.45, 6);
+    for (let i = 0; i < 16; i++) this.px(b.x, b.y - 24, i % 2 ? '#d48cff' : '#ffffff', { speed: 200, vy: -40, life: 0.5, size: 4 });
+    this.text(b.x, b.y - 110, PB.T('¡Transformación!'), '#e0a0ff', 18);
+    this.events.push({ type: 'transform', b, target: e });
+  }
+
+  untransform(b) {
+    if (!b.tfBase) return;
+    b.def = b.tfBase.def;
+    b.dex = b.tfBase.dex;
+    b.types = b.tfBase.types;
+    b.tf = null;
+    b.tfBase = null;
+    b.tfT = 0;
+    if (!b.dead) {
+      this.ring(b.x, b.y - 20, 10, 70, '#e0a0ff', 0.35, 4);
+      for (let i = 0; i < 10; i++) this.px(b.x, b.y - 24, '#d48cff', { speed: 140, vy: -30, life: 0.4, size: 4 });
+    }
   }
 
   spawnLob(b, atk, ang, dist, isSuper, mul) {
@@ -673,6 +709,7 @@ PB.Game = class {
           this.damage(e, p.dmg, p.owner, p.atkType, {
             charge: p.charge, knockback: p.knockback, stun: p.stun, kx: p.vx, ky: p.vy, shotId: p.shotId, hx: p.x, hy: p.y, big: p.isSuper || p.powered,
           });
+          if (p.transform && p.owner && !e.dead) this.transform(p.owner, e);
           if (!p.pierce) { dead = true; break; }
         }
       }
@@ -1051,6 +1088,7 @@ PB.Game = class {
       this.balls.push({ kind: 'ball', x: b.x, y: b.y, z: 20, vx: Math.cos(a) * s, vy: Math.sin(a) * s, vz: 300 + Math.random() * 200, delay: 0.5, taken: false, spin: Math.random() * 6 });
     }
     b.balls = 0;
+    if (b.tfBase) this.untransform(b);
     if (this.mode.onKill) this.mode.onKill(this, b, killer);
     // animación: se debilita y vuelve a su Pokéball con el rayo rojo
     this.fx.push({ kind: 'faint', dex: b.dex, shiny: b.shiny, x: b.x, y: b.y, facing: b.facing, team: b.team, t: 0, life: 1.5 });

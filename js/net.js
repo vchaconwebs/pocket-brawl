@@ -7,7 +7,7 @@
 PB.Net = (() => {
   const SKIP_GAME = new Set(['mode', 'rules', 'world', 'fx', 'events', 'timers', 'brawlers', 'nextShotId']);
   // campos de cada luchador que no se copian: cada uno sabe quién es él
-  const SKIP_B = new Set(['def', 'isPlayer', 'friend', 'idx', 'hit', 'animT', 'dustT', 'trainer', 'name', 'isBot', 'shiny', 'superQ', 'atkQ', 'ai', 'evoMsg', 'say']);
+  const SKIP_B = new Set(['def', 'isPlayer', 'friend', 'idx', 'hit', 'animT', 'dustT', 'trainer', 'name', 'isBot', 'shiny', 'superQ', 'atkQ', 'ai', 'evoMsg', 'say', 'tfBase']);
   const r1 = (n) => Math.round(n * 10) / 10;
   // temporizadores (hurtT, shieldT, shotCd...): cuando ya han acabado siguen bajando en negativo;
   // se mandan como 0 para no reenviarlos en cada foto
@@ -91,7 +91,7 @@ PB.Net = (() => {
           if (full || prev[k] !== s) { d[k] = p === undefined ? null : p; prev[k] = s; }
         }
         // ficha (cambia al evolucionar por una rama de otro tipo)
-        const defKey = b.def.id + ':' + b.stage;
+        const defKey = b.def.id + ':' + b.stage + (b.tf ? ':' + b.tf.id + ':' + b.tf.stage : '');
         if (full || prev.$def !== defKey) { d.$def = 1; prev.$def = defKey; }
         return d;
       });
@@ -142,7 +142,10 @@ PB.Net = (() => {
           if (k === 'x' || k === 'y') { this.target[i][k] = d[k]; continue; }
           b[k] = unpack(d[k], g);
         }
-        if (d.$def) b.def = PB.retype(PB.brawlerById(b.def.id), b.line, b.stage);
+        if (d.$def) {
+          const base = PB.retype(PB.brawlerById(b.def.id), b.line, b.stage);
+          b.def = b.tf ? PB.tfDef(base, b.tf) : base; // Ditto transformado
+        }
         if (b.dash && !b.dash.hit) b.dash.hit = new Set();
       });
       if (s.tiles) {

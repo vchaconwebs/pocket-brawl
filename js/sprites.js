@@ -119,6 +119,8 @@ PB.Sprites = {
       let name = A[anim] ? anim : 'Idle';
       let img = this.imgs[this.key(dex, name, shiny)];
       if (!img && name !== 'Idle') { name = 'Idle'; img = this.imgs[this.key(dex, name, shiny)]; }
+      // sin la versión shiny descargada (Ditto shiny transformado en otro): la normal
+      if (!img && shiny) return this.frame(dex, anim, angle, t, length, false);
       if (!img) return null;
       const a = A[name];
       const n = Math.min(a.n, a.d.length);

@@ -534,6 +534,7 @@ function resetRound(g) {
   for (const b of g.brawlers) {
     const list = g.world.spawns[b.team];
     const sp = list[(count[b.team] = (count[b.team] || 0) + 1) % 3];
+    if (b.tfBase) g.untransform(b);
     Object.assign(b, { x: sp.x, y: sp.y, dead: false, out: false, hp: b.maxHp, ammo: g.rules.maxAmmo, kx: 0, ky: 0, stunT: 0, dash: null, burst: null, action: null, stealthT: 0, respawnT: 0, shieldT: 0, barrierT: 0 });
   }
   g.startT = 3;

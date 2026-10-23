@@ -558,6 +558,8 @@ PB.I18N = {
   'SÚPER': ['SUPER', 'SUPER', 'SUPER', 'SUPER', 'SUPER'],
   'Suelta E para lanzar · X o clic derecho para cancelar': ['Release E to use · X or right click to cancel', 'Solte E para lançar · X ou clique direito para cancelar', 'Relâche E pour lancer · X ou clic droit pour annuler', 'Rilascia E per lanciare · X o clic destro per annullare', 'E loslassen zum Einsetzen · X oder Rechtsklick zum Abbrechen'],
   '✕ Cancelar': ['✕ Cancel', '✕ Cancelar', '✕ Annuler', '✕ Annulla', '✕ Abbrechen'],
+  '¡Transformación!': ['Transform!', 'Transformação!', 'Morphing !', 'Trasformazione!', 'Wandler!'],
+  'un rayo que, si da a un rival, te convierte en él durante 8 s con sus ataques': ['a beam that, if it hits a rival, turns you into them for 8 s with their attacks', 'um raio que, se acertar um rival, te transforma nele por 8 s com os ataques dele', 'un rayon qui, s’il touche un rival, te transforme en lui pendant 8 s avec ses attaques', 'un raggio che, se colpisce un rivale, ti trasforma in lui per 8 s con i suoi attacchi', 'ein Strahl, der dich bei einem Treffer 8 s lang in den Gegner verwandelt, mit seinen Attacken'],
   'Súper cancelado': ['Super cancelled', 'Super cancelado', 'Super annulé', 'Super annullato', 'Super abgebrochen'],
   'Quedan {n}': ['{n} left', 'Restam {n}', 'Restants : {n}', 'Restano {n}', 'Noch {n}'],
   'Tu equipo': ['Your team', 'Sua equipe', 'Ton équipe', 'La tua squadra', 'Dein Team'],

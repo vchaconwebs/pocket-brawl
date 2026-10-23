@@ -89,6 +89,8 @@
     stealth: { kind: 'stealth', time: 4, speedMul: 1.35, bonus: 1.85, d: 'le vuelve invisible y potencia su siguiente ataque' },
     freeze: { kind: 'spread', count: 7, spread: 0.6, range: 300, speed: 560, dmg: 340, r: 16, pierce: true, stun: 0.6, scale: 1.4, d: 'una tormenta helada que congela un momento' },
     draco: { kind: 'spread', count: 5, spread: 0.4, range: 330, speed: 620, dmg: 540, r: 20, pierce: true, scale: 1.8, d: 'cinco meteoros dracónicos que lo atraviesan todo' },
+    // Ditto: si el rayo da a un rival, se convierte en él unos segundos (su aspecto, tipo, ataque y súper)
+    transform: { kind: 'spread', count: 1, spread: 0, range: 380, speed: 760, dmg: 400, r: 22, transform: true, scale: 1.5, d: 'un rayo que, si da a un rival, te convierte en él durante 8 s con sus ataques' },
     vortex: { kind: 'zone', range: 330, flight: 0.5, radius: 130, duration: 3, dps: 600, heal: 0, pull: 170, scale: 1.4, d: 'un remolino que arrastra a los rivales a su centro y los va dañando' },
     meteor: { kind: 'meteor', range: 330, flight: 0.85, count: 5, spreadR: 85, radius: 54, dmg: 600, scale: 1.6, d: 'una lluvia de golpes que caen sobre la zona elegida' },
     nova: { kind: 'nova', count: 12, range: 280, speed: 540, dmg: 800, r: 16, pierce: true, scale: 1.4, d: 'una explosión de ataques en todas direcciones' },
@@ -104,6 +106,7 @@
 
   // súper propios de legendarios y Pokémon famosos: [forma, nombre, tipo]
   const SIGNATURE = {
+    ditto: ['transform', 'Transformación', 'normal'],
     mewtwo: ['psy', 'Onda Mental', 'psychic'], mew: ['meteor', 'Poder Pasado', 'psychic'],
     lugia: ['gust', 'Aerochorro', 'flying'], hooh: ['spread', 'Fuego Sagrado', 'fire'],
     rayquaza: ['dash', 'Ascenso Draco', 'dragon'], kyogre: ['vortex', 'Pulso Primigenio', 'water'],
@@ -276,6 +279,13 @@
     perKO: 15, // EXP por debilitar (+8 por cada fase del rival)
     perKOStage: 8,
     catchUp: 1.3, // si vas por detrás en evolución de algún rival, ganas EXP más rápido
+  };
+  PB.TF_TIME = 8; // segundos que dura la Transformación de Ditto
+  // Ficha de un Pokémon transformado (Ditto): ataques, súper, velocidad y tipo del rival, pero su propia línea
+  // (para la fuerza por fase) y su vida
+  PB.tfDef = (base, tf) => {
+    const t = PB.retype(PB.brawlerById(tf.id), tf.line, tf.stage);
+    return Object.assign({}, t, { id: base.id, line: base.line, alts: base.alts, name: base.name, rarity: base.rarity, hp: base.hp, superHits: t.superHits });
   };
   PB.EVO_ANIM = 0.8; // duración de la animación de evolución (s)
   PB.EVO_REVEAL = 0.3; // cuando quedan estos segundos se ve la forma nueva
