@@ -165,7 +165,7 @@ PB.Input = class {
 
   // Mando (distribución estándar de Xbox / PlayStation):
   //   stick izquierdo o cruceta: moverse · stick derecho: apuntar
-  //   RT, RB o A: atacar (mantener = seguido) · LT, LB o X: súper · Start: pausa
+  //   RT, RB, A (✕) o X (□): atacar (mantener = seguido) · LT, LB, B (○) o Y (△): súper · Start: pausa
   //   En los menús: A = jugar / volver a jugar / aceptar · B = atrás
   pollPad() {
     const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter((g) => g && g.connected) : [];
@@ -265,14 +265,14 @@ PB.Input = class {
       const { L, R, dx, dy, now, down } = pad;
       if (L.len) { inp.mx = L.x * Math.min(1, L.len * 1.3); inp.my = L.y * Math.min(1, L.len * 1.3); }
       else if (dx || dy) { const l = Math.hypot(dx, dy); inp.mx = dx / l; inp.my = dy / l; }
-      const superHeld = now[6] || now[4] || now[2];
+      const superHeld = now[6] || now[4] || now[1] || now[3];
       // apuntado con el stick derecho; sin tocarlo, al rival más cercano (o hacia donde mira)
       const aimOf = (isSuper) => (R.len ? { dx: R.x, dy: R.y, dist: rangeOf(isSuper) * Math.max(0.3, R.len) } : PB.Settings.get('autoAim') ? { auto: true } : { facing: true });
       if (R.len) out.aim = { isSuper: superHeld && me.superCharge >= 1, ang: Math.atan2(R.y, R.x), dist: rangeOf(superHeld) * Math.max(0.3, R.len), strong: true };
-      const atkBtn = [7, 5, 0];
+      const atkBtn = [7, 5, 0, 2];
       if (atkBtn.some((i) => down(i))) inp.attack = aimOf(false);
       else if (atkBtn.some((i) => now[i])) inp.attack = Object.assign({ held: true }, aimOf(false));
-      if ([6, 4, 2].some((i) => down(i))) inp.super = aimOf(true);
+      if ([6, 4, 1, 3].some((i) => down(i))) inp.super = aimOf(true);
     }
     // vista girada (equipo rojo): arriba en pantalla es abajo en el mapa
     // (el ratón ya se pasa al mapa con la vista girada; los joysticks y el teclado, no)
