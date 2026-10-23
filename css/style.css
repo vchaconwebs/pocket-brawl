@@ -1112,6 +1112,9 @@ h1.lose { color: #ff8a7a; }
 #col-grid .tdots { display: flex; gap: 3px; justify-content: center; }
 #col-grid .tdots i { width: 16px; height: 5px; display: block; box-shadow: 0 0 0 1px #141824; }
 #col-grid .shiny-tag { position: absolute; top: -2px; right: 2px; color: #ffe066; font-size: 18px; text-shadow: 1px 1px 0 #6a4a00; }
+#col-grid .fav { position: absolute; top: -4px; left: 0; padding: 2px 6px 6px 4px; font-size: 20px; line-height: 1; color: rgba(255,255,255,0.28); text-shadow: 1px 1px 0 #141824; cursor: pointer; }
+#col-grid .fav:hover { color: rgba(255,224,102,0.7); }
+#col-grid .fav.on { color: #ffd23a; text-shadow: 1px 1px 0 #6a4a00, 0 0 6px rgba(255,210,58,0.6); }
 #col-empty { margin: 20px 0; }
 
 /* línea evolutiva en la ficha */
@@ -1557,6 +1560,11 @@ h1.lose { color: #ff8a7a; }
 .pt-off { color: #8f9ac0; font-size: 13px; }
 .bot-tag { font-style: normal; font-size: 10px; margin-left: 5px; padding: 0 4px; vertical-align: 2px; background: #3a4466; color: #c8d4ff; box-shadow: 0 0 0 1px #141824; text-shadow: none; }
 .bot-tag.friend { background: #2a9a3a; color: #fff; }
+#install-tip { position: absolute; left: calc(10px + env(safe-area-inset-left)); bottom: 34px; z-index: 6; display: flex; gap: 2px; }
+#install-tip button { font: inherit; font-size: 15px; color: #fff; background: #2c3f78; border: 3px solid #141824; box-shadow: inset 0 0 0 2px #7fa0ff; padding: 4px 10px; cursor: pointer; }
+#install-tip .it-go { animation: itPulse 2s ease-in-out infinite; }
+#install-tip .it-x { padding: 4px 8px; background: #3a2030; box-shadow: inset 0 0 0 2px #a06080; }
+@keyframes itPulse { 50% { filter: brightness(1.25); } }
 #toast {
   position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 50; padding: 4px 14px; font-size: 16px; color: #fff;
   background: rgba(14, 20, 48, 0.95); box-shadow: 0 0 0 3px #141824, inset 0 0 0 2px #ffd23a; pointer-events: none; max-width: 90vw; text-align: center;
@@ -1938,7 +1946,8 @@ h1.lose { color: #ff8a7a; }
 .gc-n:hover { text-decoration: underline; }
 .gc-m.mine .gc-n { color: #7dff8f; }
 .gc-m.owner .gc-n { color: #ffd23a; }
-.gc-tag { margin-left: 6px; font-size: 10px; padding: 0 5px; border-radius: 4px; background: #ffd23a; color: #3a2400; vertical-align: 2px; }
+/* (con letra normal en negrita: la pixelada del juego se ve borrosa así de pequeña) */
+.gc-tag { display: inline-block; margin-left: 6px; font: 800 11px/15px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; letter-spacing: 0.6px; padding: 1px 6px; background: #ffd23a; color: #2a1a00; box-shadow: 0 0 0 2px #6a4a00; vertical-align: 2px; }
 .gc-b small { margin-left: 6px; color: #6a7aa0; font-size: 11px; }
 .gc-b p { margin: 1px 0 0; color: #e8eefc; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
 .gc-menu { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }

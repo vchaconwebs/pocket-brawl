@@ -17,7 +17,7 @@ PB.META = {
   bonusWins: 3, // las 3 primeras victorias del día dan el doble de fichas
   // premio de cada modo según lo que dura (fichas, monedas, puntos y pase): por minuto jugado,
   // más o menos igual en todos. Niebla dura ~35 s; Voltorbol y Eliminación ~1 min; el resto ~2 min.
-  modeReward: { showdown: 0.55, duo: 0.7, ball: 1, knockout: 1, gems: 1.4, heist: 1.4, zone: 1.4, brawl: 1.4 },
+  modeReward: { showdown: 0.55, duo: 0.7, ball: 1, knockout: 1, gems: 1.4, heist: 1.4, zone: 1.4, brawl: 1 },
   // cofres (Pokéballs): tiradas de premio y probabilidad de Pokémon nuevo en cada tirada
   chests: {
     // pokemon: probabilidad de Pokémon nuevo en cada tirada; rare: peso de cada rareza (mejor cofre, más raros)
@@ -55,7 +55,7 @@ PB.statsAt = (def, lvl) => {
 
 // Copas que se ganan o pierden según las copas que ya tiene ese Pokémon
 // Modos largos (unos 2 minutos): su victoria vale más para que compense jugarlos tanto como Niebla
-PB.LONG_MODES = ['gems', 'heist', 'zone', 'brawl'];
+PB.LONG_MODES = ['gems', 'heist', 'zone'];
 PB.copasDelta = (copas, result, rank, mode) => {
   if (rank) {
     // Niebla Tóxica (y Dúo): según el puesto (1 a 10). Las partidas duran poco, así que dan menos
@@ -350,6 +350,18 @@ PB.Save = (() => {
     d.branches[id] = i;
     persist();
   }
+  // favoritos: salen los primeros en la lista de Pokémon
+  function isFav(id) {
+    return !!(get().favs || {})[id];
+  }
+  function toggleFav(id) {
+    const d = get();
+    d.favs = d.favs || {};
+    if (d.favs[id]) delete d.favs[id];
+    else d.favs[id] = 1;
+    persist();
+    return !!d.favs[id];
+  }
   function setSkin(id, sk) {
     if (sk === 'shiny' && !hasShiny(id)) return false;
     get().skins[id] = sk;
@@ -606,7 +618,7 @@ PB.Save = (() => {
   return {
     load, get, persist, setName, owned, level, copas, totalCopas, select, upgradeCost, upgrade, unlockCost, unlock, spendCoins,
     pass, claimPass, claimPassExtra,
-    needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, branch, lineOf, setBranch,
+    needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, isFav, toggleFav, branch, lineOf, setBranch,
     importJSON, openChest, nextChest, applyMatch, applyAbandon, abandonWait, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
   };
 })();

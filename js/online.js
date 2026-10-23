@@ -177,6 +177,22 @@ PB.Online = (() => {
     return { ok: true };
   }
 
+  // Reportar a un jugador: llega al mismo buzón (como fallo, con los datos del reportado)
+  const reported = new Set();
+  async function reportPlayer(target, name, msg) {
+    if (!(await start())) return err('Sin conexión.');
+    if (reported.has(target)) return { ok: true }; // una vez por jugador y sesión
+    reported.add(target);
+    const d = PB.Save.get();
+    const text = ('🚩 Reporte a ' + clean(name || '?', 16) + (msg ? ': «' + String(msg).slice(0, 200) + '»' : '')).slice(0, 600);
+    await rtdb.ref('feedback').push({
+      kind: 'bug', text, report: { uid: String(target).slice(0, 64), name: clean(name || '', 16) }, name: clean(d.name || '', 16), uid,
+      v: PB.VERSION || '', lang: PB.lang || '', mobile: !!(window.matchMedia && matchMedia('(pointer: coarse)').matches),
+      t: fb.database.ServerValue.TIMESTAMP,
+    });
+    return { ok: true };
+  }
+
   function countMatch(mode) {
     bump('matches');
     if (/^[a-z]+$/.test(mode || '')) bump('modes/' + mode);
@@ -1361,7 +1377,7 @@ PB.Online = (() => {
     friends, requests, searchPlayers, addFriend, answerRequest, removeFriend,
     findMatch, cancelMatch, joinMatch, migrate,
     get searching() { return !!search; },
-    countMatch, setPlaying, setSearching, sendFeedback,
+    countMatch, setPlaying, setSearching, sendFeedback, reportPlayer,
     get live() { return live; },
     now: () => now(),
     trace,

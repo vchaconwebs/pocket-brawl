@@ -22,7 +22,7 @@
   .msg { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
   .msg .top { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
   .tag { font-weight: 700; font-size: 11px; border-radius: 6px; padding: 1px 7px; color: #10131c; }
-  .tag.bug { background: var(--bug); } .tag.idea { background: var(--idea); }
+  .tag.bug { background: var(--bug); } .tag.idea { background: var(--idea); } .tag.report { background: #ff7a7a; }
   .msg .who { color: var(--text-2); font-weight: 600; }
   .msg p { margin: 0; white-space: pre-wrap; word-break: break-word; }
   .msg .del { margin-left: auto; background: none; border: 1px solid var(--edge); color: var(--muted); border-radius: 8px; padding: 2px 9px; cursor: pointer; font: inherit; font-size: 12px; }
@@ -37,7 +37,7 @@
   <h1>Buzón de ideas y bugs</h1>
   <p class="sub" id="sub">Comprobando tu cuenta…</p>
   <div class="bar hidden" id="bar">
-    <div class="seg" id="filter"><button data-f="all" class="on">Todo</button> <button data-f="bug">🐞 Fallos</button> <button data-f="idea">💡 Ideas</button></div>
+    <div class="seg" id="filter"><button data-f="all" class="on">Todo</button> <button data-f="bug">🐞 Fallos</button> <button data-f="idea">💡 Ideas</button> <button data-f="report">🚩 Reportes</button></div>
     <span class="count" id="count"></span>
   </div>
   <div id="list"></div>
@@ -60,14 +60,15 @@
   let items = [], filter = 'all';
   const esc = (t) => String(t || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   function render() {
-    const list = items.filter((m) => filter === 'all' || m.kind === filter);
+    const list = items.filter((m) => filter === 'all' || (filter === 'report' ? m.report : m.kind === filter && !m.report));
     $('#count').textContent = `${list.length} mensaje${list.length === 1 ? '' : 's'}`;
     if (!list.length) { $('#list').innerHTML = '<div class="empty">No hay mensajes por aquí todavía.</div>'; return; }
     $('#list').innerHTML = list.map((m) => {
       const d = new Date(m.t || 0);
       const when = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-      return `<div class="msg"><div class="top"><span class="tag ${m.kind}">${m.kind === 'idea' ? 'IDEA' : 'FALLO'}</span>` +
-        `<span class="who">${esc(m.name) || 'Sin nombre'}</span><span>${when}</span><span>v${esc(m.v)}</span><span>${m.mobile ? 'móvil' : 'PC'}</span><span>${esc(m.lang)}</span>` +
+      return `<div class="msg"><div class="top"><span class="tag ${m.report ? 'report' : m.kind}">${m.report ? 'REPORTE' : m.kind === 'idea' ? 'IDEA' : 'FALLO'}</span>` +
+        (m.report ? `<span class="who">→ ${esc(m.report.name)} <small>(${esc(m.report.uid)})</small></span>` : '') +
+        `<span class="who">${m.report ? 'de ' : ''}${esc(m.name) || 'Sin nombre'}</span><span>${when}</span><span>v${esc(m.v)}</span><span>${m.mobile ? 'móvil' : 'PC'}</span><span>${esc(m.lang)}</span>` +
         `<button class="del" data-id="${esc(m.id)}">Borrar</button></div><p>${esc(m.text)}</p></div>`;
     }).join('');
     document.querySelectorAll('.del').forEach((b) => (b.onclick = () => {

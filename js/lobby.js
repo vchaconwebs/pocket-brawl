@@ -349,7 +349,7 @@ PB.Lobby = (() => {
       if (F.rar && b.rarity !== F.rar) return false;
       if (F.q && !names(b).includes(F.q)) return false;
       return true;
-    }).sort((x, y) => (PB.Save.owned(y.id) ? 1 : 0) - (PB.Save.owned(x.id) ? 1 : 0) || x.dex - y.dex);
+    }).sort((x, y) => PB.Save.isFav(y.id) - PB.Save.isFav(x.id) || (PB.Save.owned(y.id) ? 1 : 0) - (PB.Save.owned(x.id) ? 1 : 0) || x.dex - y.dex);
     grid.innerHTML = list.map((b) => {
       const own = PB.Save.owned(b.id);
       const r = rarityOf(b);
@@ -357,6 +357,7 @@ PB.Lobby = (() => {
       return `<button class="card${own ? '' : ' locked'}${b.id === d.selected ? ' sel' : ''}" data-id="${b.id}" style="--rar:${r.color}">` +
         `<img class="pt" src="${portrait(b)}" alt="" loading="lazy">` +
         (shiny ? '<span class="shiny-tag">✦</span>' : '') +
+        `<span class="fav${PB.Save.isFav(b.id) ? ' on' : ''}" data-fav="${b.id}" title="${PB.T('Favorito')}">★</span>` +
         `<span class="nm">${b.name}</span>` +
         `<span class="tdots">${b.types.map((ty) => `<i style="background:${PB.TYPE_INFO[ty].color}"></i>`).join('')}</span>` +
         (own
@@ -364,7 +365,11 @@ PB.Lobby = (() => {
           : `<span class="lock">🔒</span><span class="cost">${money(PB.Save.unlockCost(b.id), starIcon)}</span>`) +
         `<span class="rar">${r.name}</span></button>`;
     }).join('');
-    grid.querySelectorAll('.card').forEach((el) => (el.onclick = () => showDetail(el.dataset.id)));
+    grid.querySelectorAll('.card').forEach((el) => (el.onclick = (e) => {
+      // la estrella marca o quita el favorito (sin abrir la ficha)
+      if (e.target.closest('.fav')) { PB.Save.toggleFav(el.dataset.id); renderCollection(); return; }
+      showDetail(el.dataset.id);
+    }));
     $('#col-empty').classList.toggle('hidden', list.length > 0);
     $('#col-count').textContent = Object.keys(d.owned).length + '/' + PB.BRAWLERS.length;
   }
@@ -549,7 +554,9 @@ PB.Lobby = (() => {
     const L = PB.Online.live || { modes: {} };
     if (id === 'random') {
       // si hay gente buscando en algún modo, Aleatorio te lleva ahí
-      const s = PB.MODE_ORDER.slice().sort((a, b) => ((L.modes[b] || {}).search || 0) - ((L.modes[a] || {}).search || 0))[0];
+      // (Niebla cuenta menos: Aleatorio reparte entre los modos)
+      const w = (m) => ((L.modes[m] || {}).search || 0) * (m === 'showdown' || m === 'duo' ? 0.35 : 1);
+      const s = PB.MODE_ORDER.slice().sort((a, b) => w(b) - w(a))[0];
       // (sin números: solo se dice que hay gente)
       if ((L.modes[s] || {}).search) return PB.T('Ahora: {m}', { m: PB.MODES[s].name }) + ' · ' + PB.T('Gente buscando');
       return (L.total || 0) > 1 ? PB.T('Hay gente en línea') : '';
@@ -1220,7 +1227,9 @@ PB.Lobby = (() => {
       const b = PB.brawlerById(x.id);
       return `<div class="pv-mon${i === 0 ? ' top' : ''}"><img src="${portrait(b)}" alt=""><b>${esc(b.name)}</b><span><img class="cup" src="${cupIcon()}" alt="">${x.c.toLocaleString('es-ES')}</span></div>`;
     }).join('') || `<p class="empty">${PB.T(old ? 'Aún no ha entrado con la última versión: sus estadísticas saldrán cuando vuelva a jugar.' : 'Aún no tiene copas.')}</p>`;
-    $('#pv-acts').innerHTML = (u.friend ? '' : `<button class="act blue" id="pv-add">➕ ${PB.T('Añadir amigo')}</button>`) + `<button class="act gold" id="pv-inv">🎮 ${PB.T('Invitar a jugar')}</button>`;
+    $('#pv-acts').innerHTML = (u.friend ? '' : `<button class="act blue" id="pv-add">➕ ${PB.T('Añadir amigo')}</button>`) + `<button class="act gold" id="pv-inv">🎮 ${PB.T('Invitar a jugar')}</button>` +
+      `<button class="act red" id="pv-rep">🚩 ${PB.T('Reportar')}</button>`;
+    $('#pv-rep').onclick = () => report(id, u.name);
     if ($('#pv-add')) $('#pv-add').onclick = async () => {
       if (PB.Online.isGuest()) return toast(PB.T('Crea una cuenta (gratis) para tener amigos.'));
       const r = await PB.Online.addFriend(id).catch(() => ({ error: PB.T('No se ha podido enviar.') }));
@@ -1231,6 +1240,12 @@ PB.Lobby = (() => {
       toast(r.error || PB.T('¡Invitación enviada! Si acepta, entrará en tu grupo.'));
     };
     $('#pview').classList.remove('hidden');
+  }
+  // reportar a un jugador (desde su perfil o desde un mensaje del chat)
+  async function report(id, name, msg) {
+    if (!(await modal(PB.T('¿Reportar a {a}? Lo revisará el equipo del juego.', { a: name || '?' }), true))) return;
+    const r = await PB.Online.reportPlayer(id, name, msg).catch(() => ({ error: PB.T('No se ha podido enviar.') }));
+    toast(r.error || PB.T('Reporte enviado. ¡Gracias!'));
   }
   const esc = (t) => String(t || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   document.addEventListener('click', (e) => {
@@ -1787,10 +1802,45 @@ PB.Lobby = (() => {
   }
 
   // ------------------------------------------------------------------ inicio
+  // Móvil: aviso para añadir el juego a la pantalla de inicio. Así se abre con su icono, como una app,
+  // y a pantalla completa (en iPhone es la única manera: Safari no deja ponerla desde una web)
+  function installTip() {
+    const touch = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+    const standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    let seen = false;
+    try { seen = localStorage.getItem('pb.installTip') === '1'; } catch (e) {}
+    if (!touch || standalone || seen) return;
+    let prompt = null;
+    const show = () => {
+      if ($('#install-tip')) return;
+      const el = document.createElement('div');
+      el.id = 'install-tip';
+      el.innerHTML = `<button class="it-go">📲 ${PB.T(ios ? 'Juega a pantalla completa' : 'Instala el juego')}</button><button class="it-x" aria-label="✕">✕</button>`;
+      $('#lobby').appendChild(el);
+      const close = () => { el.remove(); try { localStorage.setItem('pb.installTip', '1'); } catch (e) {} };
+      el.querySelector('.it-x').onclick = close;
+      el.querySelector('.it-go').onclick = async () => {
+        PB.Audio.play('ui');
+        if (prompt) {
+          prompt.prompt();
+          const r = await prompt.userChoice.catch(() => null);
+          if (r && r.outcome === 'accepted') close();
+          return;
+        }
+        await modal(PB.T('En iPhone: pulsa el botón Compartir (el cuadrado con la flecha ⬆️) y luego «Añadir a pantalla de inicio». Abre el juego desde ese icono y se verá a pantalla completa, como una app.'));
+      };
+    };
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); prompt = e; show(); });
+    window.addEventListener('appinstalled', () => { const el = $('#install-tip'); if (el) el.remove(); try { localStorage.setItem('pb.installTip', '1'); } catch (e) {} });
+    if (ios) show();
+  }
+
   function init(a) {
     api = a;
     PB.Save.load();
     PB.Chat.initLobby();
+    installTip();
     $('#ico-coin').src = coinIcon();
     $('#ico-star').src = starIcon();
     $('#ico-rainbow').src = rainbowIcon();
@@ -1983,5 +2033,5 @@ PB.Lobby = (() => {
     window.addEventListener('resize', () => { if (current === 'chestopen') resizeFx(); });
   }
 
-  return { showPlayer, init, show, tick, openSettings, toast, refresh: refreshLobby, playPressed, get current() { return current; } };
+  return { showPlayer, report, init, show, tick, openSettings, toast, refresh: refreshLobby, playPressed, get current() { return current; } };
 })();

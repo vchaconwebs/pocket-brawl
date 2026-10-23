@@ -157,6 +157,7 @@ PB.Chat = (() => {
           if (!PB.Online.isFriend(m.uid)) menu += `<button data-friend="${esc(m.uid)}">➕ ${PB.T('Añadir amigo')}</button>`;
           if (!inMine) menu += `<button data-inv="${esc(m.uid)}">🎮 ${PB.T('Invitar a jugar')}</button>`;
           menu += `<button data-mute="${esc(m.uid)}">🔇 ${PB.T('Silenciar')}</button>`;
+          menu += `<button data-rep="${esc(m.id)}">🚩 ${PB.T('Reportar')}</button>`;
         }
         if (m.mine || (admin && tab === 'global')) menu += `<button data-del="${esc(m.id)}">🗑 ${PB.T('Borrar')}</button>`;
         if (admin && !m.mine && tab === 'global') menu += `<button data-ban="${esc(m.uid)}">⛔ ${PB.T('Bloquear')}</button>`;
@@ -184,6 +185,10 @@ PB.Chat = (() => {
     });
     log.querySelectorAll('.gc-play').forEach((b) => (b.onclick = () => playVoice(b)));
     act('[data-prof]', (b) => PB.Lobby.showPlayer(b.dataset.prof));
+    act('[data-rep]', (b) => {
+      const m = msgs.find((x) => x.id === b.dataset.rep);
+      if (m) PB.Lobby.report(m.uid, m.name, m.au ? '(nota de voz)' : m.text);
+    });
     act('[data-mute]', (b) => { setMuted(b.dataset.mute, true); PB.Lobby.toast(PB.T('No verás más sus mensajes')); });
     act('[data-del]', (b) => PB.Online.deleteChat(b.dataset.del));
     act('[data-ban]', async (b) => { await PB.Online.banChat(b.dataset.ban); PB.Lobby.toast(PB.T('Bloqueado del chat')); });

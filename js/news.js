@@ -1,9 +1,37 @@
 // Versión del juego y notas de parche. Al publicar una actualización con novedades:
 // sube PB.VERSION y añade su nota ARRIBA del todo en PB.PATCH_NOTES (la primera es la que se enseña).
 // Cada jugador la ve una sola vez al entrar a la lobby (se guarda en localStorage 'pb.seenVersion').
-PB.VERSION = '1.5';
+PB.VERSION = '1.6';
 
 PB.PATCH_NOTES = [
+  {
+    v: '1.6',
+    date: '23/10/2026',
+    es: {
+      title: 'Novedades de la versión 1.6',
+      items: [
+        ['⚔️', 'Duelo de Equipos ahora dura 1:30 y gana el equipo con más K.O. Si acaban empatados, ¡K.O. de oro: el siguiente K.O. gana!'],
+        ['🎲', 'El modo Aleatorio reparte mejor entre todos los modos (ya no te manda casi siempre a Niebla) y no repite el de tu última partida.'],
+        ['⭐', 'Pokémon favoritos: toca la estrella de cualquier carta y saldrá el primero en tu lista.'],
+        ['🚩', 'Reportar jugadores: desde un mensaje del chat o desde su perfil. Lo revisa el equipo del juego.'],
+        ['📲', 'En el móvil, un botón te explica cómo jugar a pantalla completa (en iPhone) o instalar el juego con su icono, como una app.'],
+        ['🛠️', 'Arreglos: menos lag jugando con gente, el menú de pausa ya no para la partida, apuntado visible en la nieve y la arena, marcadores más pequeños en el móvil, cofres con más Pokémon, los de corto alcance más fuertes y Ditto con su súper Transformación.'],
+        ['🔜', 'Esta tarde llega la gran actualización: ¡Megaevoluciones, skins regionales (Alola, Galar, Hisui y Paldea), nuevos ataques y súpers, y elegir los ataques de cada Pokémon!'],
+      ],
+    },
+    en: {
+      title: "What's new in version 1.6",
+      items: [
+        ['⚔️', 'Team Duel now lasts 1:30 and the team with the most KOs wins. If it ends in a tie, golden KO: the next KO wins!'],
+        ['🎲', 'Random mode now spreads players across all modes (it no longer sends you to Toxic Fog almost every time) and doesn’t repeat your last mode.'],
+        ['⭐', 'Favourite Pokémon: tap the star on any card and it will show first in your list.'],
+        ['🚩', 'Report players: from a chat message or from their profile. The game team reviews it.'],
+        ['📲', 'On mobile, a button shows you how to play in full screen (on iPhone) or install the game with its own icon, like an app.'],
+        ['🛠️', 'Fixes: less lag when playing with people, the pause menu no longer stops the match, aiming is visible on snow and sand, smaller scoreboards on mobile, more Pokémon in chests, stronger short-range Pokémon and Ditto with its Transform super.'],
+        ['🔜', 'The big update arrives this afternoon: Mega Evolutions, regional skins (Alola, Galar, Hisui and Paldea), new attacks and supers, and choosing each Pokémon’s attacks!'],
+      ],
+    },
+  },
   {
     v: '1.5',
     date: '23/10/2026',

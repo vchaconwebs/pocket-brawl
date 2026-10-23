@@ -477,13 +477,13 @@
 
   // ------------------------------------------------------------ pausa
   let paused = false;
+  // El menú de pausa no para la partida (tampoco contra bots: si se parasen todos, se notaría que son bots)
   function pause() {
     if (mode !== 'play' || game.winner) return;
-    if (net) { input.enabled = false; showScreen('pause'); return; } // en red el juego sigue
-    paused = true;
     input.enabled = false;
     showScreen('pause');
   }
+  const pauseOpen = () => !$('#pause').classList.contains('hidden');
   function resume() {
     paused = false;
     input.enabled = mode === 'play';
@@ -701,13 +701,29 @@
   }
   // Aleatorio: si hay alguien buscando partida en algún modo, a ese (el que más gente busca);
   // si no busca nadie, uno al azar. En grupo no vale Niebla Tóxica, que es todos contra todos.
+  // Aleatorio: reparte entre los modos. Si hay gente buscando en alguno, casi siempre te lleva con ella
+  // (así se juntan jugadores de verdad), pero Niebla cuenta menos para que no se lleve a todo el mundo;
+  // y nunca repite el modo de la partida anterior si hay otro con gente.
   function pickRandomMode() {
     const p = PB.Online.party();
     const ids = PB.MODE_ORDER.filter((id) => !(p && p.members.length > (PB.MODES[id].duo ? 2 : 1) && PB.MODES[id].ffa));
     const L = PB.Online.live.modes || {};
-    const s = ids.slice().sort((a, b) => ((L[b] || {}).search || 0) - ((L[a] || {}).search || 0))[0];
-    if ((L[s] || {}).search) return s;
-    return ids[Math.floor(Math.random() * ids.length)];
+    let last = null;
+    try { last = localStorage.getItem('pb.lastRandom'); } catch (e) {}
+    const fog = (id) => id === 'showdown' || id === 'duo';
+    const pick = (list, w) => {
+      let total = 0;
+      for (const id of list) total += w(id);
+      let r = Math.random() * total;
+      for (const id of list) if ((r -= w(id)) <= 0) return id;
+      return list[list.length - 1];
+    };
+    const searching = ids.filter((id) => (L[id] || {}).search && id !== last);
+    let id;
+    if (searching.length && Math.random() < 0.85) id = pick(searching, (m) => (L[m].search || 0) * (fog(m) ? 0.35 : 1));
+    else id = pick(ids.filter((m) => m !== last), (m) => (fog(m) ? 0.4 : 1));
+    try { localStorage.setItem('pb.lastRandom', id); } catch (e) {}
+    return id;
   }
   async function joinAndStart(mid, fromParty) {
     if (mode === 'play') return;
@@ -759,7 +775,7 @@
 
   window.addEventListener('keydown', (e) => {
     if (e.target && e.target.tagName === 'INPUT') return;
-    if (e.key === 'Escape' && mode === 'play') (paused ? resume() : pause());
+    if (e.key === 'Escape' && mode === 'play') (pauseOpen() ? resume() : pause());
     if (e.key === 'Enter' && mode !== 'play' && PB.Lobby.current === 'lobby' && PB.Lobby.playPressed()) play();
     if (e.key.toLowerCase() === 'm') PB.Settings.set('muted', !PB.Settings.get('muted'));
   });
@@ -831,7 +847,8 @@
         case 'goldenGoal':
           PB.Audio.play('alarm');
           PB.Audio.play('wall');
-          renderer.announce(PB.T('¡GOL DE ORO!'), '#ffd23a', PB.T('Quien marque gana'), 2.2);
+          if (ev.ko) renderer.announce(PB.T('¡K.O. DE ORO!'), '#ffd23a', PB.T('El próximo K.O. gana'), 2.2);
+          else renderer.announce(PB.T('¡GOL DE ORO!'), '#ffd23a', PB.T('Quien marque gana'), 2.2);
           break;
         case 'chat': {
           const rel = ev.b === me ? 'me' : me && ev.b.team === me.team ? 'ally' : 'foe';

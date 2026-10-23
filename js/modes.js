@@ -593,20 +593,24 @@ PB.MODES.duo = Object.assign({}, PB.MODES.showdown, {
 });
 
 // ------------------------------------------------------------------ Duelo de Equipos
-// 3 contra 3 a K.O.: se reaparece y gana el primer equipo en llegar a 15 K.O.
+// 3 contra 3 a K.O. durante 1:30: se reaparece y gana el equipo con más K.O.
+// Si empatan, K.O. de oro: el siguiente K.O. gana (si en 1 minuto no hay ninguno, empate)
 PB.MODES.brawl = {
-  id: 'brawl', name: 'Duelo de Equipos', map: 'brawl', statName: 'K.O.', kos: 15,
-  desc: '3 contra 3 a lo bestia: cada rival debilitado es un punto. Gana el primer equipo en llegar a 15 K.O.',
-  rules: { matchTime: 150 },
+  id: 'brawl', name: 'Duelo de Equipos', map: 'brawl', statName: 'K.O.',
+  desc: '3 contra 3 a lo bestia durante minuto y medio: cada rival debilitado es un punto y gana el equipo con más K.O.',
+  rules: { matchTime: 90 },
   setup(g) { g.kos = { blue: 0, red: 0 }; },
   onKill(g, b) {
     const t = otherTeam(b.team);
     g.kos[t]++;
-    if (g.kos[t] >= this.kos && !g.winner) g.end(t);
+    if (g.overtime && !g.winner) g.end(t);
   },
   timeUp(g) {
     const { blue, red } = g.kos;
-    g.end(blue > red ? 'blue' : red > blue ? 'red' : 'draw');
+    if (blue !== red || g.overtime) return g.end(blue > red ? 'blue' : red > blue ? 'red' : 'draw');
+    g.overtime = true;
+    g.overtimeEnd = g.time + 60;
+    g.events.push({ type: 'goldenGoal', ko: true });
   },
   botPlan: fightPlan,
   result: teamResult,

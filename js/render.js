@@ -1356,14 +1356,15 @@ PB.Renderer = class {
         this.outlined(PB.T(ours ? '¡Aguantad!' : '¡Quitádselas!'), cx + 16, 71, 16, '#ffffff');
       }
     } else if (id === 'brawl') {
-      // K.O. de cada equipo hasta 15
+      // K.O. de cada equipo
       panel(220, 50);
       UI.panel(ctx, cx - 100, 13, 74, 36, { p: 2, fill: '#2a5ab8' });
       UI.panel(ctx, cx + 26, 13, 74, 36, { p: 2, fill: '#b83a3a' });
       this.outlined(String(game.kos[team]), cx - 63, 42, 30, '#ffffff');
-      this.outlined('/' + game.mode.kos, cx, 38, 15, '#ffd23a');
+      this.outlined('K.O.', cx, 38, 15, '#ffd23a');
       this.outlined(String(game.kos[foe]), cx + 63, 42, 30, '#ffffff');
       clock(78);
+      if (game.overtime) this.outlined(PB.T('¡K.O. DE ORO!'), cx, 108, 18, '#ffd23a');
     } else if (id === 'knockout') {
       // rondas ganadas (puntos) y Pokémon que quedan en pie de cada equipo
       panel(260, 50);
