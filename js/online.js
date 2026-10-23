@@ -319,7 +319,7 @@ PB.Online = (() => {
     saveT = setTimeout(() => {
       fs.collection('users').doc(uid).collection('private').doc('save')
         .set({ json: JSON.stringify(PB.Save.get()), t: Date.now() }).catch(() => {});
-    }, soon ? 500 : 30000);
+    }, soon ? 500 : 240000); // (al acabar cada partida se guarda enseguida; si no, cada 4 min como mucho: el plan gratis tiene un límite de escrituras al día)
   }
 
   // Vincular con Google: el progreso de este navegador pasa a esa cuenta.
