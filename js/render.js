@@ -159,7 +159,13 @@ PB.Renderer = class {
     if (game.zone) this.drawHotZone(game.zone, t, team);
 
     // grietas del suelo (Magnitud)
-    for (const f of game.fx) if (f.kind === 'crack') this.drawCrack(f);
+    for (const f of game.fx) {
+      if (f.kind === 'crack') this.drawCrack(f);
+      // súper de legendarios: lo que va pegado al suelo
+      else if (f.kind === 'warn') this.drawWarn(f);
+      else if (f.kind === 'crater') this.drawCrater(f);
+      else if (f.kind === 'frostField') this.drawFrostField(f);
+    }
 
     // zonas (Drenadoras)
     for (const z of game.zones) this.drawZone(z, t, team);
@@ -210,10 +216,38 @@ PB.Renderer = class {
     }
 
     // proyectiles
-    for (const p of game.projectiles) if (inView(p.x, p.y, 80)) this.drawShot(p, t);
+    for (const p of game.projectiles) if (inView(p.x, p.y, p.wave ? 160 : 80)) this.drawShot(p, t);
+    // orbes que giran alrededor de algunos Pokémon
+    for (const b of game.brawlers) if (b.orbit && !b.dead && game.visibleTo(b, team)) this.drawOrbit(b, game, t);
     // rayos de los súper
+    // cometas de los legendarios (Ascenso Draco...)
+    for (const b of game.brawlers) if (b.leap && b.leap.comet && !b.dead) this.drawComet(b);
     for (const f of game.fx) {
-      if (f.kind === 'chain') this.drawChain(f);
+      if (f.t < 0) continue;
+      if (f.kind === 'tether') this.drawTether(f);
+      else if (f.kind === 'spikes') this.drawSpikes(f);
+      else if (f.kind === 'pillar') this.drawPillar(f);
+      else if (f.kind === 'tear') this.drawTear(f);
+      else if (f.kind === 'shockring') this.drawShockRing(f);
+      else if (f.kind === 'megaCharge') this.drawMegaCharge(f);
+      else if (f.kind === 'megabeam') this.drawMegabeam(f);
+      else if (f.kind === 'inferno') this.drawInferno(f);
+      else if (f.kind === 'stormcloud') this.drawStormCloud(f);
+      else if (f.kind === 'fistcloud') this.drawFistCloud(f);
+      else if (f.kind === 'fistfall') this.drawFistFall(f);
+      else if (f.kind === 'skybolt') this.drawSkybolt(f);
+      else if (f.kind === 'auraPillar') this.drawAuraPillar(f);
+      else if (f.kind === 'ultIntro') this.drawUltIntro(f);
+      else if (f.kind === 'portal') this.drawPortal(f);
+      else if (f.kind === 'iceblock') this.drawIceBlock(f);
+      else if (f.kind === 'tierBurst') this.drawTierBurst(f);
+      else if (f.kind === 'superName') this.drawSuperName(f);
+      else if (f.kind === 'moon') this.drawMoon(f);
+      else if (f.kind === 'jaws') this.drawJaws(f);
+      else if (f.kind === 'psylift') this.drawPsyLift(f);
+      else if (f.kind === 'zzz') this.drawZzz(f);
+      else if (f.kind === 'clawmark') this.drawClawMark(f);
+      else if (f.kind === 'chain') this.drawChain(f);
       else if (f.kind === 'beam') this.drawBeam(f);
       else if (f.kind === 'beamCharge') this.drawBeamCharge(f);
       else if (f.kind === 'slash') this.drawSlash(f);
@@ -335,6 +369,18 @@ PB.Renderer = class {
       gr.addColorStop(1, this.hexA(this.sfx.color, a));
       ctx.fillStyle = gr;
       ctx.fillRect(0, 0, this.cw, this.ch);
+    }
+    // súper legendario: la pantalla se tiñe de sus colores y sale su rótulo (si hay varios, el último)
+    let ban = null;
+    for (const f of game.fx) if (f.kind === 'ultBanner' && (f.x == null || inView(f.x, f.y, 300)) && (!ban || f.t < ban.t)) ban = f;
+    if (ban) {
+      const k = ban.t / ban.life, a = (k < 0.1 ? k / 0.1 : 1 - k) * 0.5;
+      const gr = ctx.createRadialGradient(this.cw / 2, this.ch / 2, Math.min(this.cw, this.ch) * 0.25, this.cw / 2, this.ch / 2, Math.max(this.cw, this.ch) * 0.75);
+      gr.addColorStop(0, 'rgba(0,0,0,0)');
+      gr.addColorStop(1, this.pc(ban.pal, 1, a, t));
+      ctx.fillStyle = gr;
+      ctx.fillRect(0, 0, this.cw, this.ch);
+      this.drawUltBanner(ban);
     }
     if (view.hud !== false) this.drawHud(game, view);
   }
@@ -648,6 +694,10 @@ PB.Renderer = class {
   }
 
   drawZone(z, t, team) {
+    if (z.atk.kind === 'tornado') return this.up(z.x, z.y, () => this.drawTornado(z, t, team));
+    if (z.atk.puddle) return this.drawPuddle(z, t, team);
+    if (z.atk.kind === 'void') return this.drawBlackhole(z, t);
+    if (z.atk.kind === 'song') return this.drawSong(z, t);
     const ctx = this.ctx;
     const k = 1 - z.t / z.life;
     const appear = Math.min(1, k * 8);
@@ -681,6 +731,934 @@ PB.Renderer = class {
       ctx.stroke();
     }
     PB.VFX.draw(ctx, T === 'grass' || T === 'poison' ? 'blob' : PB.VFX.forType(T).proj, T, z.x, z.y - 6, { scale: 1.6, frame: Math.floor(t * 4) });
+  }
+
+  // torbellino que avanza (Huracán, Bucle Arena, Gas Venenoso): embudo de anillos que giran
+  drawTornado(z, t, team) {
+    const ctx = this.ctx;
+    const T = PB.VFX.PAL[z.atk.type] ? z.atk.type : 'flying';
+    const P = PB.VFX.PAL[T];
+    const a = Math.min(1, (z.life - z.t) * 5, z.t * 2.5);
+    const r = z.r, H = 60 + r * 1.1, spin = t * 9 + (z.spin || 0);
+    const gas = !z.atk.pull; // nube venenosa: más baja y redonda
+    // sombra y marca del suelo (rival: más oscura)
+    ctx.globalAlpha = a;
+    ctx.fillStyle = this.hexA(P[z.team === team ? 3 : 1], 0.2);
+    ctx.beginPath();
+    ctx.ellipse(z.x, z.y, r, r * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = this.hexA(P[1], 0.7);
+    ctx.lineWidth = 3;
+    ctx.setLineDash([12, 10]);
+    ctx.lineDashOffset = -t * 60;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const n = gas ? 6 : 10;
+    for (let i = 0; i < n; i++) {
+      const h = i / (n - 1);
+      const y = z.y - h * (gas ? H * 0.45 : H);
+      const sway = Math.sin(t * 3 + h * 4) * 14 * h;
+      const rx = gas ? r * (0.9 - Math.abs(h - 0.4) * 0.8) : 14 + h * r * 0.95, ry = rx * (gas ? 0.5 : 0.3);
+      for (const [w, col, len] of [[7, P[1], 1.5], [3, P[i % 2 ? 4 : 3], 1.1]]) {
+        ctx.strokeStyle = this.hexA(col, 0.45 + 0.45 * h);
+        ctx.lineWidth = w;
+        ctx.beginPath();
+        ctx.ellipse(z.x + sway, y, rx, ry, 0, spin + i * 0.9, spin + i * 0.9 + Math.PI * len);
+        ctx.stroke();
+      }
+    }
+    // trozos que da vueltas
+    for (let i = 0; i < 3; i++) {
+      const an = spin * 0.6 + (i * Math.PI * 2) / 3, h = 0.3 + 0.25 * i;
+      const x = z.x + Math.cos(an) * (14 + h * r) + Math.sin(t * 3 + h * 4) * 14 * h, y = z.y - h * (gas ? H * 0.45 : H) + Math.sin(an) * 8;
+      PB.VFX.draw(ctx, gas ? 'bubble' : PB.VFX.forType(T).proj, T, x, y, { scale: 1.1, angle: an, frame: Math.floor(t * 8) + i });
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // charco del ataque básico (Bomba Fango...): mancha que burbujea y se encoge al acabarse
+  drawPuddle(z, t, team) {
+    const ctx = this.ctx;
+    const T = PB.VFX.PAL[z.atk.type] ? z.atk.type : 'poison', P = PB.VFX.PAL[T];
+    const k = Math.min(1, (z.life - z.t) * 6, z.t * 2), r = z.r * (0.5 + 0.5 * k);
+    ctx.fillStyle = this.hexA(P[1], 0.55 * k);
+    ctx.beginPath();
+    ctx.ellipse(z.x, z.y, r, r * 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = this.hexA(P[2], 0.6 * k);
+    ctx.beginPath();
+    ctx.ellipse(z.x - r * 0.15, z.y - r * 0.1, r * 0.6, r * 0.38, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = this.hexA(z.team === team ? P[3] : '#ff5a4a', 0.6 * k);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(z.x, z.y, r, r * 0.7, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    for (let i = 0; i < 4; i++) {
+      const ph = (t * 1.6 + i * 0.37) % 1, a = i * 1.9 + Math.floor(t * 1.6 + i * 0.37) * 2.3;
+      ctx.fillStyle = this.hexA(P[3], (1 - ph) * k);
+      const s = Math.round(3 + ph * 5);
+      ctx.fillRect(Math.round(z.x + Math.cos(a) * r * 0.55 - s / 2), Math.round(z.y + Math.sin(a) * r * 0.35 - s / 2), s, s);
+    }
+  }
+
+  // ola (Surf, Onda Ígnea, Viento Hielo...): una cresta ancha que avanza
+  drawWave(p, t) {
+    const ctx = this.ctx;
+    const T = PB.VFX.PAL[p.atkType] ? p.atkType : 'water', P = PB.VFX.PAL[T];
+    const W = p.wave, fade = Math.min(1, (p.range - p.traveled) / (p.range * 0.25), p.t * 8);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.ang);
+    ctx.globalAlpha = Math.max(0, fade);
+    // cuerpo: franjas pixeladas curvadas (el centro va por delante); la cresta ondula y echa espuma
+    const step = 6, g = Math.min(1, W / 170); // g: grosor (la onda pequeña del ataque básico es más fina)
+    for (let j = -W / 2; j < W / 2; j += step) {
+      const u = Math.abs(j + step / 2) / (W / 2);
+      const edge = (1 - Math.pow(u, 3)) * g; // más baja en los extremos
+      const bow = -u * u * 22 * g; // curva
+      const h = (8 + Math.sin(j * 0.15 + t * 16) * 5) * edge;
+      const x0 = Math.round(bow - 56 * edge);
+      ctx.fillStyle = this.hexA(P[1], 0.35);
+      ctx.fillRect(x0, j, Math.round(56 * edge), step); // estela
+      ctx.fillStyle = this.hexA(P[1], 0.8);
+      ctx.fillRect(Math.round(bow - 30 * edge), j, Math.round(30 * edge), step);
+      ctx.fillStyle = P[2];
+      ctx.fillRect(Math.round(bow - 14 * edge), j, Math.round(14 * edge + h), step);
+      ctx.fillStyle = P[3];
+      ctx.fillRect(Math.round(bow + h - 2), j, 7, step);
+      if (Math.sin(j * 1.7 + t * 22) > 0.2) {
+        ctx.fillStyle = P[4];
+        ctx.fillRect(Math.round(bow + h + 4), j + 1, 4, 4);
+      }
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  // látigo del súper (Látigo Cepa, Lengüetazo, Telequinesis...): línea del lanzador a la punta
+  drawTetherLine(x1, y1, x2, y2, type, a, t) {
+    const ctx = this.ctx, P = PB.VFX.PAL[type] || PB.VFX.PAL.grass;
+    const d = Math.hypot(x2 - x1, y2 - y1), n = Math.max(2, Math.ceil(d / 16));
+    for (const [w, col] of [[7, this.hexA(P[0], a)], [4, this.hexA(P[2], a)], [2, this.hexA(P[3], a)]]) {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = w;
+      ctx.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const k = i / n, wob = Math.sin(k * 9 - t * 18) * 5 * Math.sin(k * Math.PI);
+        const x = x1 + (x2 - x1) * k - ((y2 - y1) / d) * wob, y = y1 + (y2 - y1) * k + ((x2 - x1) / d) * wob;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+    }
+  }
+
+  drawTether(f) {
+    if (!f.by || !f.target) return;
+    const a = 1 - f.t / f.life;
+    this.drawTetherLine(f.by.x, f.by.y - 18, f.target.x, f.target.y - 20, f.type, a, f.t);
+    this.glow(f.target.x, f.target.y - 20, 30 * a + 10, this.hexA((PB.VFX.PAL[f.type] || PB.VFX.PAL.grass)[3], a * 0.6));
+  }
+
+  // orbes que giran alrededor del Pokémon
+  drawOrbit(b, game, t) {
+    const ctx = this.ctx, s = b.def.super;
+    const T = PB.VFX.PAL[s.type] ? s.type : b.def.atkType;
+    const P = PB.VFX.PAL[T] || PB.VFX.PAL.normal;
+    const look = s.look || {}, shape = look.shape || 'ball';
+    const a = Math.min(1, b.orbit.t * 2);
+    ctx.globalAlpha = a * 0.35;
+    ctx.strokeStyle = P[3];
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 10]);
+    ctx.beginPath();
+    ctx.ellipse(b.x, b.y - 14, s.rad, s.rad * 0.8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (const q of game.orbitPoints(b)) {
+      ctx.globalAlpha = a;
+      this.glow(q.x, q.y, 26, this.hexA(P[3], 0.5));
+      PB.VFX.draw(ctx, shape, T, q.x, q.y, { scale: look.scale || 1.4, frame: Math.floor(t * 10), angle: PB.VFX.isDir(shape) ? q.a + Math.PI / 2 : t * 6 });
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------------------------------------------------------------- súper de legendarios
+  // Color i (0 contorno ... 4 brillo) de una paleta con transparencia a. 'rainbow' va cambiando de color.
+  pc(pal, i, a, t) {
+    if (pal === 'rainbow') return `hsla(${Math.round(((t || 0) * 240 + i * 55) % 360)},100%,${[22, 40, 56, 72, 90][i]}%,${a})`;
+    return this.hexA((PB.VFX.PAL[pal] || PB.VFX.PAL.normal)[i], a);
+  }
+  // altura sobre el suelo que se ve "hacia arriba" también con la vista girada
+  lift(y, z) {
+    return this.flip ? y + z : y - z;
+  }
+  // número fijo entre 0 y 1 (para que cada efecto tenga su forma sin parpadear)
+  rnd(seed, i) {
+    const v = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  }
+
+  // columna de luz en pixel art: franjas verticales de la paleta que se apagan a escalones hacia arriba
+  pixColumn(x, y, w, h, pal, a, t) {
+    const ctx = this.ctx, seg = 24, n = Math.ceil(h / seg);
+    for (let i = 0; i < n; i++) {
+      const al = a * Math.max(0, 1 - Math.floor((i / n) * 5) / 5);
+      if (al <= 0) break;
+      const yy = Math.round(y - (i + 1) * seg);
+      ctx.fillStyle = this.pc(pal, 2, 0.55 * al, t);
+      ctx.fillRect(Math.round(x - w / 2), yy, w, seg);
+      ctx.fillStyle = this.pc(pal, 3, 0.8 * al, t);
+      ctx.fillRect(Math.round(x - w / 4), yy, Math.round(w / 2), seg);
+      ctx.fillStyle = this.pc(pal, 4, al, t);
+      ctx.fillRect(Math.round(x - w / 10), yy, Math.max(4, Math.round(w / 5)), seg);
+    }
+  }
+
+  // aviso en el suelo de dónde va a caer algo (cometa, Sentencia...)
+  drawWarn(f) {
+    const ctx = this.ctx, k = Math.min(1, f.t / f.life), t = this.game.clock;
+    ctx.fillStyle = this.pc(f.pal, 2, 0.1 + 0.18 * k, t);
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = this.pc(f.pal, 3, 0.45 + 0.45 * Math.abs(Math.sin(t * 14)), t);
+    ctx.lineWidth = 3;
+    ctx.setLineDash([10, 8]);
+    ctx.lineDashOffset = -t * 50;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = this.pc(f.pal, 4, 0.25, t);
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.r * k, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // cráter del cometa: suelo hundido con grietas que brillan
+  drawCrater(f) {
+    const ctx = this.ctx, k = f.t / f.life, a = 1 - k * k, t = this.game.clock;
+    ctx.fillStyle = `rgba(25,12,6,${0.5 * a})`;
+    ctx.beginPath();
+    ctx.ellipse(f.x, f.y, f.r * 0.75, f.r * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    for (const [w, i, al] of [[8, 2, 0.5], [3, 4, 1]]) {
+      ctx.strokeStyle = this.pc(f.pal, i, al * a * (0.7 + 0.3 * Math.sin(t * 9)), t);
+      ctx.lineWidth = w;
+      ctx.beginPath();
+      for (let j = 0; j < 12; j++) {
+        const a0 = (j / 12) * Math.PI * 2 + this.rnd(f.seed, j) * 0.4;
+        let x = f.x + Math.cos(a0) * f.r * 0.3, y = f.y + Math.sin(a0) * f.r * 0.2;
+        ctx.moveTo(x, y);
+        for (let s = 1; s <= 4; s++) {
+          const aa = a0 + (this.rnd(f.seed, j * 7 + s) - 0.5) * 0.7, d = f.r * (0.3 + s * 0.22);
+          x = f.x + Math.cos(aa) * d;
+          y = f.y + Math.sin(aa) * d * 0.7;
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+    }
+  }
+
+  // hielo que se extiende por el suelo, en pixel art: placa por celdas con 2 tonos, grietas y cristales pixelados
+  drawFrostField(f) {
+    const ctx = this.ctx, t = this.game.clock;
+    const g = Math.min(1, f.t / f.grow), rr = f.r * g, fade = Math.min(1, (f.life - f.t) / 0.6);
+    const c3 = this.pc(f.pal, 3, 0.45 * fade, t), c2 = this.pc(f.pal, 2, 0.35 * fade, t), c4 = this.pc(f.pal, 4, 0.9 * fade, t);
+    this.pixFill(f.x - rr, f.y - rr, f.x + rr, f.y + rr, 6, (x, y) => {
+      const d = Math.hypot(x - f.x, (y - f.y) / 0.8) / Math.max(1, rr);
+      if (d > 1) return null;
+      if (d > 0.93) return c4; // borde
+      if (this.rnd(Math.floor(x / 6) + f.seed, Math.floor(y / 6)) < 0.05) return c4; // brillos sueltos
+      return d < 0.55 ? c3 : c2;
+    });
+    // grietas: líneas de celdas blancas desde el centro
+    ctx.fillStyle = `rgba(255,255,255,${0.6 * fade})`;
+    for (let j = 0; j < 8; j++) {
+      const a0 = (j / 8) * Math.PI * 2 + this.rnd(f.seed, j + 200);
+      for (let d = 10; d < rr * 0.9; d += 6) {
+        const aa = a0 + Math.sin(d * 0.05 + j) * 0.25;
+        ctx.fillRect(Math.round((f.x + Math.cos(aa) * d) / 4) * 4, Math.round((f.y + Math.sin(aa) * d * 0.8) / 4) * 4, 4, 4);
+      }
+    }
+    // cristales: pinchos de hielo en pixel art, más altos cerca del centro
+    const list = [];
+    for (let i = 0; i < 30; i++) {
+      const a = this.rnd(f.seed, i) * Math.PI * 2, d = Math.sqrt(this.rnd(f.seed, i + 50)) * f.r;
+      if (d > rr) continue;
+      list.push({ x: f.x + Math.cos(a) * d, y: f.y + Math.sin(a) * d * 0.8, h: (28 + this.rnd(f.seed, i + 90) * 50) * (1 - (d / f.r) * 0.5) * Math.min(1, (rr - d) / 25 + 0.25), w: 18 + this.rnd(f.seed, i + 120) * 12 });
+    }
+    list.sort((p, q) => p.y - q.y);
+    for (const c of list) this.up(c.x, c.y, () => this.pixSpike(c.x, c.y, c.w, c.h, f.pal, fade, t));
+    // copos de nieve
+    for (let i = 0; i < 24; i++) {
+      const u = (this.rnd(f.seed, i + 400) + t * 0.5) % 1, x = f.x + (this.rnd(f.seed, i + 500) - 0.5) * f.r * 2;
+      ctx.fillStyle = `rgba(255,255,255,${0.8 * fade * (1 - u)})`;
+      ctx.fillRect(Math.round((x + Math.sin(t * 3 + i) * 8) / 4) * 4, Math.round((this.lift(f.y, 200 * (1 - u)) - 20) / 4) * 4, 4, 4);
+    }
+  }
+
+  // pincho en pixel art (hielo, roca, magma): celdas de 4 px, contorno oscuro, lado claro y brillo en el centro
+  pixSpike(x, y, w, h, pal, a, t) {
+    const ctx = this.ctx, C = 4, rows = Math.max(2, Math.round(h / C));
+    const x0 = Math.round(x / C) * C, y0 = Math.round(y / C) * C;
+    const cols = [this.pc(pal, 0, a, t), this.pc(pal, 1, a, t), this.pc(pal, 2, a, t), this.pc(pal, 3, a, t), this.pc(pal, 4, a, t)];
+    for (let r = 0; r < rows; r++) {
+      const half = Math.max(0, Math.round(((w / 2) * (1 - r / rows)) / C));
+      for (let k = -half; k <= half; k++) {
+        const edge = k === -half || k === half || r === rows - 1;
+        ctx.fillStyle = edge ? cols[0] : k < 0 ? cols[2] : k === 0 || k === 1 ? cols[4] : cols[3];
+        ctx.fillRect(x0 + k * C, y0 - (r + 1) * C, C, C);
+      }
+    }
+  }
+
+  // pinchos de Filo del Abismo / Roca Afilada, en pixel art
+  drawSpikes(f) {
+    const t = this.game.clock, k = f.t / f.life;
+    const rise = Math.min(1, k / 0.12), a = k > 0.7 ? (1 - k) / 0.3 : 1;
+    this.glow(f.x, f.y, f.r * 1.3, this.pc(f.pal, 3, 0.4 * a, t));
+    this.up(f.x, f.y, () => {
+      for (let i = 0; i < 6; i++) {
+        const ox = (this.rnd(f.seed, i) - 0.5) * f.r * 1.4, oy = (this.rnd(f.seed, i + 9) - 0.5) * f.r * 0.6;
+        this.pixSpike(f.x + ox, f.y + oy, 20 + this.rnd(f.seed, i + 30) * 18, (45 + this.rnd(f.seed, i + 20) * 70) * rise, f.pal, a, t);
+      }
+    });
+  }
+
+  // columna de luz que cae del cielo (Sentencia, Mil Flechas...) con la forma del movimiento cayendo
+  drawPillar(f) {
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life, a = 1 - k;
+    this.up(f.x, f.y, () => {
+      const w = Math.round((f.r * (0.9 - k * 0.6)) / 4) * 4;
+      this.pixColumn(f.x, f.y, w, 700, f.pal, a, t);
+      if (k < 0.35) {
+        const y = f.y - 420 * (1 - k / 0.35);
+        PB.VFX.draw(ctx, f.shape || 'star', PB.VFX.PAL[f.pal] ? f.pal : 'normal', f.x, y, { scale: 3, angle: Math.PI / 2, frame: Math.floor(t * 10) });
+      }
+    });
+    ctx.strokeStyle = this.pc(f.pal, 4, a, t);
+    ctx.lineWidth = 6 * a + 1;
+    ctx.beginPath();
+    ctx.ellipse(f.x, f.y, f.r * (0.6 + k), f.r * (0.6 + k) * 0.6, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // tajo que rasga el espacio (Corte Vacío, Espada Santa...): borde brillante y dentro el vacío con estrellas
+  drawTear(f) {
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life;
+    const open = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85;
+    const L = Math.hypot(f.x2 - f.x1, f.y2 - f.y1), ang = Math.atan2(f.y2 - f.y1, f.x2 - f.x1);
+    const reach = Math.min(1, k / 0.1); // el tajo se dibuja de un lado a otro muy rápido
+    ctx.save();
+    ctx.translate(f.x1, f.y1);
+    ctx.rotate(ang);
+    const W = f.w * 0.5 * open, n = 18;
+    const edge = (side) => {
+      ctx.moveTo(0, 0);
+      for (let i = 1; i <= n; i++) {
+        const u = i / n, x = L * u * reach;
+        const jag = (this.rnd(f.seed, i + (side > 0 ? 0 : 40)) * 0.6 + 0.4) * Math.sin(u * Math.PI);
+        ctx.lineTo(x, side * W * jag);
+      }
+    };
+    this.glow(L / 2, 0, (L / 2) * reach, this.pc(f.pal, 3, 0.25 * open, t));
+    ctx.fillStyle = this.pc(f.pal, 2, 0.7 * open, t);
+    ctx.beginPath();
+    edge(1);
+    edge(-1);
+    ctx.fill();
+    ctx.fillStyle = `rgba(6,2,14,${0.9 * open})`;
+    ctx.save();
+    ctx.scale(1, 0.6);
+    ctx.beginPath();
+    edge(1);
+    edge(-1);
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = `rgba(255,255,255,${open})`;
+    for (let i = 0; i < 10; i++) ctx.fillRect(Math.round(this.rnd(f.seed, i + 80) * L * reach), Math.round((this.rnd(f.seed, i + 99) - 0.5) * W * 0.6), 3, 3);
+    ctx.strokeStyle = this.pc(f.pal, 4, open, t);
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    edge(1);
+    ctx.stroke();
+    ctx.beginPath();
+    edge(-1);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // onda de choque gruesa (con la forma del movimiento girando en el borde)
+  drawShockRing(f) {
+    if (f.t < 0) return;
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life, a = 1 - k;
+    const r = f.r * (1 - (1 - k) * (1 - k));
+    ctx.strokeStyle = this.pc(f.pal, 2, 0.6 * a, t);
+    ctx.lineWidth = (f.big ? 26 : 14) * a + 2;
+    ctx.beginPath();
+    ctx.ellipse(f.x, f.y, r, r * 0.75, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = this.pc(f.pal, 4, a, t);
+    ctx.lineWidth = 4 * a + 1;
+    ctx.stroke();
+    if (f.shape) {
+      for (let i = 0; i < 12; i++) {
+        const an = (i / 12) * Math.PI * 2 + t * 2;
+        PB.VFX.draw(ctx, f.shape, PB.VFX.PAL[f.pal] ? f.pal : 'normal', f.x + Math.cos(an) * r, f.y + Math.sin(an) * r * 0.75, { scale: 1.6, angle: an, alpha: a, frame: Math.floor(t * 10) + i });
+      }
+    }
+  }
+
+  // carga del megarrayo: partículas que se juntan delante del Pokémon
+  drawMegaCharge(f) {
+    const b = f.by;
+    if (!b || b.dead) return;
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life;
+    const x = b.x + Math.cos(f.ang) * 30, y = b.y - 18 + Math.sin(f.ang) * 30;
+    for (let i = 0; i < 18; i++) {
+      const an = (i / 18) * Math.PI * 2 + t * 5, d = 140 * (1 - k) * (0.6 + 0.4 * this.rnd(i, 3));
+      ctx.fillStyle = this.pc(f.pal, 3 + (i % 2), 0.9, t);
+      ctx.fillRect(Math.round(x + Math.cos(an) * d) - 3, Math.round(y + Math.sin(an) * d) - 3, 6, 6);
+    }
+    this.glow(x, y, 20 + 50 * k, this.pc(f.pal, 3, 0.8, t));
+    this.glow(x, y, 10 + 25 * k, 'rgba(255,255,255,0.9)');
+    ctx.strokeStyle = this.pc(f.pal, 3, 0.2 + 0.4 * k, t);
+    ctx.lineWidth = 2;
+    ctx.setLineDash([12, 10]);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(f.ang) * 540, y + Math.sin(f.ang) * 540);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // megarrayo: capas de colores, anillos de energía que avanzan y destellos
+  drawMegabeam(f) {
+    const b = f.by;
+    if (!b) return;
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life;
+    const o = f.off || 0, x1 = b.x + Math.cos(f.ang) * 24 - Math.sin(f.ang) * o, y1 = b.y - 18 + Math.sin(f.ang) * 24 + Math.cos(f.ang) * o;
+    const open = k < 0.1 ? k / 0.1 : k > 0.82 ? (1 - k) / 0.18 : 1;
+    const beams = f.prism ? [-0.05, 0, 0.05] : [0];
+    beams.forEach((off, bi) => {
+      ctx.save();
+      ctx.translate(x1, y1);
+      ctx.rotate(f.ang + off * (1 - k));
+      const w = f.w * open * (0.92 + 0.08 * Math.sin(t * 50)) * (f.prism ? 0.6 : 1);
+      const tt = t + bi * 0.4;
+      for (const [m, i, a] of [[1, 1, 0.45], [0.75, 2, 0.75], [0.45, 3, 0.95], [0.18, 4, 1]]) {
+        ctx.fillStyle = this.pc(f.pal, i, a, tt);
+        ctx.fillRect(0, (-w * m) / 2, f.len, w * m);
+      }
+      // anillos que corren por el rayo
+      ctx.strokeStyle = this.pc(f.pal, 4, 0.8 * open, tt);
+      ctx.lineWidth = 3;
+      for (let j = 0; j < 9; j++) {
+        const x = ((j / 9 + t * 1.6) % 1) * f.len;
+        ctx.beginPath();
+        ctx.ellipse(x, 0, 8, w * 0.62, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = `rgba(255,255,255,${open})`;
+      for (let j = 0; j < 14; j++) {
+        const x = ((this.rnd(j, 5) + t * 2.2) % 1) * f.len, y = (this.rnd(j, 6) - 0.5) * w * 1.3;
+        ctx.fillRect(Math.round(x), Math.round(y), 5, 2);
+      }
+      ctx.restore();
+    });
+    this.glow(x1, y1, f.w * open, this.pc(f.pal, 4, 0.9, t));
+    const x2 = x1 + Math.cos(f.ang) * f.len, y2 = y1 + Math.sin(f.ang) * f.len;
+    this.glow(x2, y2, f.w * 0.9 * open, this.pc(f.pal, 3, 0.7, t));
+  }
+
+  // mar de llamas en abanico, en pixel art: celdas cuadradas con 5 tonos de la paleta (sin degradados),
+  // lenguas de fuego que avanzan hacia fuera y chispas con los sprites de llama del juego
+  drawInferno(f) {
+    const b = f.by;
+    if (!b) return;
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life;
+    const a0 = Math.min(1, k * 8, k > 0.75 ? (1 - k) / 0.25 : 1);
+    const ang = this.infernoAng(f, f.t);
+    const ox = b.x, oy = b.y - 10, half = f.arc / 2, C = 6, step = Math.floor(t * 12) % 2;
+    const cols = [0, 1, 2, 3, 4].map((i) => this.pc(f.pal, i, a0, t));
+    this.pixFill(ox - f.len, oy - f.len, ox + f.len, oy + f.len, C, (x, y) => {
+      const dx = x - ox, dy = y - oy, d = Math.hypot(dx, dy);
+      if (d > f.len || d < 10) return null;
+      const off = Math.abs(((Math.atan2(dy, dx) - ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+      const e = off / half;
+      if (e > 1.2) return null;
+      const u = d / f.len;
+      const n = this.rnd(Math.floor((d - t * 260) / 22) + step * 97, Math.floor(off * 14));
+      const v = 1.15 - u * 0.95 - e * e * 0.6 + (n - 0.5) * 0.5;
+      return v > 0.85 ? cols[4] : v > 0.62 ? cols[3] : v > 0.4 ? cols[2] : v > 0.22 ? cols[1] : v > 0.12 ? cols[0] : null;
+    });
+    const shapePal = PB.VFX.PAL[f.pal] ? f.pal : 'fire';
+    for (let i = 0; i < 16; i++) {
+      const u = (this.rnd(i, 1) + t * 1.7) % 1, side = (this.rnd(i, 2) - 0.5) * f.arc * 0.8;
+      const an = ang + side * (0.4 + 0.6 * u), d = 30 + f.len * u * 0.95;
+      const alpha = a0 * (u < 0.15 ? u / 0.15 : 1 - (u - 0.15) / 0.85);
+      if (alpha <= 0.05) continue;
+      PB.VFX.draw(ctx, 'fire', shapePal === 'rainbow' ? ['fire', 'electric', 'grass', 'water', 'psychic'][i % 5] : shapePal, ox + Math.cos(an) * d, oy + Math.sin(an) * d, { angle: an, scale: 1.4 + u * 1.8, alpha, frame: i + Math.floor(t * 12) });
+    }
+  }
+
+  // dirección de un abanico de llamas que barre de lado a lado (Lanzallamas de Charizard)
+  infernoAng(f, time) {
+    return f.sweep ? f.ang + (Math.sin(Math.min(1, time / (f.dur || 1)) * Math.PI * 2) * f.sweep) / 2 : f.ang;
+  }
+
+  // Pinta celdas cuadradas (pixel art) en la caja: fn(x, y) devuelve un color o nada.
+  // Las celdas van pegadas a la rejilla del mundo, así no "bailan" al moverse.
+  pixFill(x0, y0, x1, y1, C, fn) {
+    const ctx = this.ctx;
+    for (let y = Math.floor(y0 / C) * C; y < y1; y += C) {
+      for (let x = Math.floor(x0 / C) * C; x < x1; x += C) {
+        const col = fn(x + C / 2, y + C / 2);
+        if (col) {
+          ctx.fillStyle = col;
+          ctx.fillRect(x, y, C, C);
+        }
+      }
+    }
+  }
+
+  // nubarrón de tormenta encima del Pokémon
+  drawStormCloud(f) {
+    const b = f.by;
+    if (!b) return;
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life, a = Math.min(1, f.t * 4, (1 - k) * 3);
+    ctx.fillStyle = `rgba(10,10,30,${0.18 * a})`;
+    ctx.beginPath();
+    ctx.ellipse(b.x, b.y, f.r, f.r * 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    this.up(b.x, b.y, () => {
+      for (let i = 0; i < 9; i++) {
+        const x = b.x + (i - 4) * 34 + Math.sin(t * 2 + i) * 6, y = b.y - 190 + Math.sin(i * 1.7) * 12;
+        ctx.fillStyle = `rgba(${40 + i * 4},${40 + i * 4},${60 + i * 5},${0.85 * a})`;
+        ctx.beginPath();
+        ctx.arc(x, y, 34 + (i % 3) * 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (Math.sin(t * 23) > 0.85) this.glow(b.x + Math.sin(t * 7) * 80, b.y - 190, 70, this.pc(f.pal, 4, 0.6 * a, t));
+    });
+  }
+
+  // rayo que cae del cielo en zigzag
+  drawSkybolt(f) {
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life, a = 1 - k;
+    this.up(f.x, f.y, () => {
+      for (const [w, i, al] of [[16, 2, 0.5], [7, 3, 0.9], [3, 4, 1]]) {
+        ctx.strokeStyle = this.pc(f.pal, i, al * a, t);
+        ctx.lineWidth = w;
+        ctx.beginPath();
+        ctx.moveTo(f.x + (this.rnd(f.seed, 0) - 0.5) * 80, f.y - 650);
+        for (let s = 1; s <= 10; s++) {
+          const jx = s === 10 ? 0 : (this.rnd(f.seed, s) - 0.5) * 60;
+          ctx.lineTo(f.x + jx, f.y - 650 + s * 65);
+        }
+        ctx.stroke();
+      }
+    });
+    this.glow(f.x, f.y, 90 * a + 20, this.pc(f.pal, 4, a, t));
+    ctx.fillStyle = `rgba(20,15,10,${0.4 * a})`;
+    ctx.beginPath();
+    ctx.ellipse(f.x, f.y, 40, 24, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // agujero negro (Brecha Negra, Lluvia Ígnea, Vendaval...)
+  drawBlackhole(z, t) {
+    const ctx = this.ctx, pal = z.atk.pal || 'void';
+    const k = 1 - z.t / z.life, a = Math.min(1, k * 8, z.t * 4), r = z.r;
+    ctx.fillStyle = this.pc(pal, 1, 0.3 * a, t);
+    ctx.beginPath();
+    ctx.ellipse(z.x, z.y, r, r * 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // brazos en espiral
+    for (let arm = 0; arm < 4; arm++) {
+      ctx.strokeStyle = this.pc(pal, 3, 0.7 * a, t);
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      for (let s = 0; s <= 20; s++) {
+        const u = s / 20, an = arm * (Math.PI / 2) + u * 4 - t * 5, d = r * (1 - u * 0.85);
+        const x = z.x + Math.cos(an) * d, y = z.y + Math.sin(an) * d * 0.7;
+        s ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+    }
+    // partículas que caen dentro
+    for (let i = 0; i < 28; i++) {
+      const u = (this.rnd(i, 4) + t * 0.9) % 1, an = i * 2.4 + u * 5, d = r * (1 - u);
+      ctx.fillStyle = this.pc(pal, 4, a * u, t);
+      ctx.fillRect(Math.round(z.x + Math.cos(an) * d) - 2, Math.round(z.y + Math.sin(an) * d * 0.7) - 2, 4, 4);
+    }
+    ctx.fillStyle = `rgba(0,0,0,${0.9 * a})`;
+    ctx.beginPath();
+    ctx.ellipse(z.x, z.y, 26 + 10 * Math.sin(t * 8), 18 + 7 * Math.sin(t * 8), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = this.pc(pal, 4, a, t);
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  // columna de luz del aura (Geocontrol, Danza Lunar...)
+  drawAuraPillar(f) {
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life, a = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85;
+    ctx.strokeStyle = this.pc(f.pal, 3, 0.8 * a, t);
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.ellipse(f.x, f.y, f.r * Math.min(1, k * 3), f.r * Math.min(1, k * 3) * 0.7, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    this.up(f.x, f.y, () => {
+      const w = Math.round((110 * (1 - k * 0.5)) / 4) * 4;
+      this.pixColumn(f.x, f.y, w, 600, f.pal, 0.8 * a, t);
+      for (let i = 0; i < 24; i++) {
+        const u = (this.rnd(i, 7) + t * 0.8) % 1, x = f.x + (this.rnd(i, 8) - 0.5) * w * 1.6;
+        ctx.fillStyle = this.pc(f.pal, 4, a * (1 - u), t + i * 0.05);
+        ctx.fillRect(Math.round(x), Math.round(f.y - u * 420), 4, 8);
+      }
+    });
+  }
+
+  // entrada del súper legendario: anillos, rayos de luz girando y destello
+  drawUltIntro(f) {
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life, a = 1 - k;
+    this.glow(f.x, f.y - 24, 140 * (0.4 + k), this.pc(f.pal, 3, 0.55 * a, t));
+    ctx.strokeStyle = this.pc(f.pal, 4, 0.6 * a, t);
+    ctx.lineWidth = 4;
+    for (let i = 0; i < 12; i++) {
+      const an = (i / 12) * Math.PI * 2 + t * 3, r0 = 40 + k * 40, r1 = 120 + k * 160;
+      ctx.beginPath();
+      ctx.moveTo(f.x + Math.cos(an) * r0, f.y - 24 + Math.sin(an) * r0);
+      ctx.lineTo(f.x + Math.cos(an) * r1, f.y - 24 + Math.sin(an) * r1);
+      ctx.stroke();
+    }
+    for (let i = 0; i < 3; i++) {
+      const kk = Math.max(0, k * 1.5 - i * 0.25);
+      if (kk <= 0 || kk >= 1) continue;
+      ctx.strokeStyle = this.pc(f.pal, 3 + (i % 2), 1 - kk, t);
+      ctx.lineWidth = 8 * (1 - kk) + 1;
+      ctx.beginPath();
+      ctx.ellipse(f.x, f.y, 30 + kk * 220, (30 + kk * 220) * 0.7, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // portal (Golpe Umbrío, Paso Dimensional...)
+  drawPortal(f) {
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life;
+    const s = f.grow ? Math.min(1, k * 2.5) : 1 - k, a = f.grow ? (k > 0.85 ? (1 - k) / 0.15 : 1) : 1 - k;
+    const rx = 56 * s, ry = 22 * s;
+    ctx.fillStyle = `rgba(4,2,10,${0.85 * a})`;
+    ctx.beginPath();
+    ctx.ellipse(f.x, f.y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = 5;
+    ctx.setLineDash([16, 8]);
+    ctx.lineDashOffset = -t * 120;
+    ctx.strokeStyle = this.pc(f.pal, 3, a, t);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = this.pc(f.pal, 4, 0.6 * a, t);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(f.x, f.y, rx * 1.25, ry * 1.25, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    this.glow(f.x, f.y, rx * 1.4, this.pc(f.pal, 2, 0.35 * a, t));
+  }
+
+  // bloque de hielo alrededor de un rival congelado
+  drawIceBlock(f) {
+    const e = f.target;
+    if (!e || e.dead) return;
+    const ctx = this.ctx, t = this.game.clock, a = Math.min(1, (f.life - f.t) * 3, f.t * 10);
+    this.up(e.x, e.y, () => {
+      ctx.fillStyle = this.pc(f.pal, 3, 0.45 * a, t);
+      ctx.fillRect(e.x - 30, e.y - 66, 60, 74);
+      ctx.strokeStyle = this.pc(f.pal, 4, 0.9 * a, t);
+      ctx.lineWidth = 3;
+      ctx.strokeRect(e.x - 30, e.y - 66, 60, 74);
+      ctx.fillStyle = `rgba(255,255,255,${0.7 * a})`;
+      ctx.fillRect(e.x - 24, e.y - 60, 6, 30);
+      ctx.fillRect(e.x - 16, e.y - 60, 4, 12);
+    });
+  }
+
+  // cometa (Ascenso Draco...): estela gruesa y cabeza que brilla
+  drawComet(b) {
+    const l = b.leap, ctx = this.ctx, t = this.game.clock, pts = l.trail || [];
+    if (pts.length > 1) {
+      for (const [w, i, al] of [[34, 2, 0.35], [18, 3, 0.7], [7, 4, 1]]) {
+        ctx.strokeStyle = this.pc(l.pal, i, al, t);
+        ctx.lineWidth = w;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        pts.forEach((p, j) => (j ? ctx.lineTo(p.x, this.lift(p.y, p.z)) : ctx.moveTo(p.x, this.lift(p.y, p.z))));
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+    }
+    const hy = this.lift(b.y - 20, l.z);
+    this.glow(b.x, hy, 70, this.pc(l.pal, 3, 0.9, t));
+    this.glow(b.x, hy, 30, 'rgba(255,255,255,0.95)');
+  }
+
+  // esfera enorme (Psicoataque, Bola Neblina...)
+  drawBigOrb(p, t) {
+    const ctx = this.ctx, pal = (p.bigorb && p.bigorb.pal) || p.atkType, r = p.r * (1 + 0.08 * Math.sin(t * 12));
+    this.glow(p.x, p.y, r * 2.4, this.pc(pal, 3, 0.55, t));
+    ctx.fillStyle = this.pc(pal, 2, 0.85, t);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = this.pc(pal, 4, 0.9, t);
+    ctx.beginPath();
+    ctx.arc(p.x - r * 0.25, p.y - r * 0.25, r * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 3; i++) {
+      ctx.strokeStyle = this.pc(pal, 4 - (i % 2), 0.8, t);
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, r * 1.5, r * 0.45, t * (2 + i) + (i * Math.PI) / 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // rótulo grande en pantalla con el nombre del súper legendario y el retrato
+  drawUltBanner(f) {
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life;
+    const slide = k < 0.12 ? 1 - k / 0.12 : k > 0.85 ? -(k - 0.85) / 0.15 : 0, a = k > 0.85 ? 1 - (k - 0.85) / 0.15 : 1;
+    const W = this.cw, H = 74, y = Math.round(this.ch * 0.62), off = slide * W; // debajo del Pokémon: la acción suele ir delante
+    ctx.save();
+    ctx.globalAlpha = a;
+    // franja inclinada con los colores del legendario
+    ctx.fillStyle = 'rgba(8,8,18,0.72)';
+    ctx.beginPath();
+    ctx.moveTo(off - 40, y);
+    ctx.lineTo(W + off, y - 16);
+    ctx.lineTo(W + off, y + H - 16);
+    ctx.lineTo(off - 40, y + H);
+    ctx.fill();
+    for (const [dy, i] of [[-4, 3], [H - 2, 2]]) {
+      ctx.fillStyle = this.pc(f.pal, i, 1, t);
+      ctx.beginPath();
+      ctx.moveTo(off - 40, y + dy);
+      ctx.lineTo(W + off, y + dy - 16);
+      ctx.lineTo(W + off, y + dy - 10);
+      ctx.lineTo(off - 40, y + dy + 6);
+      ctx.fill();
+    }
+    // brillo que cruza
+    const sx = ((t * 900) % (W + 400)) - 200 + off;
+    const g = ctx.createLinearGradient(sx - 120, 0, sx + 120, 0);
+    g.addColorStop(0, 'rgba(255,255,255,0)');
+    g.addColorStop(0.5, this.pc(f.pal, 4, 0.35, t));
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(sx - 120, y - 16, 240, H + 16);
+    const cx = W / 2 + off;
+    const img = PB.Sprites.portrait(f.dex);
+    if (img) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, cx - 210, y + 2, 64, 64);
+    }
+    ctx.textAlign = 'center';
+    ctx.lineJoin = 'round';
+    ctx.font = '20px "Jersey 10", system-ui, sans-serif';
+    ctx.fillStyle = this.pc(f.pal, 4, 1, t);
+    ctx.fillText(String(f.who).toUpperCase() + ' · ' + PB.T(f.label || 'SÚPER LEGENDARIO'), cx + 20, y + 22);
+    ctx.font = '46px "Jersey 10", system-ui, sans-serif';
+    ctx.lineWidth = 7;
+    ctx.strokeStyle = this.pc(f.pal, 0, 1, t);
+    ctx.strokeText(String(f.name).toUpperCase(), cx + 20, y + 62);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(String(f.name).toUpperCase(), cx + 20, y + 62);
+    ctx.restore();
+  }
+
+  // ---------------------------------------------------------------- súper según la fase y especiales
+  // estallido al lanzar el súper en 2ª fase (tier 1) o en la última (tier 2), en pixel art
+  drawTierBurst(f) {
+    const t = this.game.clock, k = f.t / f.life, a = 1 - k, big = f.tier === 2;
+    const R = (big ? 150 : 95) * (1 - (1 - k) * (1 - k)), band = big ? 18 : 12;
+    const cols = [this.pc(f.pal, 2, a, t), this.pc(f.pal, 3, a, t), this.pc(f.pal, 4, a, t)];
+    this.pixFill(f.x - R - band, f.y - R - band, f.x + R + band, f.y + R + band, 6, (x, y) => {
+      const d = Math.hypot(x - f.x, (y - f.y) / 0.7);
+      const e = Math.abs(d - R);
+      if (e > band) return null;
+      if (big && Math.abs(d - R * 0.6) < 5) return cols[1];
+      return e < band * 0.3 ? cols[2] : e < band * 0.65 ? cols[1] : cols[0];
+    });
+    // rayos de luz (solo en la última fase) y estrellas que salen volando
+    if (big) {
+      this.up(f.x, f.y, () => {
+        for (let i = 0; i < 10; i++) {
+          const an = (i / 10) * Math.PI * 2 + this.rnd(f.seed, i), L = 60 + 140 * k;
+          for (let j = 0; j < 6; j++) {
+            const d = 30 + (L * j) / 6;
+            this.ctx.fillStyle = this.pc(f.pal, j < 2 ? 4 : 3, a * (1 - j / 6), t);
+            this.ctx.fillRect(Math.round(f.x + Math.cos(an) * d) - 3, Math.round(f.y - 24 + Math.sin(an) * d * 0.8) - 3, 6, 6);
+          }
+        }
+      });
+    }
+    const n = big ? 14 : 8;
+    for (let i = 0; i < n; i++) {
+      const an = (i / n) * Math.PI * 2 + this.rnd(f.seed, i + 30), d = 20 + 160 * k * (0.7 + 0.3 * this.rnd(f.seed, i + 60));
+      PB.VFX.draw(this.ctx, 'star', PB.VFX.PAL[f.pal] ? f.pal : 'electric', f.x + Math.cos(an) * d, this.lift(f.y - 20 + Math.sin(an) * d * 0.6, 30 * k), { scale: big ? 1.3 : 0.9, alpha: a, frame: i + Math.floor(t * 10) });
+    }
+  }
+
+  // nombre del súper que sube encima del Pokémon (los que no llevan rótulo grande)
+  drawSuperName(f) {
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life;
+    const y = this.lift(f.y - 120, 30 * k), pop = k < 0.12 ? 0.6 + (k / 0.12) * 0.5 : 1.1 - Math.min(0.1, k * 0.2);
+    this.up(f.x, y, () => {
+      ctx.globalAlpha = k > 0.75 ? (1 - k) / 0.25 : 1;
+      ctx.textAlign = 'center';
+      ctx.lineJoin = 'round';
+      ctx.font = `${Math.round((f.big ? 30 : 22) * pop)}px "Jersey 10", system-ui, sans-serif`;
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = this.pc(f.pal, 0, 1, t);
+      ctx.strokeText(String(f.name).toUpperCase(), f.x, y);
+      ctx.fillStyle = f.big ? this.pc(f.pal, 4, 1, t) : '#ffffff';
+      ctx.fillText(String(f.name).toUpperCase(), f.x, y);
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  // Fuerza Lunar: una luna de píxeles con cráteres que baja del cielo
+  drawMoon(f) {
+    const t = this.game.clock, k = Math.min(1, f.t / f.fall), after = f.t > f.fall;
+    if (after) return;
+    const z = 700 * (1 - k * k), R = 44 + 30 * k;
+    const cy = this.lift(f.y - 30, z), cx = f.x;
+    const cols = [this.pc(f.pal, 0, 1, t), this.pc(f.pal, 2, 1, t), this.pc(f.pal, 3, 1, t), this.pc(f.pal, 4, 1, t)];
+    this.glow(cx, cy, R * 2, this.pc(f.pal, 3, 0.5, t));
+    this.pixFill(cx - R - 4, cy - R - 4, cx + R + 4, cy + R + 4, 6, (x, y) => {
+      const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy);
+      if (d > R + 3) return null;
+      if (d > R - 3) return cols[0];
+      // cráteres
+      for (const [ox, oy, r] of [[-0.35, -0.2, 0.22], [0.3, 0.25, 0.18], [0.1, -0.45, 0.12]]) if (Math.hypot(dx - ox * R, dy - oy * R) < r * R) return cols[1];
+      return dx + dy < -R * 0.3 ? cols[3] : cols[2];
+    });
+  }
+
+  // Triturar (sprites hechos en Aseprite): las mandíbulas se cierran, destello al morder y tiemblan un momento
+  drawJaws(f) {
+    const ctx = this.ctx, t = this.game.clock, k = Math.min(1, f.t / f.bite), after = f.t > f.bite;
+    const a = after ? 1 - (f.t - f.bite) / (f.life - f.bite) : Math.min(1, f.t * 8);
+    const gap = after ? 0 : 34 * (1 - k * k * k), shake = after ? Math.sin(f.t * 80) * 2 : 0;
+    const cy = f.y - 26;
+    this.up(f.x, f.y, () => {
+      PB.VFX.draw(ctx, 'jawTop', 'bone', f.x + shake, cy - 13 - gap, { scale: 1.1, alpha: a });
+      PB.VFX.draw(ctx, 'jawBottom', 'bone', f.x - shake, cy + 13 + gap, { scale: 1.1, alpha: a });
+      if (after && f.t - f.bite < 0.22) PB.VFX.draw(ctx, 'biteStar', 'bone', f.x, cy, { scale: 1.3 + (f.t - f.bite) * 3, alpha: 1 - (f.t - f.bite) / 0.22 });
+    });
+  }
+
+  // Psíquico: el rival brilla rosa y suben chispas mientras está levantado
+  drawPsyLift(f) {
+    const e = f.target;
+    if (!e || e.dead) return;
+    const t = this.game.clock, k = f.t / f.life;
+    this.glow(e.x, this.lift(e.y - 24, 20 * k), 46, this.pc(f.pal, 3, 0.6, t));
+    for (let i = 0; i < 8; i++) {
+      const an = t * 5 + (i / 8) * Math.PI * 2;
+      this.ctx.fillStyle = this.pc(f.pal, 3 + (i % 2), 0.9, t);
+      this.ctx.fillRect(Math.round(e.x + Math.cos(an) * 34) - 3, Math.round(this.lift(e.y - 20 + Math.sin(an) * 12, 40 * k)) - 3, 6, 6);
+    }
+  }
+
+  // Canto: Zzz encima del dormido
+  drawZzz(f) {
+    const e = f.target;
+    if (!e || e.dead) return;
+    const ctx = this.ctx, t = this.game.clock;
+    for (let i = 0; i < 3; i++) {
+      const u = (t * 0.8 + i / 3) % 1, y = this.lift(e.y - 70, u * 50);
+      this.up(e.x, y, () => {
+        ctx.globalAlpha = 1 - u;
+        ctx.font = `${14 + i * 4}px "Jersey 10", system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#1a1030';
+        ctx.strokeText('Z', e.x + 10 + u * 18, y);
+        ctx.fillStyle = this.pc(f.pal, 4, 1, t);
+        ctx.fillText('Z', e.x + 10 + u * 18, y);
+        ctx.globalAlpha = 1;
+      });
+    }
+  }
+
+  // Garra Dragón: tres marcas de zarpazo gigantes
+  drawClawMark(f) {
+    const k = f.t / f.life, a = 1 - k, t = this.game.clock, reach = Math.min(1, k * 5);
+    const c = Math.cos(f.ang), s = Math.sin(f.ang), L = f.r * 1.2;
+    for (let j = -1; j <= 1; j++) {
+      const ox = -s * j * 26, oy = c * j * 26;
+      const x1 = f.x + ox - c * L, y1 = f.y + oy - s * L, x2 = x1 + c * L * 2 * reach, y2 = y1 + s * L * 2 * reach;
+      for (const [w, i] of [[18, 1], [11, 3], [4, 4]]) {
+        this.ctx.strokeStyle = this.pc(f.pal, i, a, t);
+        this.ctx.lineWidth = w;
+        this.ctx.beginPath();
+        this.ctx.moveTo(Math.round(x1), Math.round(y1));
+        this.ctx.lineTo(Math.round(x2), Math.round(y2));
+        this.ctx.stroke();
+      }
+    }
+  }
+
+  // Canto: anillo de notas que gira alrededor de quien canta
+  drawSong(z, t) {
+    const pal = z.atk.pal || 'fairy', a = Math.min(1, (z.life - z.t) * 4, z.t * 3);
+    this.ctx.strokeStyle = this.pc(pal, 3, 0.5 * a, t);
+    this.ctx.lineWidth = 3;
+    this.ctx.setLineDash([8, 10]);
+    this.ctx.lineDashOffset = -t * 40;
+    this.ctx.beginPath();
+    this.ctx.ellipse(z.x, z.y, z.r, z.r * 0.75, 0, 0, Math.PI * 2);
+    this.ctx.stroke();
+    this.ctx.setLineDash([]);
+    for (let i = 0; i < 10; i++) {
+      const an = t * 1.5 + (i / 10) * Math.PI * 2, rr = z.r * (0.55 + 0.4 * ((i % 3) / 2));
+      PB.VFX.draw(this.ctx, 'note', PB.VFX.PAL[pal] ? pal : 'fairy', z.x + Math.cos(an) * rr, this.lift(z.y + Math.sin(an) * rr * 0.75 - 20, 10 * Math.sin(t * 4 + i)), { scale: 1.6, alpha: a, angle: -Math.PI / 2 });
+    }
+  }
+
+  // Puños Plasma: puños eléctricos (sprite de Aseprite) flotando encima de Zeraora, con chispas
+  drawFistCloud(f) {
+    const b = f.by;
+    if (!b) return;
+    const ctx = this.ctx, t = this.game.clock, k = f.t / f.life, a = Math.min(1, f.t * 5, (1 - k) * 4);
+    this.up(b.x, b.y, () => {
+      for (let i = 0; i < 5; i++) {
+        const an = (i / 5) * Math.PI * 2 + t * 1.5, x = b.x + Math.cos(an) * 70, y = b.y - 150 + Math.sin(an) * 22 + Math.sin(t * 6 + i) * 5;
+        PB.VFX.draw(ctx, 'fist', 'gold', x, y, { scale: 1.3, alpha: a });
+        // chispas alrededor del puño (aparecen y desaparecen)
+        for (let j = 0; j < 3; j++) {
+          if (Math.sin(t * 23 + i * 3 + j * 2) < 0.2) continue;
+          const sa = j * 2.1 + i + Math.floor(t * 10);
+          PB.VFX.draw(ctx, 'bolt', 'electric', x + Math.cos(sa) * 26, y + Math.sin(sa) * 20, { scale: 0.9, angle: sa, alpha: a, frame: j });
+        }
+      }
+    });
+  }
+
+  // un puño que cae del cielo justo antes de su rayo, y se queda vibrando un momento
+  drawFistFall(f) {
+    const ctx = this.ctx, k = Math.min(1, f.t / f.drop), after = f.t > f.drop;
+    const a = after ? 1 - (f.t - f.drop) / (f.life - f.drop) : 1;
+    const z = after ? 0 : 380 * (1 - k * k), jit = after ? Math.sin(f.t * 90) * 2 : 0;
+    this.up(f.x, f.y, () => {
+      PB.VFX.draw(ctx, 'fist', 'gold', f.x + jit, f.y - 34 - z, { scale: 1.6, alpha: a });
+      if (after) for (let j = 0; j < 4; j++) {
+        const sa = j * 1.6 + f.seed;
+        PB.VFX.draw(ctx, 'bolt', 'electric', f.x + Math.cos(sa) * 34, f.y - 34 + Math.sin(sa) * 26, { scale: 1.1, angle: sa, alpha: a, frame: j });
+      }
+    });
   }
 
   // trampa: los tuyos se ven bien; las del rival, casi transparentes
@@ -764,18 +1742,23 @@ PB.Renderer = class {
     this.glow(f.x1, f.y1, f.w * a + 10, this.hexA(P[4], a));
   }
 
-  // tajo: arco que barre delante
+  // tajo: arco que barre delante (o la vuelta entera), en pixel art: celdas con 4 tonos,
+  // más claro por fuera y en la parte que se acaba de barrer
   drawSlash(f) {
-    const ctx = this.ctx, P = PB.VFX.PAL[f.type] || PB.VFX.PAL.normal;
-    const k = f.t / f.life, a = 1 - k;
-    const half = f.arc / 2, sweep = f.ang - half + f.arc * Math.min(1, k * 1.6);
-    for (const [w, col, rr] of [[14, this.hexA(P[2], a * 0.5), 0.95], [7, this.hexA(P[3], a * 0.9), 0.8], [3, this.hexA(P[4], a), 0.65]]) {
-      ctx.strokeStyle = col;
-      ctx.lineWidth = w;
-      ctx.beginPath();
-      ctx.arc(f.x, f.y, f.r * rr, f.ang - half, sweep);
-      ctx.stroke();
-    }
+    const P = PB.VFX.PAL[f.type] || PB.VFX.PAL.normal;
+    const k = f.t / f.life, a = 1 - k * 0.8, span = Math.min(f.arc, Math.PI * 2);
+    const swept = span * Math.min(1, k * 1.6), r = f.r, start = f.ang - span / 2;
+    const cols = [this.hexA(P[1], a), this.hexA(P[2], a), this.hexA(P[3], a), this.hexA(P[4], a)];
+    this.pixFill(f.x - r, f.y - r, f.x + r, f.y + r, 5, (x, y) => {
+      const dx = x - f.x, dy = y - f.y, d = Math.hypot(dx, dy);
+      if (d > r || d < r * 0.5) return null;
+      const off = (Math.atan2(dy, dx) - start + Math.PI * 4) % (Math.PI * 2);
+      if (off > swept) return null;
+      const lead = (swept - off) / span; // 0 = el borde que avanza
+      const u = (d - r * 0.5) / (r * 0.5);
+      const v = u * 0.9 + (lead < 0.12 ? 0.35 : 0) - lead * 0.9;
+      return v > 0.8 ? cols[3] : v > 0.55 ? cols[2] : v > 0.3 ? cols[1] : v > 0.1 ? cols[0] : null;
+    });
   }
 
   // aviso del rayo mientras se carga
@@ -799,10 +1782,29 @@ PB.Renderer = class {
     const col = b.team === 'blue' ? '#3d8bff' : '#ff4d4d';
     const t = game.clock;
     const spawning = b.spawnT > 0;
-    if (!ghostPass) {
+    // salto del súper: el Pokémon sube (z) y su sombra se queda en el suelo, más pequeña
+    const lz = b.leap ? b.leap.z || 0 : 0;
+    if (b.leap && b.leap.burrow) {
+      // bajo tierra (Excavar): solo se ve el montículo que avanza
+      if (ghostPass) return;
+      const P = PB.VFX.PAL.ground;
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath();
-      ctx.ellipse(b.x, b.y + 6, 24, 9, 0, 0, Math.PI * 2);
+      ctx.ellipse(b.x, b.y + 6, 26, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = P[1];
+      ctx.beginPath();
+      ctx.ellipse(b.x, b.y, 24, 12 + Math.sin(t * 30) * 2, 0, Math.PI, 0);
+      ctx.fill();
+      ctx.fillStyle = P[2];
+      for (let i = 0; i < 5; i++) ctx.fillRect(Math.round(b.x - 16 + i * 7), Math.round(b.y - 8 - ((i * 5 + Math.floor(t * 20)) % 4) * 2), 6, 6);
+      return;
+    }
+    if (!ghostPass) {
+      const shrink = 1 - Math.min(0.5, lz / 260);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(b.x, b.y + 6, 24 * shrink, 9 * shrink, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = b.isPlayer ? '#5dff7a' : col;
       ctx.lineWidth = 3;
@@ -829,8 +1831,34 @@ PB.Renderer = class {
       PB.Sprites.drawTint(ctx, b.dex, 'Idle', b.facing, at, b.x, b.y + 4, sc, 0, '#ffffff', 1 - k * 0.6, b.shiny);
       return;
     }
+    // furia (Danza Dragón, Danza Espada...): aura del color del tipo detrás del Pokémon
+    if (b.rageT > 0 && !ghostPass) {
+      // rojo siempre (se lee como "enfadado" en cualquier tipo) y el color del tipo por dentro
+      const P = PB.VFX.PAL[b.def.super.type] || PB.VFX.PAL.fire;
+      const pulse = 0.55 + Math.sin(t * 14) * 0.15, k = Math.min(1, b.rageT);
+      this.glow(b.x, b.y - 22 - lz, 62, `rgba(255,70,40,${pulse * 0.8 * k})`);
+      this.glow(b.x, b.y - 22 - lz, 34, this.hexA(P[3], pulse * 0.7 * k));
+      ctx.strokeStyle = `rgba(255,90,50,${0.7 * k})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(b.x, b.y + 6, 30 + Math.sin(t * 14) * 3, 12, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    if (b.ultGlowT > 0 && !ghostPass) this.glow(b.x, b.y - 22 - lz, 50, this.pc(b.ultGlowPal, 3, 0.45 * Math.min(1, b.ultGlowT), t));
+    // aura de un legendario (Geocontrol, Danza Lunar...): brillo de sus colores
+    if (b.buffT > 0 && !ghostPass) {
+      const k = Math.min(1, b.buffT), pulse = 0.5 + Math.sin(t * 6) * 0.15;
+      this.glow(b.x, b.y - 22 - lz, 56, this.pc(b.buffPal, 3, pulse * 0.7 * k, t));
+      ctx.strokeStyle = this.pc(b.buffPal, 4, 0.8 * k, t);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(b.x, b.y + 6, 32, 13, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    if (lz) { ctx.save(); ctx.translate(0, -lz); }
     const prev = ctx.globalAlpha;
     if (b.stealthT > 0) ctx.globalAlpha = prev * 0.35;
+    if (b.phase) ctx.globalAlpha = prev * 0.12; // desaparecido (Golpe Umbrío): solo lo ve su equipo, muy tenue
     if (b.shieldT > 0) ctx.globalAlpha *= 0.75 + Math.sin(t * 20) * 0.25;
     if (b.evoT > PB.EVO_REVEAL && b.evoFrom) {
       // evolución como en los juegos: silueta blanca que alterna entre la forma de antes y la nueva,
@@ -864,8 +1892,35 @@ PB.Renderer = class {
     } else if (b.flashT > 0) PB.Sprites.drawTint(ctx, b.dex, anim, b.facing, at, b.x, b.y + 4, 2, len, '#ffffff', 0.85, b.shiny);
     else PB.Sprites.draw(ctx, b.dex, anim, b.facing, at, b.x, b.y + 4, 2, len, b.shiny);
     ctx.globalAlpha = prev;
+    if (lz) ctx.restore();
 
     if (ghostPass) return;
+    // espejo del súper: fragmentos de cristal que giran y brillan
+    if (b.reflectT > 0) {
+      const P = PB.VFX.PAL[b.reflectType] || PB.VFX.PAL.psychic;
+      const R = b.def.super.radius || 52, a = Math.min(1, b.reflectT * 2);
+      ctx.fillStyle = this.hexA(P[4], 0.16 * a);
+      ctx.strokeStyle = this.hexA(P[3], 0.5 * a);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y - 20, R, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      for (let i = 0; i < 8; i++) {
+        const an = t * 2.4 + (i * Math.PI) / 4;
+        const x = b.x + Math.cos(an) * R, y = b.y - 20 + Math.sin(an) * R;
+        ctx.save();
+        ctx.translate(Math.round(x), Math.round(y));
+        ctx.rotate(an + Math.PI / 2);
+        ctx.fillStyle = this.hexA(P[0], a);
+        ctx.fillRect(-12, -5, 24, 10);
+        ctx.fillStyle = this.hexA(P[3], a);
+        ctx.fillRect(-10, -3, 20, 6);
+        ctx.fillStyle = this.hexA(Math.sin(t * 9 + i * 1.7) > 0.4 ? '#ffffff' : P[4], a);
+        ctx.fillRect(-8, -3, 10, 2);
+        ctx.restore();
+      }
+    }
     // escudo del súper: burbuja hexagonal del color del tipo
     if (b.barrierT > 0) {
       const P = PB.VFX.PAL[b.barrierType] || PB.VFX.PAL.steel;
@@ -1046,7 +2101,7 @@ PB.Renderer = class {
   drawShot(p, t) {
     const ctx = this.ctx;
     const look = p.look || {};
-    const pal = PB.VFX.PAL[p.atkType] ? p.atkType : 'normal';
+    const pal = look.pal && PB.VFX.PAL[look.pal] ? look.pal : PB.VFX.PAL[p.atkType] ? p.atkType : 'normal';
     const colors = PB.VFX.PAL[pal];
     const frame = Math.floor(p.t * 12);
     if (p.lob) {
@@ -1068,8 +2123,20 @@ PB.Renderer = class {
       this.up(p.x, p.y, () => PB.VFX.draw(ctx, look.shape || 'rock', pal, p.x, y, { scale: look.scale || 1.4, angle: p.t * 10, frame }));
       return;
     }
+    if (p.wave) return this.drawWave(p, t);
+    if (p.bigorb) return this.drawBigOrb(p, t);
+    if (p.hook && p.owner && !p.owner.dead) this.drawTetherLine(p.owner.x, p.owner.y - 18, p.x, p.y, pal, 1, p.t);
     const sc = (look.scale || 1) * (p.powered ? 1.4 : 1);
     this.glow(p.x, p.y, (p.r + 10) * (p.isSuper ? 1.6 : 1.1), this.hexA(colors[3], p.isSuper ? 0.6 : 0.4));
+    if (p.bounces) this.glow(p.x, p.y, p.r * 2.2, 'rgba(255,255,255,0.35)'); // rebota: brillo blanco
+    if (p.tier) {
+      // súper de 2ª fase: una chispa que gira; de la última: tres y un halo más grande
+      this.glow(p.x, p.y, p.r * (p.tier === 2 ? 3.2 : 2.2), this.hexA(colors[4], p.tier === 2 ? 0.5 : 0.3));
+      for (let i = 0; i < p.tier * 2 - 1; i++) {
+        const an = t * 9 + (i / 3) * Math.PI * 2;
+        PB.VFX.draw(this.ctx, 'star', pal, p.x + Math.cos(an) * (p.r + 10), p.y + Math.sin(an) * (p.r + 10), { scale: 0.8, frame: Math.floor(t * 12) + i });
+      }
+    }
     if (p.powered) this.glow(p.x, p.y, p.r * 3, 'rgba(160,120,255,0.5)');
     const shape = look.shape || 'ball';
     const angle = PB.VFX.isDir(shape) ? p.ang : PB.VFX.spins(shape) ? p.t * 18 : 0;
@@ -1099,7 +2166,7 @@ PB.Renderer = class {
       return;
     }
     if (a.kind === 'spread' || a.kind === 'burst') {
-      const half = Math.max(a.spread || 0, 0.12) / 2 + 0.05;
+      const half = Math.max(a.spread || 0, 0.12) / 2 + 0.05 + (a.jitter || 0);
       if ((a.count || 1) > 1) {
         ctx.beginPath();
         ctx.moveTo(b.x, b.y);
@@ -1108,12 +2175,25 @@ PB.Renderer = class {
         ctx.fill();
         ctx.stroke();
       } else {
-        const w = (a.r || 12) * 2 + 8;
+        // ancho: el del disparo; la onda, el suyo; las eses, lo que se separan de la línea
+        const w = a.ripple ? a.ripple : a.sine ? ((a.speed * a.sine) / a.sineF + (a.r || 12)) * 2 : (a.r || 12) * 2 + 8;
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(ang);
         ctx.fillRect(0, -w / 2, reach, w);
         ctx.strokeRect(0, -w / 2, reach, w);
+        if (a.split) {
+          // se parte: los tres trozos al final
+          ctx.setLineDash([6, 8]);
+          ctx.beginPath();
+          for (const k of [-1, 0, 1]) {
+            const s2 = (k * a.split.spread) / 2;
+            ctx.moveTo(reach, 0);
+            ctx.lineTo(reach + Math.cos(s2) * a.split.range, Math.sin(s2) * a.split.range);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
         ctx.restore();
       }
     } else if (a.kind === 'lob' || a.kind === 'zone') {
@@ -1124,6 +2204,12 @@ PB.Renderer = class {
       ctx.fill();
       ctx.stroke();
       ctx.setLineDash([8, 8]);
+      if (a.cluster || a.puddle) {
+        // racimo: hasta dónde llegan los trozos; charco: su tamaño
+        ctx.beginPath();
+        ctx.arc(tx, ty, a.cluster ? a.cluster.dist + a.cluster.radius : a.puddle.radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       ctx.beginPath();
       ctx.moveTo(b.x, b.y);
       ctx.quadraticCurveTo((b.x + tx) / 2, (b.y + ty) / 2 - 80, tx, ty);
@@ -1149,14 +2235,96 @@ PB.Renderer = class {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-    } else if (a.kind === 'twin' || a.kind === 'beam' || a.kind === 'boomerang' || a.kind === 'chain') {
-      const w = a.kind === 'twin' ? a.gap * 2 + 20 : a.kind === 'beam' ? a.width : 40;
+    } else if (a.kind === 'twin' || a.kind === 'beam' || a.kind === 'laser' || a.kind === 'boomerang' || a.kind === 'chain') {
+      const w = a.kind === 'twin' ? a.gap * 2 + 20 : a.kind === 'beam' || a.kind === 'laser' ? a.width + 8 : 40;
       const len = a.kind === 'twin' || a.kind === 'boomerang' ? reach : a.range;
       ctx.save();
       ctx.translate(b.x, b.y);
       ctx.rotate(ang);
       ctx.fillRect(0, -w / 2, len, w);
       ctx.strokeRect(0, -w / 2, len, w);
+      ctx.restore();
+    } else if (a.kind === 'wave' || a.kind === 'tornado' || a.kind === 'hook' || a.kind === 'ricochet') {
+      // ola y torbellino: franja ancha; látigo: estrecha; rebote: el primer tramo, con flechas
+      const w = a.kind === 'wave' ? a.width : a.kind === 'tornado' ? a.radius * 2 : (a.r || 16) * 2 + 8;
+      const len = a.kind === 'ricochet' ? 420 : a.range;
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(ang);
+      ctx.fillRect(0, -w / 2, len, w);
+      ctx.strokeRect(0, -w / 2, len, w);
+      if (a.kind === 'ricochet') {
+        ctx.setLineDash([6, 8]);
+        ctx.beginPath();
+        ctx.moveTo(len, 0);
+        ctx.lineTo(len + 60, -40);
+        ctx.moveTo(len, 0);
+        ctx.lineTo(len + 60, 40);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.restore();
+    } else if (a.kind === 'leap') {
+      const d = Math.min(aim.dist, a.range);
+      const tx = b.x + Math.cos(ang) * d, ty = b.y + Math.sin(ang) * d;
+      ctx.beginPath();
+      ctx.arc(tx, ty, a.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      if (a.burrow) ctx.lineTo(tx, ty); else ctx.quadraticCurveTo((b.x + tx) / 2, (b.y + ty) / 2 - 120, tx, ty);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else if (a.kind === 'orbit' || a.kind === 'reflect' || a.kind === 'rage') {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, a.kind === 'orbit' ? a.rad + 20 : a.kind === 'reflect' ? a.radius + 10 : 60, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    } else if (a.special && !a.engine) {
+      // súper especiales
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(ang);
+      const d = Math.min(aim.dist, a.range || 0);
+      ctx.beginPath();
+      if (a.kind === 'moonblast' || a.kind === 'crunch' || a.kind === 'dragonclaw') ctx.arc(d, 0, a.radius, 0, Math.PI * 2);
+      else if (a.kind === 'lullaby' || a.kind === 'telekinesis' || a.kind === 'splash') ctx.arc(0, 0, a.radius, 0, Math.PI * 2);
+      else if (a.kind === 'darkpulse' || a.kind === 'thunderchain') ctx.arc(0, 0, a.range, 0, Math.PI * 2);
+      else if (a.spread) {
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, a.range, -a.spread / 2 - 0.08, a.spread / 2 + 0.08);
+        ctx.closePath();
+      } else ctx.rect(0, -(a.r || 20) - 8, a.range, (a.r || 20) * 2 + 16);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    } else if (a.legend || a.engine) {
+      // súper de legendarios (y especiales que usan una forma de legendario)
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(ang);
+      const d = Math.min(aim.dist, a.range || 0), kd = a.engine || a.kind; // forma (los especiales con forma de legendario)
+      ctx.beginPath();
+      if (kd === 'comet' || kd === 'judgment' || kd === 'void' || kd === 'phantom') {
+        ctx.arc(d, 0, kd === 'judgment' ? a.spreadR + a.radius : kd === 'phantom' ? a.radius : a.radius, 0, Math.PI * 2);
+      } else if (kd === 'fissure') {
+        ctx.rect(30, -a.radius, 50 + (a.count - 1) * a.step, a.radius * 2);
+      } else if (kd === 'megabeam' || kd === 'bigorb') {
+        const w = kd === 'megabeam' ? a.width : a.r * 2;
+        ctx.rect(0, -w / 2, a.range, w);
+      } else if (kd === 'rend') {
+        ctx.rect(20, -a.len / 2, a.range + (a.pattern === 'v' ? a.len / 2 : 60), a.len);
+      } else if (kd === 'inferno') {
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, a.range, -a.arc / 2, a.arc / 2);
+        ctx.closePath();
+      } else {
+        ctx.arc(0, 0, a.radius, 0, Math.PI * 2); // ondas, hielo, tormenta y aura: alrededor de él
+      }
+      ctx.fill();
+      ctx.stroke();
       ctx.restore();
     } else if (a.kind === 'meteor' || a.kind === 'mines' || a.kind === 'turret') {
       const d = Math.min(aim.dist, a.kind === 'turret' ? a.place : a.range);

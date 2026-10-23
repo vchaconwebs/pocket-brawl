@@ -398,6 +398,15 @@ button { font: inherit; cursor: pointer; }
 .move { padding: 6px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; font-size: 13px; color: #cfdcff; }
 .move b { font-weight: 400; font-size: 15px; color: #fff; }
 .move.super b { color: #ffcf2e; }
+/* elegir set de movimientos (nuevo / clásico) */
+/* icono pixel art del tipo (assets/icons/tipos.png) */
+.tico { display: inline-block; width: 22px; height: 22px; margin-right: 5px; vertical-align: -6px; background: url(../assets/icons/tipos.png) no-repeat; background-size: 396px 22px; background-position: calc(var(--i) * -22px) 0; image-rendering: pixelated; flex: none; }
+#dt-types i .tico { width: 16px; height: 16px; background-size: 288px 16px; background-position: calc(var(--i) * -16px) 0; vertical-align: -3px; margin-right: 3px; }
+.kit-pick button .tico { width: 16px; height: 16px; background-size: 288px 16px; background-position: calc(var(--i) * -16px) 0; vertical-align: -3px; }
+.kit-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 5px; }
+.kit-pick small { color: #9fb0d8; margin-right: 2px; }
+.kit-pick button { font: inherit; font-size: 13px; color: #cfdcff; background: rgba(255, 255, 255, 0.08); border: 2px solid rgba(255, 255, 255, 0.18); border-radius: 8px; padding: 2px 8px; cursor: pointer; }
+.kit-pick button.sel { color: #fff; background: rgba(90, 160, 255, 0.35); border-color: #ffcf2e; }
 #dt-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .act {
   font-size: 17px; padding: 8px 16px; border-radius: 12px; border: 3px solid #0c1838; box-shadow: 0 4px 0 #0c1838;

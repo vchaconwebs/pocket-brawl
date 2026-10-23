@@ -734,7 +734,7 @@ PB.Online = (() => {
   const memberInfo = () => {
     // (un jugador que aún no ha elegido iniciales lleva el primero de la lista)
     const d = PB.Save.get(), id = PB.brawlerById(d.selected) ? d.selected : PB.BRAWLERS[0].id;
-    return { name: myName(), fav: id, line: PB.Save.lineOf(id), lvl: PB.Save.level(id), shiny: PB.Save.skin(id) === 'shiny', copas: PB.Save.copas(id), t: Date.now() };
+    return { name: myName(), fav: id, line: PB.Save.lineOf(id), kit: PB.Save.kit(id), lvl: PB.Save.level(id), shiny: PB.Save.skin(id) === 'shiny', copas: PB.Save.copas(id), t: Date.now() };
   };
 
   function watchParty(code) {
@@ -765,7 +765,7 @@ PB.Online = (() => {
         code, leader: v.leader === uid ? 'me' : v.leader, max: 3, invited: party ? party.invited : {},
         members: ids.map((id) => {
           const m = v.members[id];
-          return { id, name: clean(m.name, 16), fav: PB.brawlerById(m.fav) ? m.fav : PB.BRAWLERS[0].id, line: m.line, lvl: m.lvl | 0, shiny: !!m.shiny, copas: m.copas | 0, ready: !!m.ready || id === v.leader, me: id === uid };
+          return { id, name: clean(m.name, 16), fav: PB.brawlerById(m.fav) ? m.fav : PB.BRAWLERS[0].id, line: m.line, kit: m.kit, lvl: m.lvl | 0, shiny: !!m.shiny, copas: m.copas | 0, ready: !!m.ready || id === v.leader, me: id === uid };
         }),
         state: v.state || null,
         rematch: v.rematch || null,
@@ -1184,6 +1184,8 @@ PB.Online = (() => {
       if (u && Array.isArray(m.players[u].line)) return m.players[u].line;
       return def.alts ? def.alts[Math.floor(Math.random() * def.alts.length)] : def.line;
     });
+    // set de movimientos: el de cada persona; los bots, al azar
+    opts.kits = all.map((id, i) => (slots[i] ? PB.validKit(id, m.players[slots[i]].kit) : PB.randomKit(id)));
     const seats = {};
     let myIdx = 0, copas = 0;
     slots.forEach((u, i) => {

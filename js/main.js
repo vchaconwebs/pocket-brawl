@@ -62,6 +62,8 @@
     }
     // rama de evolución de cada uno: la que eligió el jugador; los bots, una al azar
     const all = [].concat(opts.ffa || [], opts.blue || [], opts.red || []);
+    // set de movimientos: el que eligió el jugador; los demás, al azar
+    opts.kits = all.map((id, i) => (playerId && i === 0 ? PB.Save.kit(id) : PB.randomKit(id)));
     opts.lines = all.map((id, i) => {
       const b = PB.brawlerById(id);
       if (playerId && i === 0) return PB.Save.lineOf(id);

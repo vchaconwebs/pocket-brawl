@@ -35,7 +35,25 @@ PB.VFX = (() => {
     steel:    ['#232d38', '#56667a', '#8c9caf', '#cad6e2', '#ffffff'],
     fairy:    ['#6a2050', '#b04a8a', '#ff8acb', '#ffc4e6', '#ffffff'],
     normal:   ['#3e3834', '#7a7068', '#c4bcb0', '#ece6dc', '#ffffff'],
-    aura:     ['#0c2460', '#1c4cb0', '#3a7cff', '#90d2ff', '#ffffff']
+    aura:     ['#0c2460', '#1c4cb0', '#3a7cff', '#90d2ff', '#ffffff'],
+    // paletas propias de los súper de legendarios (roster.js, LEGEND). 'rainbow' cambia de color al dibujarse en render.js
+    rayquaza: ['#062a12', '#127a3a', '#2fd36a', '#b8ff7a', '#fff6b0'],
+    aurora:   ['#0a2a3a', '#1a7a8a', '#3ad0c8', '#b8fff0', '#ffffff'],
+    silver:   ['#2a3040', '#6a7a9a', '#b8c8e8', '#e8f0ff', '#ffffff'],
+    magma:    ['#2a0800', '#7a1a00', '#e04a10', '#ffa030', '#fff0a0'],
+    gold:     ['#4a3000', '#a07000', '#ffc81a', '#fff07a', '#ffffff'],
+    cosmic:   ['#1a0a2a', '#5a1a6a', '#ff6a3a', '#ffb86a', '#fff0d0'],
+    space:    ['#3a0a3a', '#8a2a8a', '#e070e0', '#ffb8f8', '#ffffff'],
+    time:     ['#0a1a3a', '#1a4a8a', '#3a8aff', '#a8d0ff', '#e8fff8'],
+    void:     ['#05020a', '#1a0a2a', '#3a1a5a', '#8a5ad0', '#e0c8ff'],
+    moon:     ['#0a0a2a', '#2a2a6a', '#6a5ad0', '#c0b8ff', '#ffffff'],
+    sun:      ['#5a2000', '#c05a00', '#ff9a1a', '#ffd85a', '#fffde0'],
+    blood:    ['#2a0000', '#6a0a10', '#c01a2a', '#ff5a5a', '#ffd0d0'],
+    diamond:  ['#3a1a3a', '#a04a8a', '#ff8ad0', '#ffd8f0', '#ffffff'],
+    blueflame: ['#0a1a5a', '#1a4ad0', '#3aa0ff', '#a8e8ff', '#ffffff'],
+    zekrom:   ['#05060c', '#1a2a5a', '#3a7aff', '#9ad8ff', '#ffffff'],
+    rainbow:  ['#3a1040', '#c0306a', '#ff9a2a', '#fff07a', '#ffffff'],
+    bone:     ['#1a1020', '#5a5068', '#a8a0b8', '#e0dce8', '#ffffff'] // colmillos de Triturar
   };
   const IDX = { o: 0, d: 1, m: 2, l: 3, w: 4 };
   const H = (x, y, seed = 0) => {
@@ -83,7 +101,154 @@ PB.VFX = (() => {
   // ---------------- formas ----------------
   // Todas miran hacia la DERECHA (se rotan al dibujar si son direccionales).
 
+  // Sprites dibujados en Aseprite (art/aseprite/*.aseprite): una fila de letras por línea, como 'heart'.
+  const ASE = {
+    jawTop: [ // triturar_arriba.aseprite
+      '.oooooooooooooooooooooooooooooooooo.',
+      'owwlwwwwwwlwwwwwwlwwwwwwlwwwwwwlwwwo',
+      'owwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwo',
+      'ollllllllllllllllllllllllllllllllllo',
+      'olwwwwolwwwwolwwwwolwwwwolwwwwolwwww',
+      'olwwwwolwwwoolwwwoolwwwoolwwwoolwwww',
+      'olwwwoolwwwoolwwwo.olwwoolwwwoolwwwo',
+      'olwwwo.olwwo.olwwo.olwwo.olwwoolwwwo',
+      '.olwwo.owwo..olwwo.ollo..olwwo.olwwo',
+      '.olwwo..olo..owwo...olo..owwo..olwwo',
+      '.owwo...olo..owwo....o...owwo..owwo.',
+      '.owwo....o....olo.........olo..owwo.',
+      '..owo.........olo.........olo...owo.',
+      '..olo..........o...........o....olo.',
+      '..olo...........................olo.',
+      '...o.............................o..',
+    ],
+    jawBottom: [ // triturar_abajo.aseprite
+      '....................................',
+      '............o...........o...........',
+      '...........olo.........olo..........',
+      '......o....olo.........olo....o.....',
+      '.....olo..owwo........owwo...olo....',
+      '.....olo..owwo....o...owwo...olo....',
+      '....owwo..olwwo..olo..olwwo.owwo....',
+      '....olwwo.olwwo.ollo..olwwo.olwwo...',
+      '....olwwoolwwwo.olwwoolwwwo.olwwo...',
+      '...olwwwoolwwwo.olwwoolwwwoolwwwo...',
+      '...olwwwoolwwwwolwwwoolwwwwolwwwo...',
+      '.ooolwwwwolwwwwolwwwwolwwwwolwwwwoo.',
+      'ollllllllllllllllllllllllllllllllllo',
+      'owwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwo',
+      'owwlwwwwwwlwwwwwwlwwwwwwlwwwwwwlwwwo',
+      '.oooooooooooooooooooooooooooooooooo.',
+    ],
+    biteStar: [ // triturar_destello.aseprite
+      '............o............',
+      '...........olo...........',
+      '...........olo...........',
+      '...........owo...........',
+      '.....oo...olwlo...oo.....',
+      '....ollo..olwlo..ollo....',
+      '....olwwooolwlooowwlo....',
+      '.....owwwllwwwllwwwo.....',
+      '......owwwwwwwwwwwo......',
+      '......olwwwwwwwwwlo......',
+      '....ooolwwwwwwwwwlooo....',
+      '.ooolllwwwwwwwwwwwlllooo.',
+      'ollwwwwwwwwwwwwwwwwwwwllo',
+      '.ooolllwwwwwwwwwwwlllooo.',
+      '....ooolwwwwwwwwwlooo....',
+      '......olwwwwwwwwwlo......',
+      '......owwwwwwwwwwwo......',
+      '.....owwwllwwwllwwwo.....',
+      '....olwwooolwlooowwlo....',
+      '....ollo..olwlo..ollo....',
+      '.....oo...olwlo...oo.....',
+      '...........owo...........',
+      '...........olo...........',
+      '...........olo...........',
+      '............o............',
+    ],
+    shuriken: [ // shuriken_grande.aseprite
+      '.............w..................',
+      '............ww..................',
+      '............w.oo................',
+      '...........w..omd...............',
+      '...........w.dmld...............',
+      '.............dmlld..............',
+      '.............dllld..............',
+      '............dmlllld.............',
+      '............dllwlld.............',
+      '............dllwllld............',
+      '...........dllwllold............',
+      '...........dlwllollldd.....ww...',
+      '.........ddllllooollllddd....ww.',
+      '.......ddllllooddoolwlllmddd..ww',
+      '.....ddlllolood..dollwwlllmmoo..',
+      '...ddllllllood....dollwwllllmo..',
+      '..omllllwwllod....doolllllldd...',
+      '..oommlllwwllod..doolollldd.....',
+      'ww..dddmmllwlooddoolllldd.......',
+      '.ww....dddllllooolllldd.........',
+      '...ww.....ddlllollwld...........',
+      '............dlollwlld...........',
+      '............dlllwwld............',
+      '.............dllwlld............',
+      '.............dllllmd............',
+      '..............dllmd.............',
+      '..............dllmd.............',
+      '...............dlmd.w...........',
+      '...............dmo..w...........',
+      '................oo.w............',
+      '..................ww............',
+      '..................w.............',
+    ],
+    shurikenS: [ // shuriken_pequeno.aseprite
+      '........olo....',
+      '.......olllo...',
+      '.......olwmo...',
+      '.oo.ooolwmo....',
+      'olmommllwmmo...',
+      'llwmmmmllmmo...',
+      'ollwwmdddllo...',
+      '.oollldodllloo.',
+      '...olldddlwwllo',
+      '...ommlllmmmwll',
+      '...ommwllmmomlo',
+      '....omwlooo.oo.',
+      '...omwlo.......',
+      '...olllo.......',
+      '....olo........',
+    ],
+    fist: [ // puno_trueno.aseprite
+      '...oo..oo..oo..oo...',
+      '..ommoommoommoommo..',
+      '..owlmmwlmmwlmmwlo..',
+      '.omlmdmlmdmlmdmlmdo.',
+      '.omlmdmlmdmlmdmlmdo.',
+      '.omlmdmlmdmlmdmlmdo.',
+      '.ommmdmmmdmmmdmmmdo.',
+      '.ommmdmmmdmmmdmmmdo.',
+      '.ommmdmmmdmmmdmmmdo.',
+      '..ooooooooolllllldo.',
+      '.owwwwwwwwwommmmmdo.',
+      '.olllllllllommmmmdo.',
+      '.olllllllllommmmmdo.',
+      '.olllllllllommmmmdo.',
+      '.odddddddddommmmmo..',
+      '..oddddddddddddddo..',
+      '...oooooooooooooo...',
+      '....................',
+    ],
+  };
+  // forma a partir de filas de letras (los puntos son transparentes; el contorno ya viene dibujado)
+  const fromRows = (rows, extra) => Object.assign({ w: rows[0].length, h: rows.length, gen(P) {
+    rows.forEach((row, y) => [...row].forEach((c, x) => { if (c !== '.') P.set(x, y, c); }));
+  } }, extra);
+
   const SHAPES = {
+    jawTop: fromRows(ASE.jawTop),                                   // Triturar: mandíbula de arriba
+    jawBottom: fromRows(ASE.jawBottom),                             // Triturar: mandíbula de abajo
+    biteStar: fromRows(ASE.biteStar),                               // Triturar: destello del mordisco
+    fist: fromRows(ASE.fist),                                       // Puños Plasma: puño eléctrico
+    shurikenS: fromRows(ASE.shurikenS, { spin: true }),             // Shuriken de Agua pequeño (Froakie)
     fire: { w: 15, h: 11, frames: 3, dir: true, gen(P, f) {
       const cx = 10.5, cy = 5;
       for (let x = 1; x <= 9; x++) {                               // cola que parpadea
@@ -257,6 +422,13 @@ PB.VFX = (() => {
       P.set(5, 5, 'w');
       P.outline();
     } },
+    coin: { w: 9, h: 9, frames: 4, gen(P, f) {                      // moneda que gira (Día de Pago)
+      const rx = [3.6, 2.4, 0.9, 2.4][f];
+      P.fill((x, y) => { const e = Math.hypot((x - 4) / Math.max(0.8, rx), (y - 4) / 3.6); return e <= 1 ? (e > 0.7 ? 'm' : x < 4 ? 'w' : 'l') : null; });
+      if (f !== 2) { P.set(4, 3, 'd'); P.set(4, 4, 'd'); P.set(4, 5, 'd'); }
+      P.outline();
+    } },
+    shuriken: fromRows(ASE.shuriken, { spin: true }),              // Shuriken de Agua grande (Greninja), el de la referencia
     heart: { w: 9, h: 8, gen(P) {
       ['.ll...ll.', 'lwll.llll', 'lllllllll', 'lllllllll', '.lllllll.', '..lllll..', '...lll...', '....l....']
         .forEach((row, y) => [...row].forEach((c, x) => { if (c !== '.') P.set(x, y, c === 'w' ? 'w' : 'l'); }));

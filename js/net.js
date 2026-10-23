@@ -130,7 +130,7 @@ PB.Net = (() => {
           if (k === 'x' || k === 'y') { this.target[i][k] = d[k]; continue; }
           b[k] = unpack(d[k], g);
         }
-        if (d.$def) b.def = PB.retype(PB.brawlerById(b.def.id), b.line, b.stage);
+        if (d.$def) b.def = PB.retype(PB.brawlerById(b.def.id), b.line, b.stage, b.kit);
         if (b.dash && !b.dash.hit) b.dash.hit = new Set();
       });
       if (s.tiles) {
@@ -154,13 +154,14 @@ PB.Net = (() => {
       const k = 1 - Math.exp(-14 * dt);
       g.brawlers.forEach((b, i) => {
         b.animT += dt;
+        if (b.orbit) b.orbit.ang += b.def.super.spin * dt; // los orbes giran suaves entre foto y foto
         const t = this.target[i];
-        if (i === this.meIdx && !b.dead && !b.dash && b.stunT <= 0 && g.started && !g.winner) {
+        if (i === this.meIdx && !b.dead && !b.dash && !b.leap && !b.phase && !(b.rootT > 0) && b.stunT <= 0 && g.started && !g.winner) {
           // predicción: me muevo ya con mis controles; si el anfitrión me ve muy lejos, salto ahí
           let mx = myInput.mx || 0, my = myInput.my || 0;
           const len = Math.hypot(mx, my);
           if (len > 1) { mx /= len; my /= len; }
-          const sp = b.def.speed * (b.stealthT > 0 ? b.def.super.speedMul || 1 : 1);
+          const sp = g.speedOf(b);
           g.world.moveCircle(b, mx * sp * dt, my * sp * dt);
           b.moving = len > 0.15;
           if (b.moving && !b.action) b.facing = Math.atan2(my, mx);
@@ -187,7 +188,10 @@ PB.Net = (() => {
         }
         g.trail(p, dt);
       }
-      for (const z of g.zones) z.t -= dt;
+      for (const z of g.zones) {
+        z.t -= dt;
+        if (z.vx || z.vy) { z.x += z.vx * dt; z.y += z.vy * dt; } // torbellino
+      }
       g.events.push(...this.events);
       this.events = [];
     }

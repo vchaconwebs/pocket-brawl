@@ -140,7 +140,7 @@ PB.Bot = class {
       const ang = Math.atan2(tgt.y - b.y, tgt.x - b.x) + (Math.random() - 0.5) * 0.15;
       input.attack = { dx: Math.cos(ang), dy: Math.sin(ang), dist: Math.hypot(tgt.x - b.x, tgt.y - b.y) };
       this.fireT = 0.35 + (1 - this.skill) * 0.5 + Math.random() * 0.3;
-      if (b.superCharge >= 1 && tgt.struct && ['spread', 'zone', 'meteor', 'beam', 'boomerang', 'nova', 'turret'].includes(b.def.super.kind)) input.super = input.attack;
+      if (b.superCharge >= 1 && tgt.struct && ['spread', 'zone', 'meteor', 'beam', 'boomerang', 'nova', 'turret', 'wave', 'ricochet', 'tornado'].includes(b.def.super.kind)) input.super = input.attack;
     }
     if (foe && this.seenT >= this.reaction && g.started && !(plan.focus && input.attack)) {
       const canHit = atk.kind === 'lob' || W.los(b.x, b.y, foe.x, foe.y);
@@ -163,6 +163,29 @@ PB.Bot = class {
         else if (s.kind === 'mines') use = fd < s.range;
         else if (s.kind === 'turret') use = fd < 420;
         else if (s.kind === 'barrier') use = fd < 420 || hpF < 0.5;
+        else if (s.special && !s.engine) {
+          // súper especiales
+          if (s.kind === 'lullaby' || s.kind === 'telekinesis') use = fd < s.radius * 0.8;
+          else if (s.kind === 'splash') use = fd < 200;
+          else if (s.kind === 'darkpulse' || s.kind === 'thunderchain') use = fd < s.range * 0.8;
+          else use = fd < (s.range || 400) * 0.9;
+        }
+        else if (s.legend || s.engine) {
+          // súper de legendarios (y especiales con forma de legendario)
+          const kd = s.engine || s.kind;
+          if (kd === 'aura') use = hpF < 0.6 || fd < 380;
+          else if (kd === 'pulse' || kd === 'frost' || kd === 'storm') use = fd < s.radius * 0.8;
+          else if (kd === 'megabeam' || kd === 'bigorb') use = fd < s.range * 0.85 && W.los(b.x, b.y, foe.x, foe.y);
+          else use = fd < (s.range || 400) * 0.95;
+        }
+        else if (s.kind === 'wave') use = fd < s.range * 0.8;
+        else if (s.kind === 'tornado') use = fd < s.range * 0.6;
+        else if (s.kind === 'ricochet') use = fd < 480;
+        else if (s.kind === 'hook') use = fd < s.range * 0.9 && W.los(b.x, b.y, foe.x, foe.y);
+        else if (s.kind === 'leap') use = fd < s.range || hpF < 0.3;
+        else if (s.kind === 'orbit') use = fd < 240 || hpF < 0.6;
+        else if (s.kind === 'reflect') use = fd < 400;
+        else if (s.kind === 'rage') use = fd < 460;
         else if (s.kind === 'wish') use = hpF < 0.55 || g.brawlers.some((a) => a.team === b.team && !a.dead && a.hp / a.maxHp < 0.4 && Math.hypot(a.x - b.x, a.y - b.y) < s.radius);
         if (use) {
           // los bots torpes a veces "se olvidan" un rato de usar el súper
