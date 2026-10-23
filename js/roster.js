@@ -107,6 +107,7 @@
   // súper propios de legendarios y Pokémon famosos: [forma, nombre, tipo]
   const SIGNATURE = {
     ditto: ['transform', 'Transformación', 'normal'],
+    munchlax: ['slam', 'Golpe Cuerpo', 'normal'],
     mewtwo: ['psy', 'Onda Mental', 'psychic'], mew: ['meteor', 'Poder Pasado', 'psychic'],
     lugia: ['gust', 'Aerochorro', 'flying'], hooh: ['spread', 'Fuego Sagrado', 'fire'],
     rayquaza: ['dash', 'Ascenso Draco', 'dragon'], kyogre: ['vortex', 'Pulso Primigenio', 'water'],

@@ -820,10 +820,15 @@ PB.Online = (() => {
   // ------------------------------------------------------------ sala de amigos (Realtime Database)
   // La sala no existe hasta que la creas; al cerrar la página sales de ella.
   let party = null, partyRef = null, partyOff = null;
+  // Lo bueno que es este dispositivo para hacer de anfitrión: un PC antes que un móvil, y el que vaya más fluido
+  const devScore = () => {
+    const mobile = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+    return (mobile ? 0 : 100) + Math.round(Math.min(60, PB.fps || 40)) + Math.min(16, navigator.hardwareConcurrency || 4);
+  };
   const memberInfo = () => {
     // (un jugador que aún no ha elegido iniciales lleva el primero de la lista)
     const d = PB.Save.get(), id = PB.brawlerById(d.selected) ? d.selected : PB.BRAWLERS[0].id;
-    return { name: myName(), fav: id, line: PB.Save.lineOf(id), lvl: PB.Save.level(id), shiny: PB.Save.skin(id) === 'shiny', copas: PB.Save.copas(id), t: Date.now() };
+    return { dev: devScore(), name: myName(), fav: id, line: PB.Save.lineOf(id), lvl: PB.Save.level(id), shiny: PB.Save.skin(id) === 'shiny', copas: PB.Save.copas(id), t: Date.now() };
   };
 
   function watchParty(code) {
@@ -1102,7 +1107,7 @@ PB.Online = (() => {
     s.done({ cancelled: true });
   }
 
-  // El organizador escribe la partida: quién juega, en qué equipo y quién es el anfitrión (al azar)
+  // El organizador escribe la partida: quién juega, en qué equipo y quién es el anfitrión
   async function createMatch(mid, mode, tickets) {
     const M = PB.MODES[mode];
     const players = {};
@@ -1122,8 +1127,9 @@ PB.Online = (() => {
       teams = { blue: [], red: [] };
       for (const side of ['blue', 'red']) for (const t of ft[side]) for (const [id, inf] of Object.entries(t.uids || {})) { players[id] = inf; teams[side].push(id); }
     }
-    const ids = Object.keys(players);
-    const host = ids[Math.floor(Math.random() * ids.length)];
+    // anfitrión: el dispositivo más potente (un PC antes que un móvil); si empatan, al azar
+    const ids = Object.keys(players).sort(() => Math.random() - 0.5);
+    const host = ids.reduce((best, id) => ((players[id].dev || 0) > (players[best].dev || 0) ? id : best), ids[0]);
     await rtdb.ref('matches/' + mid).set({ mode, host, players, teams, order, t: fb.database.ServerValue.TIMESTAMP });
   }
 

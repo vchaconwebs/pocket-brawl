@@ -1196,7 +1196,7 @@ PB.Renderer = class {
     }
 
     // marcador del modo (en móviles, más pequeño para que no tape a los rivales que vienen por arriba)
-    const hk = H < 500 ? 0.74 : 1;
+    const hk = H < 500 ? 0.62 : 0.85;
     ctx.save();
     ctx.translate(Math.round(W / 2), 0);
     ctx.scale(hk, hk);

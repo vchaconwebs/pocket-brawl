@@ -139,7 +139,7 @@ PB.Net = (() => {
         if (!b) return;
         for (const k in d) {
           if (k === '$def') continue;
-          if (k === 'x' || k === 'y') { this.target[i][k] = d[k]; continue; }
+          if (k === 'x' || k === 'y') { this.target[i][k] = d[k]; this.target[i].age = 0; continue; }
           b[k] = unpack(d[k], g);
         }
         if (d.$def) {
@@ -184,8 +184,13 @@ PB.Net = (() => {
           const dx = t.x - b.x, dy = t.y - b.y, d = Math.hypot(dx, dy);
           if (d > 140) { b.x = t.x; b.y = t.y; } else if (d > 2 && !b.moving) { b.x += dx * lag * 4; b.y += dy * lag * 4; } else if (d > 40) { b.x += dx * lag; b.y += dy * lag; }
         } else {
-          const dx = t.x - b.x, dy = t.y - b.y;
-          if (Math.hypot(dx, dy) > 200) { b.x = t.x; b.y = t.y; } else { b.x += dx * k; b.y += dy * k; }
+          // los demás: hacia su última posición, adelantada un poco según su velocidad (entre foto y foto
+          // siguen andando en vez de pararse y dar saltitos; sobre todo por relevo, que llegan menos fotos)
+          t.age = (t.age || 0) + dt;
+          const ahead = b.dead ? 0 : Math.min(t.age, 0.12);
+          const tx = t.x + (b.vx || 0) * ahead, ty = t.y + (b.vy || 0) * ahead;
+          const dx = tx - b.x, dy = ty - b.y;
+          if (Math.hypot(dx, dy) > 200) { b.x = tx; b.y = ty; } else { b.x += dx * k; b.y += dy * k; }
         }
       });
       // los disparos siguen avanzando entre foto y foto

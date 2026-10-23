@@ -875,18 +875,35 @@
   }
 
   let last = performance.now();
+  // Simula la partida (solo o de anfitrión). En un dispositivo lento (menos de 30 fotogramas por segundo)
+  // se hacen varios pasos pequeños: antes el tiempo se recortaba y la partida iba a cámara lenta para todos.
+  // Los botones (ataque, súper, mega) cuentan solo en el primer paso; el movimiento, en todos.
+  function simulate(raw, myInput) {
+    // (el temporizador de segundo plano y el de pantalla se pueden cruzar: con 0 s no se simula nada)
+    if (raw < 0.001) return;
+    const steps = Math.min(8, Math.ceil(raw / (1 / 30) - 0.01) || 1), sdt = raw / steps;
+    const move = (inp) => (inp ? { mx: inp.mx || 0, my: inp.my || 0 } : {});
+    const remote = {};
+    if (net && net.host) for (const idx in net.remotes) remote[idx] = net.remotes[idx].take();
+    for (let s = 0; s < steps && !game.winner; s++) {
+      const inputs = {};
+      for (const bot of bots) inputs[bot.b.idx] = bot.think(sdt);
+      if (game.player) inputs[game.player.idx] = s ? move(myInput) : myInput || {};
+      for (const idx in remote) inputs[idx] = s ? move(remote[idx]) : remote[idx];
+      game.update(sdt, inputs);
+    }
+  }
   function frame(now, bg) {
-    const dt = Math.min(1 / 30, (now - last) / 1000);
-    last = now;
+    const raw = Math.min(0.25, Math.max(0, (now - last) / 1000));
+    const dt = Math.min(1 / 30, raw);
+    last = Math.max(last, now); // (sin volver atrás: así no se cuenta dos veces el mismo rato)
+    // fotogramas por segundo de este dispositivo (media): sirve para elegir anfitrión en las partidas en red
+    if (!bg && raw > 0) PB.fps = PB.fps ? PB.fps * 0.98 + Math.min(120, 1 / raw) * 0.02 : 60;
     if (bg) {
       // en segundo plano: solo simular y mandar, sin dibujar
       if (net && net.host && !game.winner) {
-        const inputs = {};
-        for (const bot of bots) inputs[bot.b.idx] = bot.think(dt);
-        if (game.player) inputs[game.player.idx] = {};
-        for (const idx in net.remotes) inputs[idx] = net.remotes[idx].take();
-        game.update(dt, inputs);
-        netStep(dt, null);
+        simulate(raw, null);
+        netStep(raw, null);
         game.events.length = 0;
       }
       return;
@@ -903,15 +920,11 @@
     const read = input.read(game, renderer);
     const me = game.player;
     if (net && net.client) {
-      netStep(dt, read);
+      netStep(raw, read); // (con el tiempo real: si no, en un móvil lento mi predicción iría más lenta que el anfitrión)
       handleEvents();
     } else if (!paused || net) {
-      const inputs = {};
-      for (const bot of bots) inputs[bot.b.idx] = bot.think(dt);
-      if (me) inputs[me.idx] = input.enabled ? read.input : {};
-      if (net && net.host) for (const idx in net.remotes) inputs[idx] = net.remotes[idx].take();
-      game.update(dt, inputs);
-      if (net && net.host) netStep(dt, read);
+      simulate(raw, me && input.enabled ? read.input : {});
+      if (net && net.host) netStep(raw, read);
       handleEvents();
     }
 
