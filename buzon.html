@@ -46,8 +46,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script>
-  // Solo el administrador (su cuenta del juego) puede leer los mensajes: lo aseguran las reglas de Firebase.
-  const OWNER = 'ULFnTGBapaaIUhxmHKgCh9TIm6G3';
+  // Solo pueden leer los mensajes estas cuentas del juego (lo aseguran las reglas de Firebase):
+  // Fl3xix (el creador) y JuanmitaDinamita (ayuda con el juego)
+  const ADMINS = ['ULFnTGBapaaIUhxmHKgCh9TIm6G3', 'JEs9NfqgO6OYw7UKCyDSsqRnk0S2'];
   firebase.initializeApp({
     apiKey: 'AIzaSyA6C_hWt0VOhk1pzsN8NuYeqx_IhP2cRf0',
     authDomain: 'pokeversus-9ed3a.firebaseapp.com',
@@ -79,9 +80,9 @@
     render();
   }));
   firebase.auth().onAuthStateChanged((u) => {
-    if (!u || u.uid !== OWNER) {
+    if (!u || !ADMINS.includes(u.uid)) {
       $('#sub').textContent = '';
-      $('#list').innerHTML = '<div class="lock">🔒 Este buzón solo lo puede ver el administrador.<br>Entra primero en <a href="/">pokeversus.com</a> con la cuenta de administrador y vuelve a abrir esta página.</div>';
+      $('#list').innerHTML = '<div class="lock">🔒 Este buzón solo lo pueden ver los administradores.<br>Entra primero en <a href="/">pokeversus.com</a> con tu cuenta y vuelve a abrir esta página.</div>';
       return;
     }
     $('#sub').textContent = 'Lo que te mandan los jugadores desde el botón «Ideas y bugs». Se actualiza solo.';

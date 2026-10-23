@@ -113,9 +113,9 @@
       ".validate": "newData.hasChildren(['n', 't']) && newData.child('n').isNumber() && newData.child('n').val() > (data.exists() ? data.child('n').val() : 0) && newData.child('n').val() <= (data.exists() ? data.child('n').val() : 0) + 50 && newData.child('t').isNumber()"
     },
     "feedback": {
-      ".read": "auth != null && auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3'",
+      ".read": "auth != null && (auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3' || auth.uid === 'JEs9NfqgO6OYw7UKCyDSsqRnk0S2')",
       "$id": {
-        ".write": "auth != null && (!data.exists() || auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3')",
+        ".write": "auth != null && (!data.exists() || (auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3' || auth.uid === 'JEs9NfqgO6OYw7UKCyDSsqRnk0S2'))",
         ".validate": "!newData.exists() || newData.hasChildren(['kind', 'text', 't']) && newData.child('text').isString() && newData.child('text').val().length <= 600 && (newData.child('kind').val() === 'bug' || newData.child('kind').val() === 'idea')"
       }
     },
