@@ -597,12 +597,12 @@ PB.MODES.duo = Object.assign({}, PB.MODES.showdown, {
 });
 
 // ------------------------------------------------------------------ Duelo de Equipos
-// 3 contra 3 a K.O. durante 1:30: se reaparece y gana el equipo con más K.O.
+// 3 contra 3 a K.O. durante 2:30: se reaparece y gana el equipo con más K.O.
 // Si empatan, K.O. de oro: el siguiente K.O. gana (si en 1 minuto no hay ninguno, empate)
 PB.MODES.brawl = {
   id: 'brawl', name: 'Duelo de Equipos', map: 'brawl', statName: 'K.O.',
-  desc: '3 contra 3 a lo bestia durante minuto y medio: cada rival debilitado es un punto y gana el equipo con más K.O.',
-  rules: { matchTime: 90 },
+  desc: '3 contra 3 a lo bestia durante dos minutos y medio: cada rival debilitado es un punto y gana el equipo con más K.O.',
+  rules: { matchTime: 150 },
   setup(g) { g.kos = { blue: 0, red: 0 }; },
   onKill(g, b) {
     const t = otherTeam(b.team);

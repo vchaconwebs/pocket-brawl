@@ -10,7 +10,7 @@ PB.PATCH_NOTES = [
     es: {
       title: 'Novedades de la versión 1.6',
       items: [
-        ['⚔️', 'Duelo de Equipos ahora dura 1:30 y gana el equipo con más K.O. Si acaban empatados, ¡K.O. de oro: el siguiente K.O. gana!'],
+        ['⚔️', 'Duelo de Equipos ahora dura 2:30 y gana el equipo con más K.O. Si acaban empatados, ¡K.O. de oro: el siguiente K.O. gana!'],
         ['🎲', 'El modo Aleatorio reparte mejor entre todos los modos (ya no te manda casi siempre a Niebla) y no repite el de tu última partida.'],
         ['⭐', 'Pokémon favoritos: toca la estrella de cualquier carta y saldrá el primero en tu lista.'],
         ['🚩', 'Reportar jugadores: desde un mensaje del chat o desde su perfil. Lo revisa el equipo del juego.'],
@@ -22,7 +22,7 @@ PB.PATCH_NOTES = [
     en: {
       title: "What's new in version 1.6",
       items: [
-        ['⚔️', 'Team Duel now lasts 1:30 and the team with the most KOs wins. If it ends in a tie, golden KO: the next KO wins!'],
+        ['⚔️', 'Team Duel now lasts 2:30 and the team with the most KOs wins. If it ends in a tie, golden KO: the next KO wins!'],
         ['🎲', 'Random mode now spreads players across all modes (it no longer sends you to Toxic Fog almost every time) and doesn’t repeat your last mode.'],
         ['⭐', 'Favourite Pokémon: tap the star on any card and it will show first in your list.'],
         ['🚩', 'Report players: from a chat message or from their profile. The game team reviews it.'],
