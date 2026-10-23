@@ -338,11 +338,11 @@
     // rebota una vez en los muros
     bounce: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 1.25), speed: 760, dmg: t * 0.9, r: 14, bounces: 1, scale: 1.3 }),
     // avanza haciendo eses
-    sine: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: r.range, speed: 560, dmg: t * 0.95, r: 18, sine: 0.85, sineF: 13, scale: 1.5 }),
+    sine: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: r.range, speed: 560, dmg: t * 0.95, r: 20, sine: 0.45, sineF: 13, scale: 1.5 }),
     // onda corta y ancha (como la ola del súper, pero pequeña y se para en los muros)
     ripple: (t, r) => ({ kind: 'spread', count: 1, spread: 0, ripple: 90, range: Math.round(r.range * 0.8), speed: 520, dmg: t * 0.85, r: 14, pierce: true, knockback: 120, scale: 1 }),
     // golpe que da la vuelta entera
-    spin: (t, r) => ({ kind: 'melee', range: 145, arc: Math.PI * 2, dmg: t * 1.22, scale: 1 }),
+    spin: (t, r) => ({ kind: 'melee', range: 145, arc: Math.PI * 2, dmg: t * 1.08, scale: 1 }),
     // láser instantáneo y estrecho
     laser: (t, r) => ({ kind: 'laser', range: Math.round(r.range * 1.05), width: 20, delay: 0.12, dmg: t * 0.84 }),
     // lanzadores: estalla en el centro y luego en tres trozos alrededor

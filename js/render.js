@@ -224,6 +224,15 @@ PB.Renderer = class {
       }
     }
 
+    // el Voltorb dentro de un arbusto se sigue viendo (medio transparente)
+    if (game.voltorb && W.tile(Math.floor(game.voltorb.x / T), Math.floor(game.voltorb.y / T)) === 'X') {
+      const v = game.voltorb;
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      this.up(v.x, v.y, () => this.drawVoltorb(v, game));
+      ctx.restore();
+    }
+
     // proyectiles
     for (const p of game.projectiles) if (inView(p.x, p.y, p.wave ? 160 : 80)) this.drawShot(p, t);
     // orbes que giran alrededor de algunos Pokémon
@@ -2678,6 +2687,25 @@ PB.Renderer = class {
       clock(78);
       if (game.overtime) this.outlined(PB.T('¡GOL DE ORO!'), cx, 108, 18, '#ffd23a');
       const v = game.voltorb, me = view.player;
+      // flecha en el borde de la pantalla hacia el Voltorb cuando no se ve
+      {
+        const fk = this.flip ? -1 : 1, sc = this.cam.scale;
+        const sx = this.cw / 2 + fk * (v.x - this.cam.x) * sc, sy = this.ch / 2 + fk * (v.y - this.cam.y) * sc, m = 34;
+        if (sx < 0 || sy < 0 || sx > this.cw || sy > this.ch) {
+          const a = Math.atan2(sy - this.ch / 2, sx - this.cw / 2);
+          const k = Math.min((this.cw / 2 - m) / Math.abs(Math.cos(a) || 1e-6), (this.ch / 2 - (Math.sin(a) < 0 ? 96 : m)) / Math.abs(Math.sin(a) || 1e-6)); // arriba, por debajo del marcador
+          const ax = this.cw / 2 + Math.cos(a) * k, ay = this.ch / 2 + Math.sin(a) * k;
+          ctx.save();
+          ctx.translate(ax, ay);
+          ctx.fillStyle = 'rgba(16,24,56,0.85)';
+          ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fill();
+          PB.Sprites.draw(ctx, '0100', 'Idle', 0, 0, 0, 9, 1, 0);
+          ctx.rotate(a);
+          ctx.fillStyle = v.holdT > 6 ? '#ff5a3a' : '#fff36a';
+          ctx.beginPath(); ctx.moveTo(26, 0); ctx.lineTo(18, -7); ctx.lineTo(18, 7); ctx.closePath(); ctx.fill();
+          ctx.restore();
+        }
+      }
       if (me && v.carrier === me) {
         const left = Math.max(0, 10 - v.holdT);
         UI.panel(ctx, cx - 150, 98, 300, 28, { p: 2, fill: left < 4 ? 'rgba(150,30,30,0.9)' : 'rgba(16,24,56,0.86)' });

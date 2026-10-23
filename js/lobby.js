@@ -1307,7 +1307,9 @@ PB.Lobby = (() => {
 
   // ------------------------------------------------------------------ amigos
   let frTab = 'list';
-  const avatar = (p) => portrait(PB.brawlerById(p.fav) || PB.BRAWLERS[0]);
+  // en el ranking y los perfiles, el icono es la última evolución
+  const lastForm = (b) => PB.Sprites.portraitURL(b.line[b.line.length - 1] || b.dex);
+  const avatar = (p) => lastForm(PB.brawlerById(p.fav) || PB.BRAWLERS[0]);
   const prow = (p, extra) =>
     `<div class="prow${p.me ? ' me' : ''}${(p.id && !p.isClan) || p.clanId ? ' click' : ''}"${p.id && !p.isClan ? ` data-uid="${p.id}"` : ''}${p.clanId ? ` data-clan="${p.clanId}"` : ''}>` +
     (p.pos ? `<span class="pos">${p.pos}</span>` : '') +
@@ -1501,7 +1503,7 @@ PB.Lobby = (() => {
     const u = await PB.Online.getUser(id).catch(() => null);
     if (!u) return toast(PB.T('Este jugador juega como invitado y no tiene perfil público.'));
     const fav = PB.brawlerById(u.fav) || PB.BRAWLERS[0];
-    $('#pv-av').src = portrait(fav);
+    $('#pv-av').src = lastForm(fav);
     $('#pv-name').textContent = u.name;
     $('#pv-sub').innerHTML = esc(u.tag) + ' · ' + (u.clanName ? esc(u.clanName) : PB.T('Sin clan')) + ' · ' + (u.online ? '<span class="on">● ' + PB.T('En línea') + '</span>' : '<span class="off">● ' + PB.T('Desconectado') + '</span>');
     // perfiles de antes de la v1.5: aún no tienen estas estadísticas (se completan cuando vuelve a entrar)

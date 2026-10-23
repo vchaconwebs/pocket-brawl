@@ -2120,3 +2120,5 @@ body:not(.pad) .pad-focus { outline: none !important; box-shadow: none !importan
 #dt-moves .kit-cost .money img { width: 14px; height: 14px; vertical-align: -2px; }
 /* la barra de arriba (con la flecha de volver) se queda fija al bajar en las listas largas: salida rápida */
 .panel > .pn-head { position: sticky; top: -4px; z-index: 6; }
+/* en la pantalla final el botón del chat va abajo (arriba tapaba tu fila y el MVP) */
+body:has(#end:not(.hidden)) #btn-mchat { top: auto; bottom: calc(10px + var(--sab, 0px)); }
