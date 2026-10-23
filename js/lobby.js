@@ -1916,6 +1916,15 @@ PB.Lobby = (() => {
 
   // ------------------------------------------------------------------ animación de los canvas
   // Lobby: tu Pokémon en el centro y los de tu sala a los lados (como en Brawl Stars)
+  // Escala para que un Pokémon grande quepa entero en el recuadro (los pequeños se quedan a su tamaño):
+  // con los pies en (x, y), no puede salirse por arriba ni por los lados. Se redondea a medios píxeles.
+  const fitScale = (dex, base, x, y, w, shiny) => {
+    const A = PB.Sprites.anims(dex, shiny), f = A && A.Idle;
+    if (!f) return base;
+    const s = Math.min(base, (y - 4) / f.ay, Math.min(x, w - x) / Math.max(1, f.w - f.ax), Math.min(x, w - x) / Math.max(1, f.ax));
+    return s >= base ? base : Math.max(1, Math.floor(s * 2) / 2);
+  };
+
   function drawLobbyTeam(cv) {
     const c = cv.getContext('2d');
     const w = cv.width, h = cv.height;
@@ -1943,7 +1952,7 @@ PB.Lobby = (() => {
       const x = i === 0 ? w * 0.15 : w * 0.85, y = h * 0.74;
       pedestal(x, y, 46, m.ready ? 'rgba(125,255,143,0.7)' : 'rgba(150,180,255,0.5)');
       if (!PB.Sprites.ready(b.dex)) PB.Sprites.ensure([b.dex]);
-      PB.Sprites.draw(c, b.dex, 'Idle', Math.PI / 2, t + i * 0.7, x, y + 6, 3.6, 0);
+      PB.Sprites.draw(c, b.dex, 'Idle', Math.PI / 2, t + i * 0.7, x, y + 6, fitScale(b.dex, 3.6, x, y + 6, w), 0);
     });
     // tú
     const me = PB.brawlerById(PB.Save.get().selected);
@@ -1952,7 +1961,7 @@ PB.Lobby = (() => {
     pedestal(w / 2, h * 0.82, 70, 'rgba(255,210,60,' + (0.5 + Math.sin(t * 3) * 0.25) + ')');
     const meDex = PB.skinDex(me.dex, PB.Save.skin(me.id));
     if (!PB.Sprites.ready(meDex, shiny)) PB.Sprites.ensure([{ dex: meDex, shiny }]);
-    PB.Sprites.draw(c, meDex, 'Idle', Math.PI / 2, t, w / 2, h * 0.82 + 10, 5, 0, shiny);
+    PB.Sprites.draw(c, meDex, 'Idle', Math.PI / 2, t, w / 2, h * 0.82 + 10, fitScale(meDex, 5, w / 2, h * 0.82 + 10, w, shiny), 0, shiny);
   }
 
   function drawHero(cv, dex, scale, glow, shiny, mega) {
@@ -1989,7 +1998,8 @@ PB.Lobby = (() => {
       }
       c.globalAlpha = 1;
     }
-    PB.Sprites.draw(c, dex, 'Idle', Math.PI / 2, t, w / 2, h * 0.8 + scale * 2, scale, 0, shiny);
+    const s = fitScale(dex, scale, w / 2, h * 0.8 + scale * 2, w, shiny);
+    PB.Sprites.draw(c, dex, 'Idle', Math.PI / 2, t, w / 2, h * 0.8 + scale * 2, s, 0, shiny);
   }
 
   function tick(dt) {
