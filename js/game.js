@@ -712,7 +712,6 @@ PB.Game = class {
     b.ultGlowPal = pal;
     this.shake = Math.max(this.shake, tier === 2 ? 9 : 5);
     if (s.special && tier === 2) this.legendFx(b, s, 'SÚPER ESPECIAL');
-    this.fx.push({ kind: 'superName', x: b.x, y: b.y, name: s.name, pal, big: tier === 2, t: 0, life: 1.3 });
   }
 
   spawnSpread(b, atk, ang, isSuper, mul) {
@@ -856,7 +855,7 @@ PB.Game = class {
   // La mecánica corre en el anfitrión; lo que se ve son efectos (fx) que también viajan por la red.
   legendFx(b, s, label) {
     const pal = s.pal || s.type || b.def.atkType;
-    // (sin el rótulo grande en pantalla: molestaba; el nombre sale pequeño encima del Pokémon)
+    // (sin rótulo ni nombre del súper en pantalla: tapaban a los rivales)
     this.fx.push({ kind: 'ultIntro', x: b.x, y: b.y, pal, t: 0, life: 0.9 });
     this.shake = Math.max(this.shake, 10);
     this.events.push({ type: 'legend', b });
