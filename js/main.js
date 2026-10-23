@@ -81,7 +81,12 @@
     const all = [].concat(opts.ffa || [], opts.blue || [], opts.red || []);
     all.forEach((id, i) => {
       const shiny = opts.shiny ? !!opts.shiny[i] : !!playerId && i === 0 && PB.Save.skin(id) === 'shiny';
-      for (const dex of opts.lines[i] || PB.brawlerById(id).line) list.push({ dex, shiny });
+      const skin = opts.skins ? opts.skins[i] : playerId && i === 0 ? PB.Save.skin(id) : null;
+      const line = opts.lines[i] || PB.brawlerById(id).line;
+      for (const dex of line) list.push({ dex: PB.skinDex(dex, skin), shiny });
+      // su megaevolución (si la última fase tiene sprite de mega)
+      const mega = PB.megaSkin(line[line.length - 1], i);
+      if (mega) list.push({ dex: PB.skinDex(line[line.length - 1], mega), shiny });
     });
     return list;
   }
@@ -91,7 +96,10 @@
     PB.Sprites.ensure(spritesFor(opts, playerId));
     game = new PB.Game(opts);
     if (opts.humans) return setupNetGame(opts, myIdx);
-    if (game.player) game.player.shiny = PB.Save.skin(playerId) === 'shiny';
+    if (game.player) {
+      game.player.shiny = PB.Save.skin(playerId) === 'shiny';
+      game.player.skin = PB.Save.skin(playerId); // regional (alola, galar...) o normal/shiny
+    }
     // nombre del entrenador de cada uno (para la pantalla final)
     const names = shuffle(PB.TRAINER_NAMES.slice());
     game.brawlers.forEach((b, i) => {
@@ -135,6 +143,7 @@
       b.isBot = !h;
       b.trainer = b.name = h ? h.name : names[i % names.length];
       b.shiny = !!(h && h.shiny);
+      b.skin = h && h.skin ? h.skin : null;
       b.creator = !!(h && h.uid === PB.Chat.OWNER); // el creador del juego sale en dorado
       const lvl = h ? h.lvl || 1 : opts.botLvls ? opts.botLvls[i] : Math.max(1, Math.min(PB.META.maxLevel, avg + Math.floor(Math.random() * 3) - 1));
       b.lvl = lvl;
@@ -386,7 +395,7 @@
       const key = Math.round((inp.mx || 0) * 10) + ',' + Math.round((inp.my || 0) * 10);
       // por relevo, el movimiento como mucho 15 veces por segundo (ataques y súper, siempre)
       const slow = net.link.isRelay && net.link.isRelay(net.hostPeer) && net.inT > 0.1 - 1 / 15;
-      if (inp.attack || inp.super || (key !== net.lastIn && !slow) || net.inT <= 0) {
+      if (inp.attack || inp.super || inp.mega || (key !== net.lastIn && !slow) || net.inT <= 0) {
         net.inT = 0.1;
         net.lastIn = key;
         net.link.send(net.hostPeer, Object.assign({ k: 'i' }, net.client.input(inp)));
@@ -829,6 +838,17 @@
           }
           break;
         case 'superReady': if (ev.b === me) { PB.Audio.play('ready'); PB.vibrate(30); } break;
+        case 'megaReady':
+          if (ev.b === me) {
+            PB.Audio.play('ready');
+            PB.vibrate(40);
+            renderer.announce(PB.T('¡Megaevolución lista!'), '#ff8ae6', PB.T(document.body.classList.contains('pad') ? 'Pulsa △' : input.touch ? 'Pulsa el botón MEGA' : 'Pulsa F'), 1.6);
+          }
+          break;
+        case 'mega':
+          if (ev.b === me) { PB.Audio.play('evolved'); PB.vibrate(80); renderer.superFx(ev.b.def.atkType, true); }
+          else if (near(ev.b)) PB.Audio.play('evolved', { far: true });
+          break;
         case 'boom': PB.Audio.play('boom', { big: ev.big }); break;
         case 'wall': PB.Audio.play('wall'); break;
         case 'respawn': if (ev.b === me) PB.Audio.play('release'); break;

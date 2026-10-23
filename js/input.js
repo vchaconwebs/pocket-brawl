@@ -23,6 +23,7 @@ PB.Input = class {
       if (k === 'x' && this.superKeyHeld) { this.superKeyHeld = false; this.superCancelled = performance.now(); }
       if (k === ' ' && !this.keys.has(' ')) this.pending.attack = { auto: true };
       if (k === 'q' && !this.keys.has('q')) this.pending.super = { auto: true };
+      if (k === 'f' && !this.keys.has('f')) this.megaPending = true;
       this.keys.add(k);
     });
     window.addEventListener('keyup', (e) => {
@@ -77,6 +78,8 @@ PB.Input = class {
       move: { x: moveX, y: H - r - 40 },
       attack: { x: atkX, y: H - r - 40 },
       super: { x: atkX + dir * r * 1.7, y: H - r - 40 - r * 1.5 },
+      mega: { x: atkX + dir * r * 2.9, y: H - r - 40 - r * 0.55 },
+      mr: r * 0.5,
     };
   }
 
@@ -105,6 +108,11 @@ PB.Input = class {
       if (this.sticks[name]) this.release(name, this.sticks[name], L);
       this.sticks[name] = s;
     };
+    // megaevolución: botón que solo se pulsa (sin apuntar)
+    if (this.megaShown && Math.hypot(p.x - L.mega.x, p.y - L.mega.y) < L.mr * 1.3) {
+      this.megaPending = true;
+      return;
+    }
     if (Math.hypot(p.x - L.super.x, p.y - L.super.y) < L.sr * 1.4) {
       s.origin = { ...L.super };
       s.pos = { ...p };
@@ -296,8 +304,11 @@ PB.Input = class {
     const out = { input: { mx: 0, my: 0, attack: null, super: null }, aim: null };
     if (!me || !this.enabled) {
       this.pending = { attack: null, super: null };
+      this.megaPending = false;
+      this.megaShown = false;
       return out;
     }
+    this.megaShown = !!(game.canMega && game.canMega(me));
     const inp = out.input;
     const L = this.layout(renderer.cw, renderer.ch);
     const rangeOf = (isSuper) => {
@@ -342,20 +353,23 @@ PB.Input = class {
     if (this.pending.attack) inp.attack = fromFrac(this.pending.attack, false);
     if (this.pending.super) inp.super = fromFrac(this.pending.super, true);
     this.pending = { attack: null, super: null };
+    if (this.megaPending) inp.mega = true;
+    this.megaPending = false;
     // mando
     const usePad = !!(pad && this.padOn);
     if (usePad) {
       const { L, R, dx, dy, now, down } = pad;
       if (L.len) { inp.mx = L.x * Math.min(1, L.len * 1.3); inp.my = L.y * Math.min(1, L.len * 1.3); }
       else if (dx || dy) { const l = Math.hypot(dx, dy); inp.mx = dx / l; inp.my = dy / l; }
-      const superHeld = now[6] || now[4] || now[1] || now[3];
+      const superHeld = now[6] || now[4] || now[1];
       // apuntado con el stick derecho; sin tocarlo, al rival más cercano (o hacia donde mira)
       const aimOf = (isSuper) => (R.len ? { dx: R.x, dy: R.y, dist: rangeOf(isSuper) * Math.max(0.3, R.len) } : PB.Settings.get('autoAim') ? { auto: true } : { facing: true });
       if (R.len) out.aim = { isSuper: superHeld && me.superCharge >= 1, ang: Math.atan2(R.y, R.x), dist: rangeOf(superHeld) * Math.max(0.3, R.len), strong: true };
       const atkBtn = [7, 5, 0, 2];
       if (atkBtn.some((i) => down(i))) inp.attack = aimOf(false);
       else if (atkBtn.some((i) => now[i])) inp.attack = Object.assign({ held: true }, aimOf(false));
-      if ([6, 4, 1, 3].some((i) => down(i))) inp.super = aimOf(true);
+      if ([6, 4, 1].some((i) => down(i))) inp.super = aimOf(true);
+      if (down(3)) inp.mega = true; // △ / Y: megaevolución
     }
     // vista girada (equipo rojo): arriba en pantalla es abajo en el mapa
     // (el ratón ya se pasa al mapa con la vista girada; los joysticks y el teclado, no)

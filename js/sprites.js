@@ -4,6 +4,15 @@
 //    hojas en assets/pokemon/{dex}/. Se descargan solo cuando hacen falta (ensure).
 //  - window.SPRITE_DATA (js/sprite-data.js): los Pokémon de los mapas (Snorlax, Voltorb),
 //    se cargan al empezar (load).
+// Skin regional: la fase usa su forma de esa región si existe (Raichu -> Raichu de Alola); si no, la normal
+PB.skinDex = (dex, skin) => (skin && PB.FORMS && PB.FORMS[dex + '-' + skin] ? dex + '-' + skin : dex);
+// Megaevolución: la "skin" mega de esa fase si tiene sprite (Charizard X/Y: según el luchador); si no, null (solo aura)
+PB.megaSkin = (dex, n) => {
+  if (!PB.FORMS) return null;
+  const opts = ['mega', 'mega-x', 'mega-y'].filter((k) => PB.FORMS[dex + '-' + k]);
+  return opts.length ? opts[(n || 0) % opts.length] : null;
+};
+
 PB.Sprites = {
   imgs: {},
   ports: {},
@@ -38,17 +47,20 @@ PB.Sprites = {
 
   // Datos de las animaciones de un Pokémon jugable (con la geometría shiny si difiere)
   anims(dex, shiny) {
-    const m = PB.SPRITE_META[dex];
+    const m = this.meta(dex);
     if (!m) return null;
     if (!shiny || !m.sh || !m.sa) return m.a;
     return Object.assign({}, m.a, m.sa);
   },
+  meta(dex) {
+    return PB.SPRITE_META[dex] || (PB.FORM_META && PB.FORM_META[dex]);
+  },
   hasShiny(dex) {
-    const m = PB.SPRITE_META[dex];
+    const m = this.meta(dex);
     return !!(m && m.sh);
   },
   useShiny(dex, anim, shiny) {
-    const m = PB.SPRITE_META[dex];
+    const m = this.meta(dex);
     return !!(shiny && m && m.sh && !(m.sm && m.sm.includes(anim)));
   },
   src(dex, anim, shiny) {
@@ -75,6 +87,8 @@ PB.Sprites = {
   },
 
   portraitURL(dex) {
+    // formas regionales y megas: assets/pokemon/<dex>-<forma>/
+    if (PB.FORMS && PB.FORMS[dex]) return `assets/pokemon/${dex}/${PB.FORMS[dex].p ? 'p' : 'Idle'}.png`;
     const n = +dex;
     if (PB.DEX[n]) return PB.DEX[n].p ? `assets/pokemon/${n}/p.png` : `assets/pokemon/${n}/Idle.png`;
     const e = window.SPRITE_DATA && window.SPRITE_DATA[dex];
@@ -113,7 +127,7 @@ PB.Sprites = {
 
   // Fotograma que toca: { img, sx, sy, w, h, ax, ay } o null si aún no se ha descargado
   frame(dex, anim, angle, t, length, shiny) {
-    const m = PB.SPRITE_META[dex];
+    const m = this.meta(dex);
     if (m) {
       const A = this.anims(dex, shiny);
       let name = A[anim] ? anim : 'Idle';

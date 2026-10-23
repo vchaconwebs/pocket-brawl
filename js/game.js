@@ -48,7 +48,7 @@ PB.Game = class {
         // evolución: fase actual (0 = primera), su número de Pokédex y sus tipos
         line, stage: 0, xp: 0, dex: line[0], types: PB.stageTypes({ line }, 0), shiny: false, evoT: 0,
         x: sp.x, y: sp.y, r: 22, vx: 0, vy: 0, kx: 0, ky: 0,
-        hp: def.hp, maxHp: def.hp, ammo: this.rules.maxAmmo, shotCd: 0, superCharge: 0,
+        hp: def.hp, maxHp: def.hp, ammo: this.rules.maxAmmo, shotCd: 0, superCharge: 0, megaCharge: 0, megaT: 0,
         balls: 0, power: 0, stat: 0, dead: false, out: false, respawnT: 0, lastCombat: -99, revealT: 0,
         facing: sp.y > this.world.pixelH / 2 ? -Math.PI / 2 : Math.PI / 2,
         moving: false, animT: Math.random() * 3, action: null, hurtT: 0, flashT: 0,
@@ -77,7 +77,49 @@ PB.Game = class {
 
   // Multiplicador de daño: Caramelos Raros, nivel y fase de evolución
   powerMul(b) {
-    return b ? (1 + 0.1 * (b.power || 0)) * (b.lvlMul || 1) * PB.stageMul(b.def, b.stage || 0) : 1;
+    return b ? (1 + 0.1 * (b.power || 0)) * (b.lvlMul || 1) * PB.stageMul(b.def, b.stage || 0) * (b.megaT > 0 ? PB.MEGA.dmg : 1) : 1;
+  }
+
+  // ---------------------------------------------------------------- megaevolución
+  canMega(b) {
+    return b.stage >= PB.evoSteps(b.def).length;
+  }
+
+  gainMega(b, amount) {
+    if (!b || b.dead || b.megaT > 0 || amount <= 0) return;
+    if (!b.megas) amount /= PB.MEGA.first[Math.min(3, b.line.length) - 1];
+    const before = b.megaCharge;
+    b.megaCharge = Math.min(1, b.megaCharge + amount);
+    if (before < 1 && b.megaCharge >= 1 && this.canMega(b)) this.events.push({ type: 'megaReady', b });
+  }
+
+  megaEvolve(b) {
+    b.megaCharge = 0;
+    b.megaT = PB.MEGA.time;
+    b.megas = (b.megas || 0) + 1;
+    const mega = PB.megaSkin(b.dex, b.idx);
+    b.megaSkin = !!mega;
+    if (mega) { b.skinBase = b.skin || null; b.skin = mega; }
+    b.shieldT = Math.max(b.shieldT, 0.5);
+    const pal = PB.VFX.PAL[b.def.atkType] || PB.VFX.PAL.normal;
+    this.ring(b.x, b.y - 20, 10, 150, '#ffffff', 0.55, 7);
+    this.ring(b.x, b.y - 20, 10, 110, '#ff5ad8', 0.5, 6);
+    this.ring(b.x, b.y - 20, 10, 80, pal[3], 0.45, 5);
+    this.flash(b.x, b.y - 24, 160, '#ffffff', 0.45);
+    for (let i = 0; i < 30; i++) this.px(b.x, b.y - 24, ['#ff5ad8', '#7ad8ff', '#ffe066', pal[3]][i % 4], { speed: 300, vy: -60, life: 0.8, size: 5 });
+    this.text(b.x, b.y - 118, PB.T(mega ? '¡Megaevolución!' : '¡Poder Mega!'), '#ff8ae6', 20);
+    this.shake = Math.max(this.shake, b.isPlayer ? 10 : 4);
+    this.events.push({ type: 'mega', b, form: !!mega });
+  }
+
+  megaEnd(b) {
+    b.megaT = 0;
+    if (b.megaSkin) { b.skin = b.skinBase || null; b.megaSkin = false; }
+    if (!b.dead) {
+      this.ring(b.x, b.y - 20, 10, 70, '#ff8ae6', 0.4, 4);
+      for (let i = 0; i < 10; i++) this.px(b.x, b.y - 24, '#ffd0f4', { speed: 140, vy: -40, life: 0.5, size: 4 });
+    }
+    this.events.push({ type: 'megaEnd', b });
   }
 
   // ---------------------------------------------------------------- evolución
@@ -125,6 +167,7 @@ PB.Game = class {
     for (let i = 0; i < 10; i++) this.px(b.x, b.y - 24, '#ffffff', { speed: 120, vy: -40, life: 0.5, size: 4 });
     this.text(b.x, b.y - 110, PB.T('¡Evoluciona!'), '#ffe066', 18);
     this.events.push({ type: 'evolve', b, from: oldName, to: PB.stageName(b, b.stage) });
+    if (b.megaCharge >= 1 && this.canMega(b)) this.events.push({ type: 'megaReady', b });
   }
 
   get player() {
@@ -229,11 +272,16 @@ PB.Game = class {
       }
     }
     if (b.barrierT > 0) b.barrierT -= dt;
+    this.gainXp(b, PB.EVO.passive * dt);
     if (b.tfT > 0) {
       b.tfT -= dt;
       if (b.tfT <= 0) this.untransform(b);
     }
-    this.gainXp(b, PB.EVO.passive * dt);
+    if (b.megaT > 0) {
+      b.megaT -= dt;
+      if (b.megaT <= 0) this.megaEnd(b);
+    } else this.gainMega(b, PB.MEGA.passive * dt);
+    if (input.mega && b.megaCharge >= 1 && !(b.megaT > 0) && this.canMega(b) && b.spawnT <= 0 && !(b.evoT > 0)) this.megaEvolve(b);
     if (b.stealthT > 0) b.stealthT -= dt;
     if (b.action) {
       b.action.t += dt;
@@ -258,7 +306,7 @@ PB.Game = class {
       d.ghostT = (d.ghostT || 0) - dt;
       if (d.ghostT <= 0) {
         d.ghostT = 0.035;
-        this.fx.push({ kind: 'ghost', dex: b.dex, shiny: b.shiny, x: b.x, y: b.y, facing: b.facing, t: 0, life: 0.25, type: b.def.atkType });
+        this.fx.push({ kind: 'ghost', dex: PB.skinDex(b.dex, b.skin), shiny: b.shiny, x: b.x, y: b.y, facing: b.facing, t: 0, life: 0.25, type: b.def.atkType });
         const T = d.type || b.def.atkType;
         this.vfx(T === 'electric' ? 'bolt' : PB.VFX.forType(T).proj, T, b.x + (Math.random() - 0.5) * 40, b.y - 20 + (Math.random() - 0.5) * 30, { angle: Math.random() * 6, scale: 1, life: 0.15 });
       }
@@ -276,7 +324,7 @@ PB.Game = class {
       if (b.stunT > 0) { mx = 0; my = 0; }
       // parón del golpe: casi quieto durante unas centésimas
       if (b.hitStopT > 0) { mx *= 0.15; my *= 0.15; }
-      const sp = b.def.speed * (b.stealthT > 0 ? b.def.super.speedMul || 1 : 1);
+      const sp = b.def.speed * (b.stealthT > 0 ? b.def.super.speedMul || 1 : 1) * (b.megaT > 0 ? PB.MEGA.speed : 1);
       this.world.moveCircle(b, mx * sp * dt + b.kx * dt, my * sp * dt + b.ky * dt);
       b.moving = len > 0.15 && b.stunT <= 0;
       if (b.moving && !b.action) b.facing = Math.atan2(my, mx);
@@ -1010,7 +1058,7 @@ PB.Game = class {
     if (target.dead || target.shieldT > 0 || target.spawnT > 0) return;
     const eff = atkType ? PB.effectiveness(atkType, target.types || target.def.types) : 1;
     // escudo de súper: reduce el daño
-    const shield = target.barrierT > 0 ? 1 - (target.barrierReduce || 0.5) : 1;
+    const shield = (target.barrierT > 0 ? 1 - (target.barrierReduce || 0.5) : 1) * (target.megaT > 0 ? PB.MEGA.taken : 1);
     const amt = Math.round(amount * eff * this.powerMul(source) * shield);
     target.hp -= amt;
     target.lastCombat = this.time;
@@ -1024,6 +1072,7 @@ PB.Game = class {
         const before = source.superCharge;
         source.superCharge = Math.min(1, source.superCharge + 1 / source.def.superHits);
         if (before < 1 && source.superCharge >= 1) this.events.push({ type: 'superReady', b: source });
+        if (source.team !== target.team) this.gainMega(source, PB.MEGA.perHit / source.def.superHits);
       }
     }
     if (opts.knockback) {
@@ -1084,18 +1133,20 @@ PB.Game = class {
       killer.kills++;
       killer.streak++;
       this.gainXp(killer, PB.EVO.perKO + PB.EVO.perKOStage * (b.stage || 0));
+      this.gainMega(killer, PB.MEGA.perKO);
     }
+    if (b.megaT > 0) this.megaEnd(b);
+    if (b.tfBase) this.untransform(b);
     for (let i = 0; i < b.balls; i++) {
       const a = Math.random() * Math.PI * 2, s = 90 + Math.random() * 140;
       this.balls.push({ kind: 'ball', x: b.x, y: b.y, z: 20, vx: Math.cos(a) * s, vy: Math.sin(a) * s, vz: 300 + Math.random() * 200, delay: 0.5, taken: false, spin: Math.random() * 6 });
     }
     b.balls = 0;
-    if (b.tfBase) this.untransform(b);
     if (this.mode.onKill) this.mode.onKill(this, b, killer);
     // animación: se debilita y vuelve a su Pokéball con el rayo rojo
-    this.fx.push({ kind: 'faint', dex: b.dex, shiny: b.shiny, x: b.x, y: b.y, facing: b.facing, team: b.team, t: 0, life: 1.5 });
+    this.fx.push({ kind: 'faint', dex: PB.skinDex(b.dex, b.skin), shiny: b.shiny, x: b.x, y: b.y, facing: b.facing, team: b.team, t: 0, life: 1.5 });
     for (let i = 0; i < 16; i++) this.px(b.x, b.y - 16, i % 2 ? '#ffffff' : b.team === 'blue' ? '#5ab0ff' : '#ff5a5a', { speed: 240, life: 0.5, size: 5 });
-    this.feed.push({ killer: killer ? killer.name : '?', kdex: killer && killer.def ? killer.dex : null, victim: b.name, vdex: b.dex, team: killer ? killer.team : 'red', t: this.time });
+    this.feed.push({ killer: killer ? killer.name : '?', kdex: killer && killer.def ? PB.skinDex(killer.dex, killer.skin) : null, victim: b.name, vdex: PB.skinDex(b.dex, b.skin), team: killer ? killer.team : 'red', t: this.time });
     if (this.feed.length > 4) this.feed.shift();
     this.events.push({ type: 'ko', b, killer, streak: killer ? killer.streak : 0 });
     this.shake = Math.max(this.shake, b.isPlayer ? 16 : 6);

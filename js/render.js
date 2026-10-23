@@ -819,6 +819,16 @@ PB.Renderer = class {
     }
     let anim = b.moving ? 'Walk' : 'Idle', len = 0, at = b.animT;
     if (b.action) { anim = b.action.anim; len = b.action.len; at = b.action.t; }
+    const mega = b.megaT > 0 && !spawning;
+    if (mega && !ghostPass) this.megaAura(b, t, true);
+    const sc = mega && !b.megaSkin ? 2.2 : 2; // sin sprite de mega: un poco más grande
+    if (mega && !b.evoT && b.stealthT <= 0) {
+      // contorno brillante: la silueta en rosa y dorado, latiendo
+      const d = b.megaSkin ? 2 : 3, pa = ctx.globalAlpha;
+      ctx.globalAlpha = pa * (0.75 + Math.sin(t * 8) * 0.2) * (b.megaT < 1.5 ? 0.5 + 0.5 * Math.abs(Math.sin(t * 9)) : 1);
+      for (const [ox, oy] of [[-d, 0], [d, 0], [0, -d], [0, d]]) PB.Sprites.drawTint(ctx, PB.skinDex(b.dex, b.skin), anim, b.facing, at, b.x + ox, b.y + 4 + oy, sc, len, Math.sin(t * 4) > 0 ? '#ffe066' : '#ff6ad8', 1, b.shiny);
+      ctx.globalAlpha = pa;
+    }
     if (b.hurtT > 0 && !b.action) anim = 'Hurt';
     if (b.stunT > 0) anim = 'Hurt';
 
@@ -826,7 +836,7 @@ PB.Renderer = class {
       // sale de la Pokéball: silueta blanca que crece
       const k = 1 - b.spawnT / 0.45;
       const sc = 2 * (0.25 + 0.75 * k);
-      PB.Sprites.drawTint(ctx, b.dex, 'Idle', b.facing, at, b.x, b.y + 4, sc, 0, '#ffffff', 1 - k * 0.6, b.shiny);
+      PB.Sprites.drawTint(ctx, PB.skinDex(b.dex, b.skin), 'Idle', b.facing, at, b.x, b.y + 4, sc, 0, '#ffffff', 1 - k * 0.6, b.shiny);
       return;
     }
     const prev = ctx.globalAlpha;
@@ -852,7 +862,7 @@ PB.Renderer = class {
       }
       ctx.restore();
       // contorno del color del tipo detrás de la silueta blanca, para que se vea bien la forma
-      const evDex = showNew ? b.dex : b.evoFrom;
+      const evDex = PB.skinDex(showNew ? b.dex : b.evoFrom, b.skin);
       const pal = PB.VFX.PAL[b.def.atkType] || PB.VFX.PAL.normal;
       ctx.globalAlpha = prev * 0.85;
       for (const [ox, oy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) PB.Sprites.drawTint(ctx, evDex, 'Idle', b.facing, at, b.x + ox, b.y + 4 + oy, sc, 0, pal[1] || '#3060c0', 1, b.shiny);
@@ -860,12 +870,13 @@ PB.Renderer = class {
       PB.Sprites.drawTint(ctx, evDex, 'Idle', b.facing, at, b.x, b.y + 4, sc, 0, '#ffffff', 1, b.shiny);
     } else if (b.evoT > 0) {
       // forma nueva: el brillo blanco se va apagando
-      PB.Sprites.drawTint(ctx, b.dex, 'Idle', b.facing, at, b.x, b.y + 4, 2, 0, '#ffffff', Math.min(1, (b.evoT / PB.EVO_REVEAL) * 0.9), b.shiny);
-    } else if (b.flashT > 0) PB.Sprites.drawTint(ctx, b.dex, anim, b.facing, at, b.x, b.y + 4, 2, len, '#ffffff', 0.85, b.shiny);
-    else PB.Sprites.draw(ctx, b.dex, anim, b.facing, at, b.x, b.y + 4, 2, len, b.shiny);
+      PB.Sprites.drawTint(ctx, PB.skinDex(b.dex, b.skin), 'Idle', b.facing, at, b.x, b.y + 4, 2, 0, '#ffffff', Math.min(1, (b.evoT / PB.EVO_REVEAL) * 0.9), b.shiny);
+    } else if (b.flashT > 0) PB.Sprites.drawTint(ctx, PB.skinDex(b.dex, b.skin), anim, b.facing, at, b.x, b.y + 4, sc, len, '#ffffff', 0.85, b.shiny);
+    else PB.Sprites.draw(ctx, PB.skinDex(b.dex, b.skin), anim, b.facing, at, b.x, b.y + 4, sc, len, b.shiny);
     ctx.globalAlpha = prev;
 
     if (ghostPass) return;
+    if (mega) this.megaAura(b, t, false);
     // escudo del súper: burbuja hexagonal del color del tipo
     if (b.barrierT > 0) {
       const P = PB.VFX.PAL[b.barrierType] || PB.VFX.PAL.steel;
@@ -901,6 +912,56 @@ PB.Renderer = class {
       const a = t * 3 + b.idx;
       PB.VFX.draw(ctx, 'star', 'electric', b.x + Math.cos(a) * 30, b.y - 30 + Math.sin(a * 1.3) * 20, { scale: 0.6, frame: Math.floor(t * 8) });
     }
+  }
+
+  // Aura de la megaevolución: llamas del color del tipo con un borde rosa (detrás) y chispas de colores (delante).
+  // Los que no tienen sprite de mega la llevan más fuerte. Al final parpadea para avisar de que se acaba.
+  megaAura(b, t, back) {
+    const ctx = this.ctx;
+    const pal = PB.VFX.PAL[b.def.atkType] || PB.VFX.PAL.normal;
+    const k = b.megaSkin ? 0.75 : 1;
+    const fade = b.megaT < 1.5 ? 0.45 + 0.55 * Math.abs(Math.sin(t * 9)) : 1;
+    ctx.save();
+    ctx.globalAlpha *= fade;
+    if (back) {
+      ctx.strokeStyle = `rgba(255,90,216,${0.6 + Math.sin(t * 7) * 0.25})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.ellipse(b.x, b.y + 6, 38 + Math.sin(t * 7) * 3, 16, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      this.glow(b.x, b.y - 26, 78 * k, this.hexA(pal[3], 0.4 * k));
+      this.glow(b.x, b.y - 26, 52 * k, 'rgba(255,120,230,0.25)');
+      // llamas que suben alrededor
+      const n = 12;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + t * 1.6;
+        const fx = b.x + Math.cos(a) * 27, fy = b.y - 6 + Math.sin(a) * 9;
+        const h = (34 + 14 * Math.sin(t * 9 + i * 1.7)) * (0.85 + 0.3 * k);
+        const sway = Math.sin(t * 6 + i) * 5;
+        for (const [w, col] of [[10, this.hexA(pal[3], 0.55 * k)], [5, 'rgba(255,170,240,0.65)']]) {
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.moveTo(fx - w, fy);
+          ctx.quadraticCurveTo(fx - w * 0.6 + sway * 0.5, fy - h * 0.55, fx + sway, fy - h);
+          ctx.quadraticCurveTo(fx + w * 0.6 + sway * 0.5, fy - h * 0.55, fx + w, fy);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    } else {
+      // chispas de colores que suben (cuadraditos pixel, como el resto del juego)
+      const cols = ['#ff5ad8', '#7ad8ff', '#ffe066', pal[4] || '#ffffff'];
+      for (let i = 0; i < 10; i++) {
+        const ph = (t * 0.9 + i * 0.37 + b.idx * 0.13) % 1;
+        const a = i * 2.4 + b.idx;
+        const x = b.x + Math.cos(a) * (18 + 14 * Math.sin(i)), y = b.y - 10 - ph * 80;
+        ctx.globalAlpha = fade * (1 - ph);
+        ctx.fillStyle = cols[i % 4];
+        const sz = i % 3 ? 4 : 6;
+        ctx.fillRect(Math.round(x - sz / 2), Math.round(y - sz / 2), sz, sz);
+      }
+    }
+    ctx.restore();
   }
 
   // Se debilita y vuelve a su Pokéball (rayo rojo)
@@ -979,8 +1040,11 @@ PB.Renderer = class {
     ctx.fillRect(x - w / 2, ey, w, 6);
     ctx.fillStyle = '#2a3350';
     ctx.fillRect(x - w / 2 + 1, ey + 1, w - 2, 4);
-    ctx.fillStyle = maxed ? '#ffd23a' : '#7fd4ff';
-    ctx.fillRect(x - w / 2 + 1, ey + 1, Math.round((w - 2) * ek), 4);
+    // en la última fase, la barra pasa a ser la de la megaevolución (rosa; con la mega activa, lo que le queda)
+    const mk = !maxed ? ek : b.megaT > 0 ? b.megaT / PB.MEGA.time : b.megaCharge || 0;
+    ctx.fillStyle = !maxed ? '#7fd4ff' : b.megaT > 0 || mk >= 1 ? (Math.sin(game.clock * 10) > 0 ? '#ff5ad8' : '#ffb0f0') : '#d066c8';
+    ctx.fillRect(x - w / 2 + 1, ey + 1, Math.round((w - 2) * mk), 4);
+    if (maxed && mk >= 1 && !(b.megaT > 0)) this.outlined('MEGA', x + w / 2 + 18, ey + 7, 10, '#ff8ae6');
     if (!maxed && ek > 0.85 && Math.sin(game.clock * 12) > 0) {
       ctx.fillStyle = 'rgba(255,255,255,0.6)';
       ctx.fillRect(x - w / 2 + 1, ey + 1, Math.round((w - 2) * ek), 4);
@@ -1417,7 +1481,33 @@ PB.Renderer = class {
   }
 
   drawDesktopSuper(me, game) {
-    this.superButton(this.cw - 72, this.ch - 72, 44, me.superCharge, game.clock, document.body.classList.contains('pad') ? 'LT' : 'E');
+    const pad = document.body.classList.contains('pad');
+    this.superButton(this.cw - 72, this.ch - 72, 44, me.superCharge, game.clock, pad ? 'LT' : 'E');
+    if (game.canMega && game.canMega(me)) this.megaButton(this.cw - 172, this.ch - 60, 32, me, game.clock, pad ? '△' : 'F');
+  }
+
+  // Botón de megaevolución: anillo rosa que se llena; listo = brilla; activa = cuenta atrás
+  megaButton(x, y, r, me, t, key) {
+    const ctx = this.ctx;
+    const UI = PB.PixUI;
+    const on = me.megaT > 0, ready = !on && me.megaCharge >= 1;
+    const k = on ? me.megaT / PB.MEGA.time : Math.min(1, me.megaCharge || 0);
+    if (ready || on) this.glow(x, y, r * 1.9, `rgba(255,90,216,${0.4 + Math.sin(t * 6) * 0.2})`);
+    const base = UI.ring(r, 6, ready || on ? '#ff8ae6' : '#5a4a78', ready ? 'rgba(220,60,190,0.95)' : on ? 'rgba(120,30,110,0.9)' : 'rgba(10,15,40,0.65)');
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(base, Math.round(x - base.width / 2), Math.round(y - base.height / 2));
+    const n = 12, lit = Math.floor(k * n);
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
+      const sx = Math.round((x + Math.cos(a) * (r - 6)) / 3) * 3, sy = Math.round((y + Math.sin(a) * (r - 6)) / 3) * 3;
+      ctx.fillStyle = i < lit ? (ready ? '#ffe0fa' : '#ff6ad8') : 'rgba(0,0,0,0.45)';
+      ctx.fillRect(sx - 2, sy - 2, 5, 5);
+    }
+    this.outlined(on ? Math.ceil(me.megaT) + 's' : 'MEGA', x, y + 5, on ? 15 : 12, ready ? '#ffffff' : '#ff9ae8');
+    if (key) {
+      UI.panel(ctx, x - 12, y + r + 2, 24, 22, { p: 2, fill: '#5a2c78' });
+      this.outlined(key, x, y + r + 18, 12, '#ffffff');
+    }
   }
 
   // Botón de súper pixel: anillo con 16 casillas que se van encendiendo y un rayo en el centro
@@ -1476,6 +1566,7 @@ PB.Renderer = class {
       UI.bar(ctx, L.attack.x - (aw * 3 + 8) / 2 + i * (aw + 4), L.attack.y - L.r - 22, aw, 10, f, f >= 1 ? '#ff9a1f' : '#b8702a', { p: 2 });
     }
     this.superButton(L.super.x, L.super.y, L.sr, me.superCharge, game.clock, '');
+    if (inp.megaShown) this.megaButton(L.mega.x, L.mega.y, L.mr, me, game.clock, '');
     const sp = inp.sticks.super;
     if (sp) stick(sp.origin, sp.pos, L.sr, view.aim && view.aim.cancel ? 'rgba(230,60,50,0.95)' : 'rgba(255,210,40,0.95)');
     // súper devuelto al centro: se cancela al soltar

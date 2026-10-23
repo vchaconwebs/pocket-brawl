@@ -86,7 +86,7 @@ PB.Net = (() => {
         for (const k in b) {
           if (SKIP_B.has(k)) continue;
           // la súper y la munición se redondean hacia abajo: si no, con 0,95 ya se vería la súper lista
-          const p = k === 'superCharge' || k === 'ammo' ? Math.floor(b[k] * 100) / 100 : done(k, b[k]) ? 0 : pack(b[k], g, 1);
+          const p = k === 'superCharge' || k === 'megaCharge' || k === 'ammo' ? Math.floor(b[k] * 100) / 100 : done(k, b[k]) ? 0 : pack(b[k], g, 1);
           const s = typeof p === 'object' && p !== null ? JSON.stringify(p) : p;
           if (full || prev[k] !== s) { d[k] = p === undefined ? null : p; prev[k] = s; }
         }
@@ -176,7 +176,7 @@ PB.Net = (() => {
           let mx = myInput.mx || 0, my = myInput.my || 0;
           const len = Math.hypot(mx, my);
           if (len > 1) { mx /= len; my /= len; }
-          const sp = b.def.speed * (b.stealthT > 0 ? b.def.super.speedMul || 1 : 1);
+          const sp = b.def.speed * (b.stealthT > 0 ? b.def.super.speedMul || 1 : 1) * (b.megaT > 0 ? PB.MEGA.speed : 1);
           g.world.moveCircle(b, mx * sp * dt, my * sp * dt);
           b.moving = len > 0.15;
           if (b.moving && !b.action) b.facing = Math.atan2(my, mx);
@@ -220,6 +220,7 @@ PB.Net = (() => {
       const aimMsg = (a) => (a.auto ? { auto: true } : a.facing ? { facing: true } : { dx: r1(a.dx), dy: r1(a.dy), dist: r1(a.dist || 0) });
       if (inp.attack) m.attack = Object.assign(aimMsg(inp.attack), inp.attack.held ? { held: 1 } : {});
       if (inp.super) m.super = aimMsg(inp.super);
+      if (inp.mega) m.mega = 1;
       this.pending.push(m);
       if (this.pending.length > 60) this.pending.shift();
       return m;
@@ -229,7 +230,7 @@ PB.Net = (() => {
   // Controles de los jugadores remotos en el anfitrión: el último movimiento y el último botón
   // pulsado desde el fotograma anterior (si mantiene el ratón, llega uno en cada mensaje)
   class Remote {
-    constructor() { this.mx = 0; this.my = 0; this.attack = null; this.super = null; this.ack = 0; }
+    constructor() { this.mx = 0; this.my = 0; this.attack = null; this.super = null; this.mega = false; this.ack = 0; }
     push(m) {
       this.mx = m.mx || 0;
       this.my = m.my || 0;
@@ -237,10 +238,12 @@ PB.Net = (() => {
       // un clic (pulsación) no se pisa con el "sigue mantenido" que llega justo detrás
       if (m.attack && !(m.attack.held && this.attack && !this.attack.held)) this.attack = m.attack;
       if (m.super) this.super = m.super;
+      if (m.mega) this.mega = true;
     }
     take() {
-      const out = { mx: this.mx, my: this.my, attack: this.attack, super: this.super };
+      const out = { mx: this.mx, my: this.my, attack: this.attack, super: this.super, mega: this.mega };
       this.attack = this.super = null;
+      this.mega = false;
       return out;
     }
   }

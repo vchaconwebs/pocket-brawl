@@ -32,6 +32,10 @@ PB.META = {
   clanCost: 300, // monedas para crear un clan
   // skins shiny: se compran con Monedas Arcoíris
   shinyCost: 80,
+  // skins regionales (Alola, Galar, Hisui, Paldea): con Monedas Arcoíris (menos que la shiny) o en cofres
+  regionSkinCost: 40,
+  // probabilidad de que un cofre traiga una skin regional (menos que un Pokémon nuevo; solo de los que ya tienes)
+  regionSkinChance: { poke: 0.04, great: 0.08, ultra: 0.15 },
   clanMax: 30,
 };
 
@@ -324,7 +328,31 @@ PB.Save = (() => {
     return !!b && (b.alts || [b.line]).every((l) => l.every((dex) => PB.Sprites.hasShiny(dex)));
   };
   const hasShiny = (id) => !!get().shinies[id];
-  const skin = (id) => (id && get().skins[id] === 'shiny' && hasShiny(id) ? 'shiny' : 'normal');
+  // regiones con forma para algún Pokémon de su familia (Alola para Vulpix y Ninetales...)
+  const REGIONS = ['alola', 'galar', 'hisui', 'paldea'];
+  const regionSkins = (id) => {
+    const b = PB.brawlerById(id);
+    if (!b || !PB.FORMS) return [];
+    const dexes = [].concat(...(b.alts || [b.line]));
+    return REGIONS.filter((r) => dexes.some((dex) => PB.FORMS[dex + '-' + r]));
+  };
+  const hasRegion = (id, r) => !!((get().regions || {})[id] || []).includes(r);
+  const skin = (id) => {
+    const s = id && get().skins[id];
+    if (s === 'shiny' && hasShiny(id)) return 'shiny';
+    if (REGIONS.includes(s) && hasRegion(id, s)) return s;
+    return 'normal';
+  };
+  function buyRegion(id, r) {
+    const d = get();
+    if (!owned(id) || hasRegion(id, r) || !regionSkins(id).includes(r) || (d.rainbow || 0) < PB.META.regionSkinCost) return false;
+    d.rainbow -= PB.META.regionSkinCost;
+    d.regions = d.regions || {};
+    (d.regions[id] = d.regions[id] || []).push(r);
+    d.skins[id] = r;
+    persist();
+    return true;
+  }
   function buyShiny(id) {
     const d = get();
     if (!owned(id) || hasShiny(id) || !shinyAvailable(id) || d.rainbow < PB.META.shinyCost) return false;
@@ -364,6 +392,7 @@ PB.Save = (() => {
   }
   function setSkin(id, sk) {
     if (sk === 'shiny' && !hasShiny(id)) return false;
+    if (REGIONS.includes(sk) && !hasRegion(id, sk)) return false;
     get().skins[id] = sk;
     persist();
     return true;
@@ -412,6 +441,16 @@ PB.Save = (() => {
     }
     if (!res.coins && !res.points && !res.pokemon.length) res.coins = 20;
     if (!res.pokemon.length) d.pity = (d.pity || 0) + 1;
+    // skin regional (rara): de un Pokémon que ya tienes y de una región que aún no tienes
+    if (Math.random() < (PB.META.regionSkinChance[kind] || 0)) {
+      const opts = [];
+      for (const id of Object.keys(d.owned)) for (const r of regionSkins(id)) if (!hasRegion(id, r)) opts.push({ id, region: r });
+      if (opts.length) {
+        res.skin = opts[Math.floor(Math.random() * opts.length)];
+        d.regions = d.regions || {};
+        (d.regions[res.skin.id] = d.regions[res.skin.id] || []).push(res.skin.region);
+      }
+    }
     // Monedas Arcoíris: muchas veces en Super Ball y siempre en Ultra Ball
     res.rainbow = 0;
     if (kind === 'great' && Math.random() < PB.META.rainbowChance.great) res.rainbow = 4 + Math.floor(Math.random() * 5);
@@ -618,7 +657,7 @@ PB.Save = (() => {
   return {
     load, get, persist, setName, owned, level, copas, totalCopas, select, upgradeCost, upgrade, unlockCost, unlock, spendCoins,
     pass, claimPass, claimPassExtra,
-    needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, isFav, toggleFav, branch, lineOf, setBranch,
+    needsStarters, chooseStarters, shinyAvailable, hasShiny, skin, buyShiny, setSkin, isFav, toggleFav, regionSkins, hasRegion, buyRegion, branch, lineOf, setBranch,
     importJSON, openChest, nextChest, applyMatch, applyAbandon, abandonWait, missions, claimMission, nextReset, achievements, claimAchievement, pending, giveReward, reset,
   };
 })();

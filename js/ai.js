@@ -120,6 +120,8 @@ PB.Bot = class {
     }
     this.seenT += dt;
     this.superWait -= dt;
+    // megaevolución: cuando hay pelea cerca (o va mal de vida)
+    if (b.megaCharge >= 1 && !(b.megaT > 0) && g.canMega(b) && g.started && foe && (fd < 520 || hpF < 0.4)) input.mega = true;
     // dispara al arbusto donde vio esconderse al rival (y se acerca a buscarlo)
     if (hidden && !carrying && g.started && !plan.retreat) {
       if (!input.mx && !input.my && hd > atk.range * 0.6) this.followTo(hidden, input);

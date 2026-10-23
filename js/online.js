@@ -828,7 +828,8 @@ PB.Online = (() => {
   const memberInfo = () => {
     // (un jugador que aún no ha elegido iniciales lleva el primero de la lista)
     const d = PB.Save.get(), id = PB.brawlerById(d.selected) ? d.selected : PB.BRAWLERS[0].id;
-    return { dev: devScore(), name: myName(), fav: id, line: PB.Save.lineOf(id), lvl: PB.Save.level(id), shiny: PB.Save.skin(id) === 'shiny', copas: PB.Save.copas(id), t: Date.now() };
+    const sk = PB.Save.skin(id);
+    return { dev: devScore(), name: myName(), fav: id, line: PB.Save.lineOf(id), lvl: PB.Save.level(id), shiny: sk === 'shiny', skin: /^(alola|galar|hisui|paldea)$/.test(sk) ? sk : null, copas: PB.Save.copas(id), t: Date.now() };
   };
 
   function watchParty(code) {
@@ -1357,8 +1358,10 @@ PB.Online = (() => {
     slots.forEach((u, i) => {
       if (!u) return;
       const p = m.players[u];
-      opts.humans[i] = { name: clean(p.name, 16), lvl: Math.max(1, Math.min(PB.META.maxLevel, p.lvl | 0 || 1)), shiny: !!p.shiny, uid: u };
+      const skin = /^(alola|galar|hisui|paldea)$/.test(p.skin || '') ? p.skin : null;
+      opts.humans[i] = { name: clean(p.name, 16), lvl: Math.max(1, Math.min(PB.META.maxLevel, p.lvl | 0 || 1)), shiny: !!p.shiny, skin, uid: u };
       opts.shiny[i] = !!p.shiny;
+      (opts.skins = opts.skins || [])[i] = skin;
       copas += p.copas | 0;
       if (u === uid) myIdx = i; else seats[u] = i;
     });

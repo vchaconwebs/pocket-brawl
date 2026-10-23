@@ -354,8 +354,9 @@ PB.Lobby = (() => {
       const own = PB.Save.owned(b.id);
       const r = rarityOf(b);
       const shiny = own && PB.Save.skin(b.id) === 'shiny';
+      const reg = own && /^(alola|galar|hisui|paldea)$/.test(PB.Save.skin(b.id)) ? PB.skinDex(b.dex, PB.Save.skin(b.id)) : null;
       return `<button class="card${own ? '' : ' locked'}${b.id === d.selected ? ' sel' : ''}" data-id="${b.id}" style="--rar:${r.color}">` +
-        `<img class="pt" src="${portrait(b)}" alt="" loading="lazy">` +
+        `<img class="pt" src="${reg && reg !== b.dex ? PB.Sprites.portraitURL(reg) : portrait(b)}" alt="" loading="lazy">` +
         (shiny ? '<span class="shiny-tag">✦</span>' : '') +
         `<span class="fav${PB.Save.isFav(b.id) ? ' on' : ''}" data-fav="${b.id}" title="${PB.T('Favorito')}">★</span>` +
         `<span class="nm">${b.name}</span>` +
@@ -446,15 +447,28 @@ PB.Lobby = (() => {
         const nd = last > 0 ? PB.retype(b, L.line, last) : b;
         return nd === b ? '' : `<div class="move evo"><b>Al evolucionar a ${PB.DEX[L.line[last]].name}</b><span>${nd.role}: ${nd.attack.name} y súper ${nd.super.name}.</span></div>`;
       })();
-    // skins: normal y shiny (se compra con Monedas Arcoíris)
+    // skins: normal, shiny (Monedas Arcoíris) y regionales (Alola, Galar, Hisui, Paldea: monedas)
     const sk = $('#dt-skins');
-    if (PB.Save.shinyAvailable(id)) {
+    const regions = PB.Save.regionSkins(id);
+    const REG = { alola: 'Alola', galar: 'Galar', hisui: 'Hisui', paldea: 'Paldea' };
+    if (PB.Save.shinyAvailable(id) || regions.length) {
       const has = PB.Save.hasShiny(id), cur = PB.Save.skin(id);
       sk.innerHTML = `<b>Skin</b><div class="px-seg">` +
         `<button data-sk="normal" class="${cur === 'normal' ? 'sel' : ''}">Normal</button>` +
-        `<button data-sk="shiny" class="${cur === 'shiny' ? 'sel' : ''}">✦ Shiny${has ? '' : ' · ' + money(PB.META.shinyCost, rainbowIcon)}</button></div>`;
+        (PB.Save.shinyAvailable(id) ? `<button data-sk="shiny" class="${cur === 'shiny' ? 'sel' : ''}">✦ Shiny${has ? '' : ' · ' + money(PB.META.shinyCost, rainbowIcon)}</button>` : '') +
+        regions.map((r) => `<button data-sk="${r}" class="${cur === r ? 'sel' : ''}">${REG[r]}${PB.Save.hasRegion(id, r) ? '' : ' · ' + money(PB.META.regionSkinCost, rainbowIcon)}</button>`).join('') + '</div>';
       sk.querySelectorAll('[data-sk]').forEach((e) => (e.onclick = async () => {
         if (e.dataset.sk === 'normal') { PB.Save.setSkin(id, 'normal'); PB.Audio.play('tick'); return renderDetail(); }
+        const r = e.dataset.sk;
+        if (REG[r]) {
+          if (PB.Save.hasRegion(id, r)) { PB.Save.setSkin(id, r); PB.Audio.play('ball'); return renderDetail(); }
+          if (!own) return modal('Primero tienes que conseguir a este Pokémon.');
+          const cost = PB.META.regionSkinCost;
+          if ((d.rainbow || 0) < cost) return modal(`Te faltan ${cost - (d.rainbow || 0)} Monedas Arcoíris para la skin de ${REG[r]}. También pueden salir en los cofres.`);
+          if (!(await modal(`¿Comprar la skin de ${REG[r]} de ${b.name} por ${cost} Monedas Arcoíris?`, true))) return;
+          if (PB.Save.buyRegion(id, r)) { PB.Audio.play('win'); renderDetail(); flashIn('#dt-hero'); refreshLobby(); }
+          return;
+        }
         if (PB.Save.hasShiny(id)) { PB.Save.setSkin(id, 'shiny'); PB.Audio.play('ball'); return renderDetail(); }
         if (!own) return modal('Primero tienes que conseguir a este Pokémon.');
         if ((d.rainbow || 0) < PB.META.shinyCost) return modal(`Te faltan ${PB.META.shinyCost - (d.rainbow || 0)} Monedas Arcoíris. Se ganan jugando partidas y salen en las Super Ball y las Ultra Ball.`);
@@ -1383,7 +1397,7 @@ PB.Lobby = (() => {
       chest.res = PB.Save.openChest(chest.index);
       let best = -1;
       for (const id of chest.res.pokemon) { const b = PB.brawlerById(id); if (b) best = Math.max(best, RARITY_RANK[b.rarity] || 0); }
-      chest.steps = best >= 0 ? RARITY_STEPS.slice(0, best + 1) : [];
+      chest.steps = best >= 0 ? RARITY_STEPS.slice(0, best + 1) : chest.res.skin ? [{ col: [60, 220, 210], label: '¡Hay una skin!' }] : [];
       if (chest.steps.length) { chest.state = 'charge'; chest.step = -1; chestStep(); }
       else startShake();
     } else if (chest.state === 'charge') {
@@ -1433,6 +1447,11 @@ PB.Lobby = (() => {
     for (const id of res.pokemon) {
       const b = PB.brawlerById(id);
       items.push({ icon: portrait(b), title: '¡' + b.name + '!', sub: 'Nuevo Pokémon', cls: 'new', pokemon: true });
+    }
+    if (res.skin) {
+      const b = PB.brawlerById(res.skin.id), REG = { alola: 'Alola', galar: 'Galar', hisui: 'Hisui', paldea: 'Paldea' };
+      const fdex = [].concat(...(b.alts || [b.line])).map((dx) => PB.skinDex(dx, res.skin.region)).find((k) => PB.FORMS && PB.FORMS[k]);
+      items.push({ icon: fdex ? PB.Sprites.portraitURL(fdex) : portrait(b), title: '¡Skin de ' + REG[res.skin.region] + '!', sub: b.name, cls: 'new', pokemon: true });
     }
     chest.items = items;
     chest.cur = -1;
@@ -1658,8 +1677,9 @@ PB.Lobby = (() => {
     if (!me) return;
     const shiny = PB.Save.skin(me.id) === 'shiny';
     pedestal(w / 2, h * 0.82, 70, 'rgba(255,210,60,' + (0.5 + Math.sin(t * 3) * 0.25) + ')');
-    if (!PB.Sprites.ready(me.dex, shiny)) PB.Sprites.ensure([{ dex: me.dex, shiny }]);
-    PB.Sprites.draw(c, me.dex, 'Idle', Math.PI / 2, t, w / 2, h * 0.82 + 10, 5, 0, shiny);
+    const meDex = PB.skinDex(me.dex, PB.Save.skin(me.id));
+    if (!PB.Sprites.ready(meDex, shiny)) PB.Sprites.ensure([{ dex: meDex, shiny }]);
+    PB.Sprites.draw(c, meDex, 'Idle', Math.PI / 2, t, w / 2, h * 0.82 + 10, 5, 0, shiny);
   }
 
   function drawHero(cv, dex, scale, glow, shiny) {
@@ -1689,7 +1709,7 @@ PB.Lobby = (() => {
       drawLobbyTeam($('#hero-cv'));
     } else if (current === 'detail' && detailId) {
       const b = PB.brawlerById(detailId);
-      drawHero($('#dt-cv'), PB.Save.lineOf(detailId)[dtStage] || b.dex, 4, PB.Save.owned(detailId), PB.Save.skin(detailId) === 'shiny');
+      drawHero($('#dt-cv'), PB.skinDex(PB.Save.lineOf(detailId)[dtStage] || b.dex, PB.Save.skin(detailId)), 4, PB.Save.owned(detailId), PB.Save.skin(detailId) === 'shiny');
     } else if (current === 'chestopen' && chest) {
       drawChest(dt);
     }
@@ -1841,7 +1861,7 @@ PB.Lobby = (() => {
     const TIPS = {
       coins: 'Monedas: para subir de nivel a tus Pokémon (más vida y más daño). Se ganan jugando, con las misiones y en los cofres.',
       points: 'Puntos Pokémon: para desbloquear el Pokémon que tú quieras. Se ganan jugando, con las misiones y en los cofres.',
-      rainbow: 'Monedas Arcoíris: para comprar skins shiny. Salen en los cofres Super Ball y Ultra Ball.',
+      rainbow: 'Monedas Arcoíris: para comprar skins shiny y regionales. Salen en los cofres Super Ball y Ultra Ball.',
     };
     let tip = null, hideT = 0;
     const hide = () => { if (tip) { tip.remove(); tip = null; } clearTimeout(hideT); };
