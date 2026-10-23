@@ -1946,8 +1946,8 @@ h1.lose { color: #ff8a7a; }
 .gc-n:hover { text-decoration: underline; }
 .gc-m.mine .gc-n { color: #7dff8f; }
 .gc-m.owner .gc-n { color: #ffd23a; }
-/* (con letra normal en negrita: la pixelada del juego se ve borrosa así de pequeña) */
-.gc-tag { display: inline-block; margin-left: 6px; font: 800 11px/15px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; letter-spacing: 0.6px; padding: 1px 6px; background: #ffd23a; color: #2a1a00; box-shadow: 0 0 0 2px #6a4a00; vertical-align: 2px; }
+/* (letra normal en negrita y sin la sombra del chat: con la pixelada o con sombra se ve borrosa) */
+.gc-tag { display: inline-block; margin-left: 6px; font: 800 12px/16px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; letter-spacing: 0.4px; padding: 1px 6px; background: #ffd23a; color: #2a1a00; text-shadow: none; box-shadow: 0 0 0 2px #6a4a00; vertical-align: 2px; }
 .gc-b small { margin-left: 6px; color: #6a7aa0; font-size: 11px; }
 .gc-b p { margin: 1px 0 0; color: #e8eefc; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
 .gc-menu { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
