@@ -17,7 +17,7 @@ PB.META = {
   bonusWins: 3, // las 3 primeras victorias del día dan el doble de fichas
   // premio de cada modo según lo que dura (fichas, monedas, puntos y pase): por minuto jugado,
   // más o menos igual en todos. Niebla dura ~35 s; Voltorbol y Eliminación ~1 min; el resto ~2 min.
-  modeReward: { showdown: 0.55, duo: 0.7, ball: 1, knockout: 1, gems: 1.4, heist: 1.4, zone: 1.4, brawl: 1 },
+  modeReward: { showdown: 0.55, duo: 0.7, ball: 1, knockout: 1, gems: 1.4, heist: 1.4, zone: 1.4, brawl: 1.4 },
   // cofres (Pokéballs): tiradas de premio y probabilidad de Pokémon nuevo en cada tirada
   chests: {
     // pokemon: probabilidad de Pokémon nuevo en cada tirada; rare: peso de cada rareza (mejor cofre, más raros)
@@ -55,7 +55,7 @@ PB.statsAt = (def, lvl) => {
 
 // Copas que se ganan o pierden según las copas que ya tiene ese Pokémon
 // Modos largos (unos 2 minutos): su victoria vale más para que compense jugarlos tanto como Niebla
-PB.LONG_MODES = ['gems', 'heist', 'zone'];
+PB.LONG_MODES = ['gems', 'heist', 'zone', 'brawl'];
 PB.copasDelta = (copas, result, rank, mode) => {
   if (rank) {
     // Niebla Tóxica (y Dúo): según el puesto (1 a 10). Las partidas duran poco, así que dan menos
