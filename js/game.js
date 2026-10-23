@@ -79,7 +79,7 @@ PB.Game = class {
 
   // Multiplicador de daño: Caramelos Raros, nivel y fase de evolución
   powerMul(b) {
-    return b ? (1 + 0.1 * (b.power || 0)) * (b.lvlMul || 1) * PB.stageMul(b.def, b.stage || 0) * (b.megaT > 0 ? PB.MEGA.dmg : 1) * (b.rageT > 0 ? b.def.super.dmgMul || 1 : 1) * (b.buffT > 0 ? b.buffDmg || 1 : 1) : 1;
+    return b && b.line ? (1 + 0.1 * (b.power || 0)) * (b.lvlMul || 1) * PB.stageMul(b.def, b.stage || 0) * (b.megaT > 0 ? PB.MEGA.dmg : 1) * (b.rageT > 0 ? b.def.super.dmgMul || 1 : 1) * (b.buffT > 0 ? b.buffDmg || 1 : 1) : 1;
   }
 
   // velocidad al andar (invisible o con Danza Dragón y parecidos, más rápido; también el aura de algunos legendarios)
@@ -100,7 +100,7 @@ PB.Game = class {
   }
 
   gainMega(b, amount) {
-    if (!b || b.dead || b.megaT > 0 || amount <= 0) return;
+    if (!b || !b.line || b.dead || b.megaT > 0 || amount <= 0) return; // el Voltorb del Voltorbol no es un luchador
     if (!b.megas) amount /= PB.MEGA.first[Math.min(3, b.line.length) - 1];
     const before = b.megaCharge;
     b.megaCharge = Math.min(1, b.megaCharge + amount);
@@ -140,7 +140,7 @@ PB.Game = class {
   // EXP de evolución: por daño, K.O., objetivos y un poco solo por el tiempo.
   // Si algún rival va más evolucionado que tú, ganas EXP más rápido (para que nadie se escape).
   gainXp(b, amount) {
-    if (!b || b.dead || amount <= 0) return;
+    if (!b || !b.line || b.dead || amount <= 0) return;
     const steps = PB.evoSteps(b.def);
     if (b.stage >= steps.length) return;
     let k = 1;
@@ -799,7 +799,14 @@ PB.Game = class {
 
   // ¿Toca el proyectil un círculo (x, y, r)? La ola es un rectángulo ancho atravesado a su avance.
   shotTouches(p, x, y, r) {
-    if (!p.wave) return Math.hypot(x - p.x, y - p.y) < p.r + r;
+    if (!p.wave) {
+      const s = this._seg;
+      if (!s) return Math.hypot(x - p.x, y - p.y) < p.r + r;
+      // distancia al tramo recorrido en este paso
+      const ax = s[0], ay = s[1], dx = p.x - ax, dy = p.y - ay, l2 = dx * dx + dy * dy;
+      const k = l2 ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / l2)) : 1;
+      return Math.hypot(x - ax - dx * k, y - ay - dy * k) < p.r + r;
+    }
     const c = Math.cos(p.ang), s = Math.sin(p.ang), dx = x - p.x, dy = y - p.y;
     return Math.abs(dx * c + dy * s) < p.r + r && Math.abs(-dx * s + dy * c) < p.wave / 2 + r;
   }
@@ -1468,12 +1475,20 @@ PB.Game = class {
         if (d < 30 || o.dead || p.t > 4) continue;
       }
       const step = Math.hypot(p.vx, p.vy) * dt;
+      this._seg = [p.x, p.y]; // tramo recorrido en este paso (los disparos rápidos no se saltan a nadie)
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.traveled += step;
       if (p.traveled >= p.range) {
         if (p.boomerang && !p.back) { p.back = true; p.hit = new Set(); }
         else if (!p.boomerang) {
+          // el último tramo también golpea (si no, lo que está justo al final del alcance no recibe)
+          for (const e of this.brawlers) {
+            if (e.dead || e.leap || e.phase || e.team === p.team || p.hit.has(e.idx) || !this.shotTouches(p, e.x, e.y - 8, e.r)) continue;
+            p.hit.add(e.idx);
+            this.damage(e, p.dmg, p.owner, p.atkType, { charge: p.charge, knockback: p.knockback, stun: p.stun, kx: p.vx, ky: p.vy, shotId: p.shotId, hx: p.x, hy: p.y, big: p.isSuper || p.powered });
+            if (!p.pierce) break;
+          }
           this.splitShot(p);
           this.orbBoom(p);
           this.puff(p);
@@ -1492,6 +1507,8 @@ PB.Game = class {
         const T = PB.TILE, c = Math.floor(p.x / T), r = Math.floor(p.y / T);
         if (p.bounces > 0) {
           // rebote: vuelve al sitio de antes y cambia la dirección según la cara del muro que ha tocado
+          // (si es una caja, también la golpea)
+          if (this.world.tile(c, r) === 'C') this.damageCrate(c, r, p.dmg, p.owner, p.charge);
           const px = p.x - p.vx * dt, py = p.y - p.vy * dt;
           const hitX = this.world.shotBlockedAt(p.x, py), hitY = this.world.shotBlockedAt(px, p.y);
           if (hitX || !hitY) p.vx = -p.vx;
@@ -1547,6 +1564,7 @@ PB.Game = class {
       }
       if (!dead) keep.push(p);
     }
+    this._seg = null;
     this.projectiles = keep;
   }
 
@@ -1921,7 +1939,7 @@ PB.Game = class {
       f.val = amt;
     }
     // golpe que "pesa": el objetivo se queda quieto un instante y retrocede un poco
-    if (!opts.quiet && source && amt > 0) {
+    if (!opts.quiet && source && source.x != null && amt > 0) {
       target.hitStopT = Math.max(target.hitStopT || 0, opts.big || eff > 1 ? 0.07 : 0.04);
       if (!opts.knockback) {
         const a = Math.atan2(target.y - source.y, target.x - source.x);
@@ -1970,7 +1988,7 @@ PB.Game = class {
     // animación: se debilita y vuelve a su Pokéball con el rayo rojo
     this.fx.push({ kind: 'faint', dex: PB.skinDex(b.dex, b.skin), shiny: b.shiny, x: b.x, y: b.y, facing: b.facing, team: b.team, t: 0, life: 1.5 });
     for (let i = 0; i < 16; i++) this.px(b.x, b.y - 16, i % 2 ? '#ffffff' : b.team === 'blue' ? '#5ab0ff' : '#ff5a5a', { speed: 240, life: 0.5, size: 5 });
-    this.feed.push({ killer: killer ? killer.name : '?', kdex: killer && killer.def ? PB.skinDex(killer.dex, killer.skin) : null, victim: b.name, vdex: PB.skinDex(b.dex, b.skin), team: killer ? killer.team : 'red', t: this.time });
+    this.feed.push({ killer: killer ? killer.name : '?', kdex: killer && killer.line ? PB.skinDex(killer.dex, killer.skin) : null, victim: b.name, vdex: PB.skinDex(b.dex, b.skin), team: killer ? killer.team : 'red', t: this.time });
     if (this.feed.length > 4) this.feed.shift();
     this.events.push({ type: 'ko', b, killer, streak: killer ? killer.streak : 0 });
     this.shake = Math.max(this.shake, b.isPlayer ? 16 : 6);

@@ -259,7 +259,8 @@ PB.Save = (() => {
       data = fresh();
     }
     // partidas guardadas de antes: los Pokémon que ya no existen se quitan
-    for (const id of Object.keys(data.owned)) if (!PB.brawlerById(id)) delete data.owned[id];
+    // (solo si la lista de Pokémon se ha cargado entera: si no, se borrarían los que sí existen)
+    if (PB.BRAWLERS && PB.BRAWLERS.length > 300) for (const id of Object.keys(data.owned)) if (!PB.brawlerById(id)) delete data.owned[id];
     if (!data.owned[data.selected]) data.selected = Object.keys(data.owned)[0] || null;
     delete data.missions; // formato antiguo
     checkResets();
@@ -273,6 +274,13 @@ PB.Save = (() => {
   }
 
   const get = () => data || load();
+
+  // otra pestaña del juego ha guardado: se usa lo suyo (si no, esta pestaña, con lo de antes,
+  // lo pisaría al guardar y se perderían las compras hechas en la otra)
+  window.addEventListener('storage', (e) => {
+    if (e.key !== KEY || !e.newValue) return;
+    try { data = Object.assign(fresh(), JSON.parse(e.newValue)); } catch (err) {}
+  });
 
   function giveReward(r) {
     const d = get();

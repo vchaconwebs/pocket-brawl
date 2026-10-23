@@ -481,7 +481,7 @@
 
   function toMenu() {
     // salir a mitad de una partida en red cuenta como abandono (derrota)
-    if (net && mode === 'play' && game && !game.winner && (net.client || net.host)) {
+    if (net && mode === 'play' && game && !game.winner && !(game.player && game.player.out) && (net.client || net.host)) {
       try { PB.Save.applyAbandon(JSON.parse(localStorage.getItem('pb.netMatch'))); } catch (e) {}
     }
     endNet();
@@ -826,8 +826,8 @@
           if (ev.killer === me) PB.Audio.play('ko', { mine: true });
           else if (ev.b === me) {
             PB.Audio.play('ko', { me: true });
-            // en red, al quedar eliminado se sigue mirando hasta que acabe (el resultado sale al final)
-            if (game.online && game.mode.ffa && me.out) renderer.announce(PB.T('¡Eliminado!'), '#ff8080', PB.T('Puesto #{n} · mira cómo acaba la partida', { n: me.rank || '?' }), 2.6);
+            // en red, al quedar eliminado sale el resultado enseguida (la partida sigue para los demás)
+            if (game.online && game.mode.ffa && me.out) renderer.announce(PB.T('¡Eliminado!'), '#ff8080', PB.T('Puesto #{n}', { n: me.rank || '?' }), 2.6);
           }
           else if (near(ev.b)) PB.Audio.play('ko');
           break;
@@ -971,6 +971,8 @@
       if (heartT <= 0) { heartT = 0.85; PB.Audio.play('heart'); }
     } else heartT = 0;
 
+    // en red (Niebla / Dúo): cuando ya tengo puesto (en el dúo, al caer la pareja entera) salen los resultados
+    if (mode === 'play' && game.online && game.mode.ffa && me && me.out && me.rank && !game.winner && endTimer <= 0) endTimer = 2.6;
     if (endTimer > 0) {
       endTimer -= dt;
       if (endTimer <= 0 && mode === 'play') showEnd();

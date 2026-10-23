@@ -136,6 +136,8 @@ PB.Sprites = {
       // sin la versión shiny descargada (Ditto shiny transformado en otro): la normal
       if (!img && shiny) return this.frame(dex, anim, angle, t, length, false);
       if (!img) return null;
+      // megas y formas sin dibujo shiny: se pintan con los colores del shiny de la forma normal
+      if (shiny && !m.sh) img = this.shinyLike(dex, name, img) || img;
       const a = A[name];
       const n = Math.min(a.n, a.d.length);
       const f = Math.min(n - 1, this.frameIndex(a.d.slice(0, n), t, length));
@@ -152,6 +154,59 @@ PB.Sprites = {
     const row = img.naturalHeight / a.h >= 8 ? this.dirRow(angle) : 0;
     // el ancla se pone en el centro y 10 px más abajo para que encaje con el dibujo de antes
     return { img, sx: this.frameIndex(a.dur, t, length) * a.w, sy: row * a.h, w: a.w, h: a.h, ax: a.w / 2, ay: a.h / 2 + 5 };
+  },
+
+  // Versión shiny "calculada" de una forma (Mega Rayquaza...) a partir de cómo cambian los colores
+  // del Pokémon normal a su shiny. Se hace una vez por animación; hasta entonces, null.
+  shinyLike(dex, anim, img) {
+    const base = parseInt(dex, 10);
+    if (String(base) === String(dex) || !this.hasShiny(base)) return null;
+    const k = dex + 'R:' + anim;
+    if (k in this.imgs) return this.imgs[k];
+    const n = this.imgs[base + ':Idle'], s = this.imgs[base + 's:Idle'];
+    if (!n || !s) { if (!this._shWait) this._shWait = {}; if (!this._shWait[base]) { this._shWait[base] = 1; this.ensure([base, { dex: base, shiny: true }]); } return null; }
+    try {
+      const pal = this._shPal || (this._shPal = {});
+      if (!pal[base]) {
+        // pares color normal -> color shiny en los mismos píxeles (el más repetido)
+        const w = Math.min(n.width, s.width), h = Math.min(n.height, s.height);
+        const pix = (im) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.drawImage(im, 0, 0); return x.getImageData(0, 0, w, h).data; };
+        const A = pix(n), B = pix(s), cnt = new Map();
+        for (let i = 0; i < A.length; i += 4) {
+          if (A[i + 3] < 200 || B[i + 3] < 200) continue;
+          const a = (A[i] << 16) | (A[i + 1] << 8) | A[i + 2], b = (B[i] << 16) | (B[i + 1] << 8) | B[i + 2];
+          const m = cnt.get(a) || new Map();
+          m.set(b, (m.get(b) || 0) + 1);
+          cnt.set(a, m);
+        }
+        pal[base] = [...cnt].map(([a, m]) => [a, [...m].sort((x, y) => y[1] - x[1])[0][0]]).filter(([a, b]) => a !== b);
+      }
+      const P = pal[base];
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d');
+      x.drawImage(img, 0, 0);
+      const d = x.getImageData(0, 0, c.width, c.height), D = d.data, memo = new Map();
+      for (let i = 0; i < D.length; i += 4) {
+        if (!D[i + 3]) continue;
+        const col = (D[i] << 16) | (D[i + 1] << 8) | D[i + 2];
+        let out = memo.get(col);
+        if (out === undefined) {
+          // el color más parecido de la paleta normal y se le aplica el mismo cambio
+          let best = null, bd = 2400;
+          for (const p of P) {
+            const dr = (p[0] >> 16) - D[i], dg = ((p[0] >> 8) & 255) - D[i + 1], db = (p[0] & 255) - D[i + 2], dd = dr * dr + dg * dg + db * db;
+            if (dd < bd) { bd = dd; best = p; }
+          }
+          out = best ? [D[i] + (best[1] >> 16) - (best[0] >> 16), D[i + 1] + ((best[1] >> 8) & 255) - ((best[0] >> 8) & 255), D[i + 2] + (best[1] & 255) - (best[0] & 255)] : null;
+          memo.set(col, out);
+        }
+        if (out) { D[i] = out[0]; D[i + 1] = out[1]; D[i + 2] = out[2]; }
+      }
+      x.putImageData(d, 0, 0);
+      this.imgs[k] = c;
+    } catch (e) { this.imgs[k] = null; }
+    return this.imgs[k];
   },
 
   // (x, y) = punto del suelo bajo el Pokémon
