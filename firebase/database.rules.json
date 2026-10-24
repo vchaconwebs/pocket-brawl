@@ -39,7 +39,7 @@
     "mm": {
       "$mode": {
         ".read": "auth != null",
-        ".write": "auth != null && !(root.child('playBan/' + auth.uid).val() === true || root.child('playBan/' + auth.uid).val() > now)"
+        ".write": "auth != null && !(root.child('playBan/' + auth.uid).val() === true || root.child('playBan/' + auth.uid).isNumber() && root.child('playBan/' + auth.uid).val() > now)"
       }
     },
     "playBan": {
@@ -172,7 +172,7 @@
         "t"
       ],
       "$id": {
-        ".write": "auth != null && (!data.exists() && newData.exists() && newData.child('uid').val() === auth.uid && !(root.child('chatBan/' + auth.uid).val() === true || root.child('chatBan/' + auth.uid).val() > now) && newData.parent().parent().child('chatLast/' + auth.uid).val() === now || data.exists() && !newData.exists() && (data.child('uid').val() === auth.uid || auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3' || data.child('t').val() < now - 86400000))",
+        ".write": "auth != null && (!data.exists() && newData.exists() && newData.child('uid').val() === auth.uid && !(root.child('chatBan/' + auth.uid).val() === true || root.child('chatBan/' + auth.uid).isNumber() && root.child('chatBan/' + auth.uid).val() > now) && newData.parent().parent().child('chatLast/' + auth.uid).val() === now || data.exists() && !newData.exists() && (data.child('uid').val() === auth.uid || auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3' || data.child('t').val() < now - 86400000))",
         ".validate": "!newData.exists() || newData.hasChildren(['uid', 'name', 'text', 't']) && newData.child('t').val() === now && newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 16 && newData.child('text').isString() && newData.child('text').val().length >= 1 && newData.child('text').val().length <= 120 && (!newData.child('av').exists() || newData.child('av').isString() && newData.child('av').val().length <= 16)",
         "uid": {
           ".validate": "true"
@@ -222,7 +222,7 @@
       "$pid": {
         ".write": "auth != null && auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3' && !newData.exists()",
         "$uid": {
-          ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('poll/id').val() === $pid && root.child('poll/ends').val() > now",
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('poll/id').val() === $pid && root.child('poll/ends').isNumber() && root.child('poll/ends').val() > now",
           ".validate": "newData.isString() && newData.val().matches(/^[a-z]+(,[a-z]+){0,7}$/)"
         }
       }
