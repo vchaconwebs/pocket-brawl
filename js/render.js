@@ -2144,13 +2144,6 @@ PB.Renderer = class {
     const isMe = b === focus && b.isPlayer;
     // nombre (y un rayo si tiene el súper listo)
     this.outlined(b.name, x, y - 8, 13, b.creator ? '#ffd23a' : isMe ? '#7dff8f' : mine ? '#a9d0ff' : '#ffb0b0');
-    // medalla de maestría de ese Pokémon (rombo del color del rango) a la izquierda del nombre
-    if (b.mastery) {
-      const img = PB.PixUI.masteryCanvas(b.mastery);
-      const mx = Math.round(x - ctx.measureText(b.name).width / 2 - 26), my = Math.round(y - 27);
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(img, mx, my, 24, 29);
-    }
     // vida: barra pixel con una marca cada 1000
     const hpk = Math.max(0, b.hp) / b.maxHp;
     const col = isMe ? '#43e05a' : mine ? '#3d8bff' : '#ff4545';
