@@ -76,8 +76,21 @@ PB.Chat = (() => {
     PB.Online.on('party', () => { tabs(); badge(); });
     PB.Online.on('live', () => { if (gOpen) online(); });
   }
-  // se empieza a escuchar en cuanto hay sesión (para el contador de mensajes nuevos)
-  async function startGlobal() {
+  // El chat general solo se escucha con el chat abierto (cada mensaje que llega gasta descargas del
+  // servidor, y con mucha gente es muchísimo). En la lobby, con el chat cerrado, cada minuto y medio se
+  // mira solo el último mensaje para el aviso de "mensajes nuevos".
+  let peekNew = false, peekT = 0, peekIv = null;
+  async function peek() {
+    if (gOpen || document.hidden || PB.Lobby.current !== 'lobby' || Date.now() - peekT < 85000) return;
+    peekT = Date.now();
+    const m = await PB.Online.peekChat();
+    if (m && m.t > seen.global && !m.mine && !isMuted(m.uid)) { peekNew = true; badge(); }
+  }
+  function startGlobal() {
+    if (!peekIv) peekIv = setInterval(peek, 90000);
+    peek();
+  }
+  async function watchGlobal() {
     if (gStarted) return;
     gStarted = true;
     if (!(await PB.Online.watchChat())) gStarted = false;
@@ -110,7 +123,7 @@ PB.Chat = (() => {
     gOpen = true;
     if (t) tab = t;
     $('#gc-log').dataset.ready = '';
-    startGlobal();
+    watchGlobal();
     $('#gchat').classList.remove('hidden');
     online();
     tabs();
@@ -124,12 +137,16 @@ PB.Chat = (() => {
     PB.Audio.play('uiBack');
     gOpen = false;
     menuFor = null;
+    gStarted = false;
+    PB.Online.unwatchChat();
+    peekT = Date.now();
     $('#gchat').classList.add('hidden');
     $('#gc-q').blur();
   }
   function markSeen() {
     const msgs = msgsOf(tab);
     if (msgs.length) seen[tab] = Math.max(seen[tab], msgs[msgs.length - 1].t || 0);
+    if (tab === 'global') peekNew = false;
     if (tab === 'global') try { localStorage.setItem('pb.chatSeen', String(seen.global)); } catch (e) {}
   }
   const unread = (t) => msgsOf(t).filter((m) => m.t > seen[t] && !m.mine && !isMuted(m.uid)).length;
@@ -137,7 +154,7 @@ PB.Chat = (() => {
     if (gOpen) markSeen();
     const set = (el, n) => { if (!el) return; el.textContent = n > 9 ? '9+' : String(n); el.classList.toggle('hidden', !n); };
     const p = inParty() ? unread('party') : 0;
-    set($('#chat-badge'), unread('global') + p);
+    set($('#chat-badge'), (unread('global') || (peekNew ? 1 : 0)) + p);
     set($('#gc-pbadge'), tab === 'party' ? 0 : p);
   }
 

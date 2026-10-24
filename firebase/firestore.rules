@@ -25,6 +25,19 @@ service cloud.firestore {
       allow create, update: if signed() && me() == 'ULFnTGBapaaIUhxmHKgCh9TIm6G3';
     }
 
+    // Rankings compartidos: el primero que lo pide pasado el rato deja el top 50 aquí (1 lectura para
+    // los demás en vez de 50). La hora tiene que ser la de ahora para que nadie lo deje "congelado".
+    match /cache/{key} {
+      allow read: if signed();
+      allow write: if signed()
+        && key.matches('^(players|mons|clans|mon-[A-Za-z0-9_-]{1,40})$')
+        && request.resource.data.keys().hasOnly(['t', 'v'])
+        && request.resource.data.v is string && request.resource.data.v.size() < 60000
+        && request.resource.data.t is number
+        && request.resource.data.t > request.time.toMillis() - 120000
+        && request.resource.data.t < request.time.toMillis() + 120000;
+    }
+
     // Nombres únicos: el documento es el nombre en minúsculas; nadie puede quitarle el suyo a otro
     match /names/{key} {
       allow read: if signed();

@@ -175,6 +175,7 @@
         <div class="now" id="now"><i></i><b class="num" id="now-n">–</b><span id="now-txt">en línea ahora</span></div>
         <div class="rec" id="rec" title="Récord de jugadores a la vez"><span>🏆</span><b class="num" id="rec-n">–</b><span id="rec-txt">récord a la vez</span></div>
         <div class="rec" id="fsuse" title="Uso de la base de datos hoy (aprox.). Límite gratis: 50.000 lecturas y 20.000 escrituras al día; se reinicia a las 9:00"><span>🗄️</span><b class="num" id="fs-n">–</b><span id="fs-txt">uso del servidor hoy</span></div>
+        <div class="rec" id="dluse" title="Descargas de la Realtime Database hoy (aprox., las cuenta el juego). Límite gratis: 10 GB al mes ≈ 330 MB al día"><span>📶</span><b class="num" id="dl-n">–</b><span id="dl-txt">descargas hoy</span></div>
         <div class="rec" id="avg" title="Media de gente en línea hoy (se mide cada 10 minutos)"><span>📊</span><b class="num" id="avg-n">–</b><span id="avg-txt">media en línea hoy</span></div>
       </div>
       <div>
@@ -225,7 +226,7 @@
   <footer>
     <b>Visitas:</b> veces que se abre el juego (una por sesión del navegador), también desde itch.io y otras webs.
     <b>Jugadores:</b> personas distintas que juegan al menos una partida ese día; en periodos de varios días se suman los de cada día.
-    <b>En línea:</b> pestañas con el juego abierto ahora mismo (se refresca cada 15 s). <b>Récord a la vez:</b> el máximo de gente conectada al mismo tiempo (se cuenta desde el 22/10/2026). Días en hora de España · el resto se actualiza cada minuto.
+    <b>En línea:</b> pestañas con el juego abierto ahora mismo (se refresca cada 30 s). <b>Récord a la vez:</b> el máximo de gente conectada al mismo tiempo (se cuenta desde el 22/10/2026). Días en hora de España · el resto se actualiza cada minuto.
   </footer>
 </div>
 
@@ -473,13 +474,32 @@
     $('#fs-n').style.color = mx >= 80 ? '#ff6b6b' : mx >= 60 ? '#ffcf3a' : '';
     $('#fs-txt').textContent = `servidor hoy · ${fmt(r)} lecturas (${pr} %) · ${fmt(w)} escrituras (${pw} %)`;
   }
-  function render() { today(); tiles(); chips(); trend(); breakdowns(); table(); fsUse(); }
+  // descargas de la Realtime Database de hoy (relevo de partidas, chat, contador de conectados), en KB
+  function dlUse() {
+    const r = data[dayKey(new Date())] || {}, f = r.dl || {};
+    const mb = (k) => (f[k] || 0) / 1024, tot = mb('relay') + mb('chat') + mb('online'), pc = Math.round((tot / 330) * 100);
+    $('#dl-n').textContent = pc + ' %';
+    $('#dl-n').style.color = pc >= 80 ? '#ff6b6b' : pc >= 60 ? '#ffcf3a' : '';
+    $('#dl-txt').textContent = `descargas hoy · ${dec(tot)} MB de 330 · relevo ${dec(mb('relay'))} · chat ${dec(mb('chat'))} · conectados ${dec(mb('online'))}` + (r.relay ? ` · ${fmt(r.relay)} jugadores por relevo` : '');
+  }
+  function render() { today(); tiles(); chips(); trend(); breakdowns(); table(); fsUse(); dlUse(); }
 
+  let loadedAll = false;
   async function load() {
     try {
       if (firebase.auth().currentUser) token = await firebase.auth().currentUser.getIdToken();
-      data = (await (await fetch(DB + '/stats.json' + authQ(), { cache: 'no-store' })).json()) || {};
-      if (data.error) throw new Error(data.error);
+      // (todo el histórico solo la primera vez; después, cada minuto, solo el día de hoy: así esta página
+      // no se come las descargas del servidor si se deja abierta)
+      if (!loadedAll) {
+        data = (await (await fetch(DB + '/stats.json' + authQ(), { cache: 'no-store' })).json()) || {};
+        if (data.error) throw new Error(data.error);
+        loadedAll = true;
+      } else {
+        const k = dayKey(new Date());
+        const t = await (await fetch(DB + '/stats/' + k + '.json' + authQ(), { cache: 'no-store' })).json();
+        if (t && t.error) throw new Error(t.error);
+        data[k] = t || {};
+      }
       $('#live').classList.remove('off');
       $('#live-txt').textContent = 'En directo · ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       render();
@@ -492,12 +512,21 @@
   // gente con el juego abierto ahora mismo (1 = en el menú, 2 = jugando)
   async function loadOnline() {
     try {
-      const o = (await (await fetch(DB + '/online.json', { cache: 'no-store' })).json()) || {};
-      if (o.error) return;
-      const all = Object.values(o);
-      const playing = all.filter((v) => v === 2 || (typeof v === 'string' && v.startsWith('p:'))).length;
-      const searching = all.filter((v) => typeof v === 'string' && v.startsWith('s:')).length;
-      $('#now-n').textContent = fmt(all.length);
+      // el resumen que deja el juego (pesa poco); si no está o es viejo, la lista entera
+      const sm = await (await fetch(DB + '/onlineSum.json', { cache: 'no-store' })).json();
+      let total, playing = 0, searching = 0;
+      if (sm && sm.n != null && Date.now() - (sm.t || 0) < 120000) {
+        total = sm.n;
+        for (const v of Object.values(sm.m || {})) { const [p, q] = String(v).split(',').map(Number); playing += p || 0; searching += q || 0; }
+      } else {
+        const o = (await (await fetch(DB + '/online.json', { cache: 'no-store' })).json()) || {};
+        if (o.error) return;
+        const all = Object.values(o);
+        total = all.length;
+        playing = all.filter((v) => v === 2 || (typeof v === 'string' && v.startsWith('p:'))).length;
+        searching = all.filter((v) => typeof v === 'string' && v.startsWith('s:')).length;
+      }
+      $('#now-n').textContent = fmt(total);
       $('#now-txt').textContent = 'en línea · ' + fmt(playing) + ' jugando' + (searching ? ` · ${fmt(searching)} buscando` : '');
     } catch (e) {}
     try {
@@ -534,7 +563,7 @@
     load();
     loadOnline();
     setInterval(load, 60000);
-    setInterval(loadOnline, 15000);
+    setInterval(loadOnline, 30000);
   });
 </script>
 </body>

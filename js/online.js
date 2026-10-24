@@ -104,8 +104,17 @@ PB.Online = (() => {
         n[k] -= v;
         rtdb.ref('stats/' + day() + '/fs/' + k).set(fb.database.ServerValue.increment(v)).catch(() => {});
       }
+      // descargas de la Realtime Database (en KB, aprox.) por tipo: stats/<día>/dl/<tipo>
+      for (const k in dl) {
+        const v = Math.min(Math.floor(dl[k] / 1024), 100000);
+        if (!v) continue;
+        dl[k] -= v * 1024;
+        rtdb.ref('stats/' + day() + '/dl/' + k).set(fb.database.ServerValue.increment(v)).catch(() => {});
+      }
     }, 120000);
   }
+  const dl = {};
+  function noteDl(kind, bytes) { dl[kind] = (dl[kind] || 0) + bytes; }
 
   function bump(path) {
     if (!rtdb || testing) return;
@@ -139,13 +148,43 @@ PB.Online = (() => {
   // gente conectada ahora mismo: una marca por pestaña, sin datos de la cuenta.
   // 'm' = en el menú, 's:<modo>' = buscando partida, 'p:<modo>' = jugando. Se borra sola al cerrar.
   // (las versiones viejas del juego ponen 1 = menú y 2 = jugando)
+  //
+  // Para saber cuánta gente hay NO se escucha la lista entera (cada cambio le llegaría a todos: con
+  // cientos de jugadores eso solo ya se come las descargas del mes). Un solo navegador, el "contador",
+  // la escucha y cada pocos segundos deja el resumen en onlineSum = { n, m: { modo: 'jugando,buscando' }, t, by };
+  // los demás solo leen ese resumen (y no mientras juegan). Si el contador se va, el primero que vea
+  // el resumen viejo (más de 70 s) pasa a serlo.
   let onlineRef = null, onlineState = 'm';
   let live = { total: 0, modes: {} };
-  function goOnline() {
-    if (!rtdb) return;
-    // todos ven cuánta gente hay en cada modo (también en pruebas locales)
-    rtdb.ref('online').on('value', (s) => {
+  let sid = '', sum = null, sumOff = null, agg = null, aggT = 0, aggKey = '', aggTimer = null, aggWait = null;
+  const SUM_OLD = 70000;
+  function readSum(v) {
+    const modes = {};
+    for (const [m, s] of Object.entries((v && v.m) || {})) {
+      const [p, q] = String(s).split(',').map((x) => x | 0);
+      modes[m] = { play: p, search: q };
+    }
+    live = { total: (v && v.n) | 0, modes };
+    emit('live', live);
+  }
+  function watchSum(on) {
+    if (on && !sumOff) {
+      const ref = rtdb.ref('onlineSum');
+      const cb = ref.on('value', (s) => {
+        sum = s.val();
+        noteDl('online', 150);
+        if (sum && !agg) readSum(sum);
+      }, () => { sum = null; });
+      sumOff = () => ref.off('value', cb);
+    } else if (!on && sumOff) { sumOff(); sumOff = null; sum = null; }
+  }
+  // ser el contador: escucho la lista y escribo el resumen (como mucho cada 15 s, y cada 30 s aunque no cambie)
+  function startAgg() {
+    if (agg) return;
+    const ref = rtdb.ref('online');
+    const cb = ref.on('value', (s) => {
       const all = Object.values(s.val() || {});
+      noteDl('online', 40);
       const modes = {};
       for (const v of all) {
         const m = typeof v === 'string' && /^[ps]:/.test(v) ? v.slice(2) : null;
@@ -156,19 +195,58 @@ PB.Online = (() => {
       live = { total: all.length, modes };
       emit('live', live);
       if (!testing) notePeak(all.length);
+      writeSum();
     });
+    agg = () => ref.off('value', cb);
+  }
+  function stopAgg() { if (agg) agg(); agg = null; clearTimeout(aggTimer); aggTimer = null; }
+  function writeSum(force) {
+    if (!agg) return;
+    const m = {};
+    for (const [k, v] of Object.entries(live.modes)) m[k] = v.play + ',' + v.search;
+    const key = JSON.stringify([live.total, m]);
+    const wait = 15000 - (Date.now() - aggT);
+    if (!force && key === aggKey) return;
+    if (wait > 0) { if (!aggTimer) aggTimer = setTimeout(() => { aggTimer = null; writeSum(true); }, wait); return; }
+    aggKey = key;
+    aggT = Date.now();
+    rtdb.ref('onlineSum').set({ n: live.total, m, t: fb.database.ServerValue.TIMESTAMP, by: sid }).catch(() => {});
+  }
+  function sumTick() {
+    const playing = onlineState[0] === 'p' || document.hidden;
+    // mientras juegas (o con la pestaña escondida) no hace falta saber cuánta gente hay (y el contador lo deja para otro)
+    watchSum(!playing);
+    if (playing) { stopAgg(); return; }
+    const stale = !sum || now() - (sum.t || 0) > SUM_OLD;
+    if (sum && sum.by && sum.by !== sid && !stale) { stopAgg(); readSum(sum); return; }
+    if (!agg) {
+      // (cada uno espera un rato al azar y lo vuelve a mirar, para que no se pongan todos a la vez)
+      if (stale && !aggWait) aggWait = setTimeout(() => {
+        aggWait = null;
+        if (onlineState[0] !== 'p' && !document.hidden && (!sum || now() - (sum.t || 0) > SUM_OLD)) startAgg();
+      }, Math.random() * 20000);
+      return;
+    }
+    if (Date.now() - aggT > 30000) writeSum(true);
+  }
+  function goOnline() {
+    if (!rtdb) return;
+    sid = Array.from({ length: 12 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
+    watchSum(true);
+    setInterval(sumTick, 10000);
+    document.addEventListener('visibilitychange', sumTick);
+    setTimeout(sumTick, 3000);
     if (testing) return;
-    // media diaria: cada 2 minutos (hora de Madrid) se apunta cuánta gente hay; solo vale la primera foto
+    // media diaria: cada 2 minutos (hora de Madrid) el contador apunta cuánta gente hay; solo vale la primera foto
     let lastSlot = -1;
     setInterval(() => {
       const [h, m] = new Date(Date.now() + offset).toLocaleTimeString('en-GB', { timeZone: 'Europe/Madrid', hour12: false }).split(':').map(Number);
       const slot = h * 30 + Math.floor(m / 2);
-      if (slot === lastSlot || !live.total) return;
+      if (slot === lastSlot || !live.total || !agg) return;
       lastSlot = slot;
-      const ref = rtdb.ref('stats/' + day() + '/online/' + slot);
-      ref.once('value').then((s) => { if (!s.exists()) return ref.set(live.total); }).catch(() => {});
+      // (las reglas solo dejan escribirla una vez: si ya estaba, falla sin gastar nada)
+      rtdb.ref('stats/' + day() + '/online/' + slot).set(live.total).catch(() => {});
     }, 30000);
-    const sid = Array.from({ length: 12 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
     onlineRef = rtdb.ref('online/' + sid);
     // al reconectar (móvil que vuelve de segundo plano) se vuelve a apuntar
     rtdb.ref('.info/connected').on('value', (s) => {
@@ -189,6 +267,7 @@ PB.Online = (() => {
     if (st === onlineState) return;
     onlineState = st;
     if (onlineRef) onlineRef.set(st).catch(() => {});
+    if (sid) sumTick();
   }
   const setPlaying = (on, mode) => setOnline(on && /^[a-z]+$/.test(mode || '') ? 'p:' + mode : 'm');
   const setSearching = (mode) => setOnline(mode ? 's:' + mode : 'm');
@@ -259,7 +338,7 @@ PB.Online = (() => {
       presence();
       listenInvites();
       await syncProfile(true).catch(() => {});
-      processAccepted().catch(() => {});
+      if (!isGuest()) processAccepted().catch(() => {});
       claimGifts().catch(() => {});
       emit('ready');
     })();
@@ -303,21 +382,34 @@ PB.Online = (() => {
   let myDoc = { friends: [], clan: null };
 
   const isGuest = () => !user || user.isAnonymous;
-  async function syncProfile(first) {
+  // (como mucho una escritura del perfil cada 3 minutos; lo que cambie entre medias va en la siguiente)
+  let profWT = 0, profLater = null;
+  async function syncProfile(first, force) {
     if (!uid || isGuest()) return;
     const d = PB.Save.get();
+    let stored = null;
     if (first) {
       const s = await fs.collection('users').doc(uid).get();
       if (s.exists) myDoc = Object.assign({ friends: [] }, s.data());
+      if (s.exists) stored = s.data();
     }
     // los 3 Pokémon con más copas (para el perfil público y el ranking por Pokémon)
     const best = Object.entries(d.copas || {}).filter(([id, c]) => c > 0 && PB.brawlerById(id)).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, c]) => ({ id, c }));
     const p = { name: myName(), nameLower: myName().toLowerCase(), tag: d.tag, copas: PB.Save.totalCopas(), fav: d.avatar || d.selected, clan: myDoc.clan || null, clanName: myDoc.clanName || '',
       best, bestCopas: best.length ? best[0].c : 0, pc: Object.fromEntries(Object.entries(d.copas || {}).filter(([id, c]) => c > 0 && PB.brawlerById(id))), played: (d.stats && d.stats.played) || 0, wins: (d.stats && d.stats.wins) || 0, owned: Object.keys(d.owned || {}).length };
-    const key = JSON.stringify(p);
-    if (key === lastProfile) return;
-    lastProfile = key;
+    // (las copas por Pokémon se ordenan para comparar igual que lo que ya hay guardado)
+    const keyOf = (o) => JSON.stringify(Object.keys(p).map((k) => (k === 'pc' ? Object.entries(o.pc || {}).sort() : o[k] === undefined ? null : o[k])));
+    const key = keyOf(p);
+    if (stored && keyOf(stored) === key) lastProfile = key; // al entrar, si el perfil guardado ya está al día no se reescribe
     Object.assign(myDoc, p);
+    if (key === lastProfile) return;
+    const wait = 180000 - (Date.now() - profWT);
+    if (!first && !force && wait > 0) {
+      if (!profLater) profLater = setTimeout(() => { profLater = null; syncProfile(false, true).catch(() => {}); }, wait);
+      return;
+    }
+    profWT = Date.now();
+    lastProfile = key;
     await fs.collection('users').doc(uid).set(Object.assign({ t: fb.firestore.FieldValue.serverTimestamp() }, p), { merge: true });
   }
   let profT = null;
@@ -342,13 +434,17 @@ PB.Online = (() => {
   }
 
   // ------------------------------------------------------------ copia del progreso en la nube
-  let saveT = null;
+  let saveT = null, lastCloud = '';
   function saveCloud(soon) {
     if (!uid || !user || user.isAnonymous) return;
     clearTimeout(saveT);
     saveT = setTimeout(() => {
+      // (si no ha cambiado nada desde la última copia, no se gasta la escritura)
+      const json = JSON.stringify(PB.Save.get());
+      if (json === lastCloud) return;
+      lastCloud = json;
       fs.collection('users').doc(uid).collection('private').doc('save')
-        .set({ json: JSON.stringify(PB.Save.get()), t: Date.now() }).catch(() => {});
+        .set({ json, t: Date.now() }).catch(() => { lastCloud = ''; });
     }, soon ? 500 : 240000); // (al acabar cada partida se guarda enseguida; si no, cada 4 min como mucho: el plan gratis tiene un límite de escrituras al día)
   }
 
@@ -468,7 +564,7 @@ PB.Online = (() => {
   let friendsCache = null, friendsT = 0;
   async function friends(force) {
     if (!(await start()) || isGuest()) return [];
-    if (!force && friendsCache && Date.now() - friendsT < 120000) return friendsCache;
+    if (!force && friendsCache && Date.now() - friendsT < 300000) return friendsCache;
     await processAccepted().catch(() => {});
     const ids = (myDoc.friends || []).slice(0, 100);
     const list = await usersByIds(ids);
@@ -478,11 +574,11 @@ PB.Online = (() => {
     return friendsCache;
   }
 
-  // (la lobby lo pide cada vez que se actualiza: se guarda 3 minutos para no gastar lecturas)
+  // (la lobby lo pide cada vez que se actualiza: se guarda 5 minutos para no gastar lecturas)
   let reqCache = null, reqT = 0;
   async function requests(force) {
     if (!(await start()) || isGuest()) return [];
-    if (!force && reqCache && Date.now() - reqT < 180000) return reqCache;
+    if (!force && reqCache && Date.now() - reqT < 300000) return reqCache;
     reqT = Date.now();
     reqCache = await requestsNow().catch(() => reqCache || []);
     return reqCache;
@@ -555,13 +651,29 @@ PB.Online = (() => {
   }
 
   // ------------------------------------------------------------ ranking (se guarda 10 minutos, también al recargar:
-  // cada vez que se pide son 50 lecturas y el plan gratis tiene un límite al día)
+  // cada vez que se pide son 50 lecturas y el plan gratis tiene un límite al día).
+  // Además se comparte entre todos: el primero que lo pide pasado el rato hace la consulta de 50 y deja
+  // el resultado en cache/<ranking> (1 documento); los demás leen solo ese documento (1 lectura).
   const rankCache = {};
-  async function cached(key, fn) {
+  const RANK_TTL = 600000, SHARED_TTL = 900000;
+  // (lo que viene del documento compartido lo ha escrito otro jugador: se vuelve a limpiar todo)
+  const safeId = (x) => String(x == null ? '' : x).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
+  const fixUsers = (v) => v.map((p) => Object.assign(viewUser(safeId(p.id), Object.assign({}, p, { clan: p.clan ? safeId(p.clan) : null })), p && p.c != null ? { c: p.c | 0 } : {}));
+  const fixClans = (v) => v.map((c) => viewClan(safeId(c.id), Object.assign({}, c, { members: (Array.isArray(c.memberIds) ? c.memberIds : []).map(safeId), officers: (Array.isArray(c.officers) ? c.officers : []).map(safeId), leader: safeId(c.leader) })));
+  async function cached(key, fn, fix) {
     let c = rankCache[key];
     if (!c) try { c = JSON.parse(localStorage.getItem('pb.rank.' + key) || 'null'); } catch (e) { c = null; }
-    if (c && Date.now() - c.t < 600000) return c.v;
-    const v = await fn();
+    if (c && Date.now() - c.t < RANK_TTL) return c.v;
+    let v = null;
+    const ref = fs.collection('cache').doc(key);
+    const s = await ref.get().catch(() => null);
+    const d = s && s.exists ? s.data() : null;
+    if (d && typeof d.v === 'string' && now() - (d.t || 0) < SHARED_TTL) try { v = JSON.parse(d.v); v = Array.isArray(v) ? fix(v.filter((x) => x && typeof x === 'object')).slice(0, 50) : null; } catch (e) { v = null; }
+    if (!Array.isArray(v)) {
+      v = await fn();
+      const json = JSON.stringify(v);
+      if (json.length < 60000) ref.set({ t: now(), v: json }).catch(() => {});
+    }
     rankCache[key] = { t: Date.now(), v };
     try { localStorage.setItem('pb.rank.' + key, JSON.stringify(rankCache[key])); } catch (e) {}
     return v;
@@ -572,7 +684,7 @@ PB.Online = (() => {
     const list = await cached('players', async () => {
       const q = await fs.collection('users').orderBy('copas', 'desc').limit(50).get();
       return q.docs.map((s) => viewUser(s.id, s.data()));
-    });
+    }, fixUsers);
     const out = list.map((p, i) => Object.assign({}, p, { pos: i + 1, me: p.id === uid }));
     if (!out.some((p) => p.me)) out.push(Object.assign(viewUser(uid, myDoc), { me: true, pos: '50+' }));
     return out;
@@ -584,7 +696,7 @@ PB.Online = (() => {
     const list = await cached('mons', async () => {
       const q = await fs.collection('users').orderBy('bestCopas', 'desc').limit(50).get();
       return q.docs.map((s) => viewUser(s.id, s.data()));
-    });
+    }, fixUsers);
     return list.map((p, i) => Object.assign({}, p, { pos: i + 1, me: p.id === uid }));
   }
   // ranking de un Pokémon concreto: quién tiene más copas con él (pc.<id> en el perfil)
@@ -594,7 +706,7 @@ PB.Online = (() => {
     const list = await cached('mon-' + id, async () => {
       const q = await fs.collection('users').orderBy('pc.' + id, 'desc').limit(50).get();
       return q.docs.map((s) => Object.assign(viewUser(s.id, s.data()), { c: ((s.data().pc || {})[id]) | 0 }));
-    });
+    }, fixUsers);
     return list.map((p, i) => Object.assign({}, p, { pos: i + 1, me: p.id === uid }));
   }
   // perfil público de un jugador (los invitados no tienen)
@@ -613,7 +725,7 @@ PB.Online = (() => {
     const list = await cached('clans', async () => {
       const q = await fs.collection('clans').orderBy('copas', 'desc').limit(50).get();
       return q.docs.map((s) => viewClan(s.id, s.data()));
-    });
+    }, fixClans);
     return list.map((c, i) => Object.assign({}, c, { pos: i + 1 }));
   }
 
@@ -640,14 +752,18 @@ PB.Online = (() => {
   }
 
   async function setMyClan(id, name) {
+    clanC = null;
     myDoc.clan = id;
     myDoc.clanName = name || '';
     lastProfile = '';
-    await syncProfile();
+    await syncProfile(false, true);
   }
 
+  // (mirar el clan cuesta una lectura por miembro: se guarda 2 minutos; al cambiar algo se vuelve a leer)
+  let clanC = null, clanCT = 0;
   async function myClan() {
     if (!(await start()) || isGuest()) return null;
+    if (clanC && myDoc.clan === clanC.id && Date.now() - clanCT < 120000) return clanC;
     if (!myDoc.clan) {
       const q = await fs.collection('clans').where('members', 'array-contains', uid).limit(1).get().catch(() => null);
       if (!q || q.empty) return null;
@@ -655,6 +771,8 @@ PB.Online = (() => {
     }
     const c = await clanFull(myDoc.clan);
     if (!c || !c.memberIds.includes(uid)) { await setMyClan(null); return null; }
+    clanC = c;
+    clanCT = Date.now();
     return c;
   }
   async function getClan(id) {
@@ -727,6 +845,7 @@ PB.Online = (() => {
   // Gestión del clan (solo el líder): expulsar, ascender a colíder, bajar a miembro y pasar el liderazgo
   async function clanAction(act, id) {
     if (!(await start()) || !myDoc.clan) return err('Sin conexión.');
+    clanC = null;
     const ref = fs.collection('clans').doc(myDoc.clan);
     const s = await ref.get();
     if (!s.exists) return err('Ese clan ya no existe.');
@@ -757,6 +876,7 @@ PB.Online = (() => {
     return q ? q.docs.map((d) => ({ id: d.id, name: clean(d.data().name, 16), copas: d.data().copas | 0, fav: PB.brawlerById(d.data().fav) ? d.data().fav : PB.BRAWLERS[0].id })) : [];
   }
   async function answerClanRequest(id, ok) {
+    clanC = null;
     const ref = fs.collection('clans').doc(myDoc.clan);
     if (ok) {
       const s = await ref.get();
@@ -782,7 +902,7 @@ PB.Online = (() => {
       stopChat();
       chatClan = myDoc.clan;
       await new Promise((res) => {
-        chatOff = fs.collection('clans').doc(chatClan).collection('chat').orderBy('t', 'desc').limit(60).onSnapshot((q) => {
+        chatOff = fs.collection('clans').doc(chatClan).collection('chat').orderBy('t', 'desc').limit(40).onSnapshot((q) => {
           chatMsgs = q.docs.map((d) => d.data()).reverse().map((m) => ({ sys: !!m.sys, from: m.uid === uid ? 'me' : m.uid, name: clean(m.name, 16), text: clean(m.text, 140), time: m.t }));
           res();
           emit('chat');
@@ -808,11 +928,14 @@ PB.Online = (() => {
   let pMsgs = [], pWatch = null, pCode = null, pSince = 0;
   const avatar = () => { const d = PB.Save.get(), b = PB.brawlerById(d.selected); return String(d.avatarDex || (b ? b.dex : '')).slice(0, 16); };
   const chatMsg = (key, m) => ({ id: key, uid: String(m.uid || ''), name: clean(m.name, 16) || 'Entrenador', text: String(m.text || '').slice(0, 120), t: +m.t || 0, av: String(m.av || ''), au: typeof m.au === 'string' ? m.au.slice(0, 30) : '', dur: Math.max(0, Math.min(9, +m.dur || 0)), mine: m.uid === uid });
-  function listen(ref, list, ev) {
-    const q = ref.orderByChild('t').limitToLast(40);
+  function listen(ref, list, ev, since) {
+    // (al volver a abrir el chat solo se bajan los mensajes nuevos)
+    const q = since ? ref.orderByChild('t').startAt(since + 1).limitToLast(40) : ref.orderByChild('t').limitToLast(40);
     const add = q.on('child_added', (s) => {
       const m = chatMsg(s.key, s.val() || {});
+      noteDl('chat', 150 + m.text.length);
       if (ev === 'pchat' && m.t < pSince) return;
+      if (list.some((x) => x.id === m.id)) return;
       list.push(m);
       list.sort((a, b) => a.t - b.t);
       if (list.length > 60) list.shift();
@@ -825,18 +948,37 @@ PB.Online = (() => {
     });
     return () => { q.off('child_added', add); q.off('child_removed', del); };
   }
+  // El chat general solo se escucha mientras está abierto: cada mensaje le llega a todos los que
+  // escuchan, y con mucha gente eso gasta muchísimas descargas. Con el chat cerrado, peekChat()
+  // mira de vez en cuando solo el último mensaje (para el aviso de mensajes nuevos).
+  let chatInit = false;
+  const audioGone = new Set();
   async function watchChat() {
     if (gWatch) return true;
     if (!(await start())) return false;
-    gWatch = listen(rtdb.ref('chat'), gMsgs, 'gchat');
+    const last = gMsgs.length ? gMsgs[gMsgs.length - 1].t : 0;
+    gWatch = listen(rtdb.ref('chat'), gMsgs, 'gchat', last);
+    if (chatInit) return true;
+    chatInit = true;
     rtdb.ref('chatBan/' + uid).on('value', (s) => { banned = !!s.val(); }, () => {});
-    // limpieza: los mensajes de hace más de un día se borran (cualquiera puede, poco a poco)
-    rtdb.ref('chat').orderByChild('t').endAt(now() - DAY).limitToFirst(25).once('value')
-      .then((s) => s.forEach((c) => { c.ref.remove().catch(() => {}); })).catch(() => {});
-    // los audios duran una hora
-    rtdb.ref('chatAudio').orderByChild('t').endAt(now() - 3600000).limitToFirst(25).once('value')
-      .then((s) => s.forEach((c) => { c.ref.remove().catch(() => {}); })).catch(() => {});
+    // limpieza: los mensajes de hace más de un día se borran (cualquiera puede, poco a poco), con su audio
+    rtdb.ref('chat').orderByChild('t').endAt(now() - DAY).limitToFirst(10).once('value')
+      .then((s) => s.forEach((c) => { c.ref.remove().catch(() => {}); rtdb.ref('chatAudio/' + c.key).remove().catch(() => {}); })).catch(() => {});
+    // los audios duran una hora (se borran sabiendo su id por el mensaje, sin tener que bajarlos)
+    setTimeout(() => {
+      for (const m of gMsgs) if (m.au && m.t < now() - 3600000 && !audioGone.has(m.au)) { audioGone.add(m.au); rtdb.ref('chatAudio/' + m.au).remove().catch(() => {}); }
+    }, 3000);
     return true;
+  }
+  function unwatchChat() { if (gWatch) gWatch(); gWatch = null; }
+  // el último mensaje del chat general (1 mensaje, no la lista)
+  async function peekChat() {
+    if (!(await start())) return null;
+    const s = await rtdb.ref('chat').orderByChild('t').limitToLast(1).once('value').catch(() => null);
+    let m = null;
+    if (s) s.forEach((c) => { m = chatMsg(c.key, c.val() || {}); });
+    noteDl('chat', 200);
+    return m;
   }
   async function sendGlobalChat(text) {
     if (!(await start())) return err('Sin conexión.');
@@ -1058,10 +1200,11 @@ PB.Online = (() => {
     if (!partyRef) return;
     partyRef.child('members/' + uid + '/ready').set(!!v);
   }
-  let lastMember = '';
+  let lastMember = '', lastStatus = '';
   function updateMe() {
     syncSoon();
-    if (uid && rtdb) rtdb.ref('status/' + uid).update({ name: myName(), fav: PB.Save.get().selected }).catch(() => {});
+    const st = myName() + '|' + PB.Save.get().selected;
+    if (uid && rtdb && st !== lastStatus) { lastStatus = st; rtdb.ref('status/' + uid).update({ name: myName(), fav: PB.Save.get().selected }).catch(() => {}); }
     if (!partyRef) return;
     const m = memberInfo();
     const key = JSON.stringify([m.name, m.fav, m.lvl, m.shiny, m.line]);
@@ -1235,12 +1378,36 @@ PB.Online = (() => {
   // Canal hacia los demás jugadores. Normalmente directo (WebRTC); con quien no se puede conectar
   // directo (routers estrictos, datos móviles...), los mensajes van por la base de datos:
   // relay/<partida>/<para>/<mensaje> = { f: de, d: mensaje }. Se borran al leerlos.
+  // Por el relevo cada byte cuenta (el plan gratis tiene 10 GB de descargas al mes): los mensajes
+  // van comprimidos ("z:" + base64) con quien también sabe descomprimir (lo dice con z:1 en _relay/_ping)
+  const canZip = typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
+  async function zip(s) {
+    const buf = new Uint8Array(await new Response(new Blob([s]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < buf.length; i += 8192) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 8192));
+    return 'z:' + btoa(bin);
+  }
+  async function unzip(s) {
+    const bin = atob(s.slice(2)), buf = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+  }
+
   function makeLink(me, db) {
     db = db || rtdb;
     const chans = {};
-    const relayPeers = new Set(), seen = {};
+    const relayPeers = new Set(), seen = {}, zipPeers = new Set();
     let relayOff = null, relayMid = null, relayIv = null;
-    const relaySend = (peer, s) => { if (relayMid) db.ref('relay/' + relayMid + '/' + peer).push({ f: me, d: s }).catch(() => {}); };
+    // (en cola para que lleguen en orden aunque comprimir tarde un poco)
+    let sendQ = Promise.resolve(), recvQ = Promise.resolve();
+    const relaySend = (peer, s) => {
+      if (!relayMid) return;
+      const push = (d) => db.ref('relay/' + relayMid + '/' + peer).push({ f: me, d }).catch(() => {});
+      if (canZip && zipPeers.has(peer) && s.length > 200) sendQ = sendQ.then(() => zip(s)).then(push, () => push(s));
+      else sendQ = sendQ.then(() => push(s));
+    };
+    const PING = canZip ? '{"k":"_ping","z":1}' : '{"k":"_ping"}';
+    const ASK = canZip ? '{"k":"_relay","z":1}' : '{"k":"_relay"}';
     const link = {
       me,
       onMessage: null,
@@ -1262,17 +1429,22 @@ PB.Online = (() => {
           const v = sn.val();
           sn.ref.remove().catch(() => {});
           if (!v || typeof v.d !== 'string' || typeof v.f !== 'string') return;
-          let msg;
-          try { msg = JSON.parse(v.d); } catch (e) { return; }
-          seen[v.f] = Date.now();
-          if (msg.k === '_relay') { link.addRelay(v.f); if (link.onRelay) link.onRelay(v.f); return; }
-          if (msg.k === '_ping' || !relayPeers.has(v.f)) return;
-          if (link.onMessage) { try { link.onMessage(v.f, msg); } catch (e) {} }
+          noteDl('relay', v.d.length + 120);
+          const handle = (txt) => {
+            let msg;
+            try { msg = JSON.parse(txt); } catch (e) { return; }
+            seen[v.f] = Date.now();
+            if (msg.z) zipPeers.add(v.f);
+            if (msg.k === '_relay') { link.addRelay(v.f); if (link.onRelay) link.onRelay(v.f); return; }
+            if (msg.k === '_ping' || !relayPeers.has(v.f)) return;
+            if (link.onMessage) { try { link.onMessage(v.f, msg); } catch (e) {} }
+          };
+          recvQ = recvQ.then(() => (v.d.startsWith('z:') ? unzip(v.d) : v.d)).then(handle, () => {});
         });
         // cada 3 s un "sigo aquí"; si alguien lleva 10 s sin dar señales, se ha ido
         relayIv = setInterval(() => {
           for (const p of [...relayPeers]) {
-            relaySend(p, '{"k":"_ping"}');
+            relaySend(p, PING);
             if (Date.now() - (seen[p] || 0) > 10000) { relayPeers.delete(p); if (link.onLeave) link.onLeave(p); }
           }
         }, 3000);
@@ -1280,7 +1452,7 @@ PB.Online = (() => {
       },
       addRelay(peer) { relayPeers.add(peer); seen[peer] = Date.now(); },
       // pide a otro jugador que use el relevo conmigo
-      askRelay(peer) { link.addRelay(peer); relaySend(peer, '{"k":"_relay"}'); },
+      askRelay(peer) { link.addRelay(peer); relaySend(peer, ASK); bump('relay'); },
       isRelay: (peer) => relayPeers.has(peer) && !chans[peer],
       close() {
         for (const c of Object.values(chans)) { try { c.close(); } catch (e) {} }
@@ -1469,7 +1641,7 @@ PB.Online = (() => {
     topPlayers, topClans, topByPokemon, topForPokemon, getUser,
     searchClans, getClan, myClan, createClan, joinClan, leaveClan, clanRequests, answerClanRequest,
     chat, sendChat,
-    watchChat, sendGlobalChat, deleteChat, banChat, sendPartyChat, inviteToPlay, sendVoice, getVoice,
+    watchChat, unwatchChat, peekChat, sendGlobalChat, deleteChat, banChat, sendPartyChat, inviteToPlay, sendVoice, getVoice,
     chatMsgs: () => gMsgs, partyMsgs: () => pMsgs, isAdmin: () => uid === ADMIN, get myUid() { return uid; },
     party: () => party, createParty, invite, joinByCode, setReady, updateMe, kick, leaveParty,
     voteRematch, cancelRematch, rematchGo, rematchLeft,

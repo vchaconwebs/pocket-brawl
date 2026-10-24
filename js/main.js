@@ -379,6 +379,21 @@
     net = null;
   }
 
+  // Junta una foto (solo cambios) sobre las anteriores que no se mandaron: gana el valor más nuevo
+  // de cada campo y los efectos y eventos se suman. No toca la foto original (es la de todos).
+  function relayMerge(acc, s) {
+    acc = acc || { g: {}, b: [] };
+    Object.assign(acc.g, s.g);
+    (s.b || []).forEach((d, i) => { acc.b[i] = Object.assign(acc.b[i] || {}, d); });
+    for (let i = 0; i < acc.b.length; i++) if (!acc.b[i]) acc.b[i] = {};
+    acc.t = s.t;
+    if (s.tiles) acc.tiles = s.tiles;
+    if (s.crates) acc.crates = s.crates;
+    if (s.fx) acc.fx = (acc.fx || []).concat(s.fx);
+    if (s.ev) acc.ev = (acc.ev || []).concat(s.ev);
+    return acc;
+  }
+
   // Cada fotograma en red: el anfitrión manda fotos; los demás, sus controles
   function netStep(dt, read) {
     if (net.role === 'host') {
@@ -390,19 +405,29 @@
         const full = net.fullT <= 0;
         if (full) net.fullT = 4;
         const snap = net.host.snapshot(full);
-        // por relevo (sin conexión directa) va una foto de cada dos: 10 por segundo
-        net.odd = !net.odd;
+        // por relevo (sin conexión directa, pasa por el servidor y gasta su cuota de descargas) va una foto
+        // de cada tres (~7 por segundo) y sin las partículas de adorno. Lo que no se manda se junta en la siguiente.
+        net.relayN = (net.relayN || 0) + 1;
+        const relayTurn = full || net.relayN % 3 === 0;
         for (const [peer, idx] of Object.entries(net.seats)) {
-          if (net.odd && !full && net.link.isRelay && net.link.isRelay(peer)) continue;
-          net.link.send(peer, Object.assign({ k: 's', ack: net.remotes[idx] ? net.remotes[idx].ack : 0 }, snap));
+          const msg = Object.assign({ k: 's', ack: net.remotes[idx] ? net.remotes[idx].ack : 0 }, snap);
+          if (net.link.isRelay && net.link.isRelay(peer)) {
+            // las fotos solo llevan lo que cambia: las que se saltan se juntan con la siguiente para no perder nada
+            const acc = relayMerge((net.relayPend = net.relayPend || {})[peer], snap);
+            if (!relayTurn) { net.relayPend[peer] = acc; continue; }
+            delete net.relayPend[peer];
+            Object.assign(msg, acc);
+            delete msg.px;
+          }
+          net.link.send(peer, msg);
         }
       }
     } else if (net.client) {
       const inp = read && mode === 'play' && !paused ? read.input : {};
       net.inT -= dt;
       const key = Math.round((inp.mx || 0) * 10) + ',' + Math.round((inp.my || 0) * 10);
-      // por relevo, el movimiento como mucho 15 veces por segundo (ataques y súper, siempre)
-      const slow = net.link.isRelay && net.link.isRelay(net.hostPeer) && net.inT > 0.1 - 1 / 15;
+      // por relevo, el movimiento como mucho 10 veces por segundo (ataques y súper, siempre)
+      const slow = net.link.isRelay && net.link.isRelay(net.hostPeer) && net.inT > 0;
       if (inp.attack || inp.super || inp.mega || (key !== net.lastIn && !slow) || net.inT <= 0) {
         net.inT = 0.1;
         net.lastIn = key;

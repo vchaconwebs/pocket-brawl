@@ -65,7 +65,7 @@
       "$day": {
         ".validate": "$day.matches(/^20[0-9][0-9]-[01][0-9]-[0-3][0-9]$/)",
         "$k": {
-          ".write": "$k.matches(/^(visits|matches|players|guests|signups)$/)",
+          ".write": "$k.matches(/^(visits|matches|players|guests|signups|relay)$/)",
           ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1"
         },
         "modes": {
@@ -84,6 +84,12 @@
           "$k": {
             ".write": "$k.matches(/^(r|w)$/)",
             ".validate": "newData.isNumber() && newData.val() > (data.exists() ? data.val() : 0) && newData.val() <= (data.exists() ? data.val() : 0) + 2000"
+          }
+        },
+        "dl": {
+          "$k": {
+            ".write": "$k.matches(/^(relay|chat|online)$/)",
+            ".validate": "newData.isNumber() && newData.val() > (data.exists() ? data.val() : 0) && newData.val() <= (data.exists() ? data.val() : 0) + 100000"
           }
         },
         "peak": {
@@ -114,6 +120,20 @@
         ".write": "$sid.matches(/^[a-z0-9]{12}$/)",
         ".validate": "newData.isNumber() && (newData.val() === 1 || newData.val() === 2) || newData.isString() && newData.val().matches(/^(m|[ps]:(gems|showdown|duo|heist|ball|zone|brawl|knockout))$/)"
       }
+    },
+    "onlineSum": {
+      ".read": true,
+      ".write": true,
+      ".validate": "newData.hasChildren(['n', 't', 'by']) && newData.child('n').isNumber() && newData.child('n').val() >= 0 && newData.child('n').val() <= 100000 && newData.child('t').val() === now && newData.child('by').isString() && newData.child('by').val().matches(/^[a-z0-9]{12}$/)",
+      "n": { ".validate": true },
+      "t": { ".validate": true },
+      "by": { ".validate": true },
+      "m": {
+        "$m": {
+          ".validate": "$m.matches(/^(gems|showdown|duo|heist|ball|zone|brawl|knockout)$/) && newData.isString() && newData.val().matches(/^[0-9]{1,5},[0-9]{1,5}$/)"
+        }
+      },
+      "$other": { ".validate": false }
     },
     "statsPeak": {
       ".read": true,
