@@ -294,6 +294,7 @@ PB.MODES = {
   // ------------------------------------------------------------------ Voltorbol
   ball: {
     id: 'ball', name: 'Voltorbol', map: 'ball', statName: 'Goles',
+    noLevels: true, // aquí lo importante es la pelota: los niveles no cuentan (más justo para los nuevos)
     desc: '3 contra 3. Mete el Voltorb en la portería rival: el primero en marcar 2 goles gana. ¡Si lo llevas más de 10 s, explota!',
     rules: { matchTime: 150 },
     setup(g) {
@@ -407,6 +408,17 @@ PB.MODES = {
       for (let i = g.events.length - 1; i >= 0; i--) if (g.events[i].type === 'wall') g.events.splice(i, 1);
       g.shake = 16;
       g.events.push({ type: 'goldenGoal' });
+    },
+    // usar el súper con el Voltorb en las manos lo suelta ahí mismo: si no, con una embestida o un salto
+    // se cruzaba medio campo con él y era gol seguro
+    onSuper(g, b) {
+      const v = g.voltorb;
+      if (!v || v.carrier !== b) return;
+      v.carrier = null;
+      v.vx = v.vy = 0;
+      v.vz = 220;
+      v.lastKicker = b;
+      v.kickCd = 0.8; // (no lo vuelve a coger nada más soltarlo)
     },
     onAttack(g, b, aim) {
       const v = g.voltorb;
@@ -621,14 +633,15 @@ PB.MODES.duo = Object.assign({}, PB.MODES.showdown, {
 // 3 contra 3 a K.O. durante 2:30: se reaparece y gana el equipo con más K.O.
 // Si empatan, K.O. de oro: el siguiente K.O. gana (si en 1 minuto no hay ninguno, empate)
 PB.MODES.brawl = {
-  id: 'brawl', name: 'Duelo de Equipos', map: 'brawl', statName: 'K.O.',
-  desc: '3 contra 3 a lo bestia durante dos minutos y medio: cada rival debilitado es un punto y gana el equipo con más K.O.',
+  id: 'brawl', name: 'Duelo de Equipos', map: 'brawl', statName: 'K.O.', teamSize: 3, koLimit: 30,
+  desc: '3 contra 3 a lo bestia durante dos minutos y medio: cada rival debilitado es un punto y gana el equipo con más K.O. (o el primero en llegar a 30).',
   rules: { matchTime: 150 },
   setup(g) { g.kos = { blue: 0, red: 0 }; },
   onKill(g, b) {
     const t = otherTeam(b.team);
     g.kos[t]++;
-    if (g.overtime && !g.winner) g.end(t);
+    // gana el primero en llegar al límite de K.O. (o el siguiente K.O. en el K.O. de oro)
+    if ((g.overtime || g.kos[t] >= this.koLimit) && !g.winner) g.end(t);
   },
   timeUp(g) {
     const { blue, red } = g.kos;
@@ -640,6 +653,18 @@ PB.MODES.brawl = {
   botPlan: fightPlan,
   result: teamResult,
 };
+
+// Duelo de Equipos 2 contra 2 y 1 contra 1: lo mismo en mapas más pequeños, más cortos y con menos K.O. para ganar
+PB.MODES.pair = Object.assign({}, PB.MODES.brawl, {
+  id: 'pair', name: 'Duelo 2 contra 2', map: 'pair', teamSize: 2, koLimit: 15,
+  desc: '2 contra 2 en un mapa pequeño durante dos minutos: gana la pareja con más K.O. (o la primera en llegar a 15).',
+  rules: { matchTime: 120 },
+});
+PB.MODES.duel = Object.assign({}, PB.MODES.brawl, {
+  id: 'duel', name: 'Duelo 1 contra 1', map: 'duel', teamSize: 1, koLimit: 10,
+  desc: 'Tú contra otro en el mapa más pequeño durante minuto y medio: gana quien haga más K.O. (o el primero en llegar a 10).',
+  rules: { matchTime: 90 },
+});
 
 // ------------------------------------------------------------------ Entrenamiento (botón «Probar» de cada Pokémon)
 // Tú solo contra 3 dianas quietas que vuelven enseguida. Sin tiempo, sin premios: para ver ataques, súper y evoluciones.
@@ -716,5 +741,7 @@ PB.MODES.knockout = {
   result: teamResult,
 };
 
-PB.MODE_ORDER = ['gems', 'showdown', 'duo', 'heist', 'ball', 'zone', 'brawl', 'knockout'];
+PB.MODE_ORDER = ['gems', 'showdown', 'duo', 'heist', 'ball', 'zone', 'brawl', 'pair', 'duel', 'knockout'];
+// jugadores por equipo de cada modo (los que no lo dicen son de 3)
+PB.teamSize = (mode) => ((PB.MODES[mode] || {}).teamSize || 3);
 })();

@@ -5,7 +5,7 @@ PB.META = {
   // al empezar se eligen 3 iniciales: uno de planta, uno de fuego y uno de agua (de cualquier generación)
   // la rareza y el precio de cada Pokémon están en js/roster.js (PB.RARITY)
   maxLevel: 10,
-  levelBonus: 0.02, // +2 % de vida y daño por nivel (lo importante es evolucionar en la partida)
+  levelBonus: 0.012, // +1,2 % de vida y daño por nivel (+2 % hasta la v1.8: se notaba demasiado); lo importante es evolucionar
   // monedas para pasar del nivel N al N+1 (índice = nivel actual)
   levelCost: [0, 10, 20, 40, 80, 150, 250, 380, 500, 600], // 2.030 monedas del 1 al 10
   tokensPerChest: 100,
@@ -23,7 +23,7 @@ PB.META = {
   bonusWins: 3, // las 3 primeras victorias del día dan el doble de fichas
   // premio de cada modo según lo que dura (fichas, monedas, puntos y pase): por minuto jugado,
   // más o menos igual en todos. Niebla dura ~35 s; Voltorbol y Eliminación ~1 min; el resto ~2 min.
-  modeReward: { showdown: 0.55, duo: 0.7, ball: 1, knockout: 1, gems: 1.4, heist: 1.4, zone: 1.4, brawl: 1.4 },
+  modeReward: { showdown: 0.55, duo: 0.7, ball: 1, knockout: 1, gems: 1.4, heist: 1.4, zone: 1.4, brawl: 1.4, pair: 1.1, duel: 0.9 },
   // cofres (Pokéballs): tiradas de premio y probabilidad de Pokémon nuevo en cada tirada
   chests: {
     // pokemon: probabilidad de Pokémon nuevo en cada tirada; rare: peso de cada rareza (mejor cofre, más raros)
@@ -281,7 +281,8 @@ PB.Save = (() => {
     return data;
   }
 
-  function persist() {
+  function persist(keepTime) {
+    if (!keepTime) data.savedAt = Date.now(); // cuándo cambió por última vez (para saber si la nube tiene algo más nuevo)
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
     if (PB.Online && PB.Online.saveCloud) PB.Online.saveCloud();
   }
@@ -634,7 +635,9 @@ PB.Save = (() => {
     const me = r.me, id = me.def.id;
     // copas
     const before = copas(id);
-    const delta = PB.copasDelta(before, r.win ? 'win' : r.draw ? 'draw' : 'lose', r.mode === 'showdown' || r.mode === 'duo' ? r.rank || 10 : 0, r.mode);
+    let delta = PB.copasDelta(before, r.win ? 'win' : r.draw ? 'draw' : 'lose', r.mode === 'showdown' || r.mode === 'duo' ? r.rank || 10 : 0, r.mode);
+    // perder contra un equipo con 2 personas más que el tuyo (un grupo contra gente sola con bots) no quita copas
+    if (r.unfair && delta < 0) delta = 0;
     const k = PB.META.modeReward[r.mode] || 1;
     d.copas[id] = Math.max(0, before + delta);
     // maestría nueva: su premio (solo la primera vez que se llega a cada una)
@@ -701,7 +704,7 @@ PB.Save = (() => {
       if (!m.claimed) m.progress = Math.min(m.n, m.progress + (add[m.type] || 0));
     }
     persist();
-    return { tokens, newChests, copas: delta, copasNow: d.copas[id], mastery, coins: MR.coins, points: MR.points, rainbow: MR.rainbow || 0, bonus, bonusLeft: d.bonusLeft, passXp, passUp };
+    return { tokens, newChests, copas: delta, copasNow: d.copas[id], mastery, unfair: !!(r.unfair && !r.win && !r.draw), coins: MR.coins, points: MR.points, rainbow: MR.rainbow || 0, bonus, bonusLeft: d.bonusLeft, passXp, passUp };
   }
 
   // Abandonar una partida en red (cerrar la página o perder la conexión y no volver):
@@ -806,10 +809,12 @@ PB.Save = (() => {
   }
 
   // progreso traído de la nube (al entrar con una cuenta de Google que ya jugaba)
-  function importJSON(json) {
+  // savedAt: la hora de esa copia (al traer el progreso de la nube se conserva, para no volver a subirlo)
+  function importJSON(json, savedAt) {
     try {
       data = Object.assign(fresh(), JSON.parse(json));
-      persist();
+      if (savedAt) data.savedAt = savedAt;
+      persist(!!savedAt);
       return true;
     } catch (e) { return false; }
   }

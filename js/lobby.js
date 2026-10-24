@@ -156,7 +156,7 @@ PB.Lobby = (() => {
     if (id === 'ball') return window.SPRITE_DATA['0100'].portrait;
     return pixIcon('mode-' + id, 40, (c) => {
       c.imageSmoothingEnabled = false;
-      if (id === 'brawl' || id === 'knockout') return drawFightIcon(c, id);
+      if (id === 'brawl' || id === 'pair' || id === 'duel' || id === 'knockout') return drawFightIcon(c, id === 'knockout' ? id : 'brawl');
       c.fillStyle = { gems: '#3a7a3a', showdown: '#5a2a78', duo: '#7a2a6a', zone: '#2a4a8a' }[id] || '#333';
       c.fillRect(0, 0, 40, 40);
       if (id === 'gems') PB.Pokeball.draw(c, 20, 20, 2, {});
@@ -196,7 +196,7 @@ PB.Lobby = (() => {
     // el chat general se escucha desde que entras a la lobby; al cambiar de pantalla se cierra
     if (id === 'lobby') PB.Chat.startGlobal(); else PB.Chat.closeGlobal();
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('hidden', s.id !== id);
-    if (id === 'lobby') { refreshLobby(); setTimeout(checkPatchNotes, 400); }
+    if (id === 'lobby') { refreshLobby(); setTimeout(checkPatchNotes, 400); if (pollPending) setTimeout(showPoll, 900); }
   }
 
   // ------------------------------------------------------------------ aviso de versión nueva
@@ -730,21 +730,24 @@ PB.Lobby = (() => {
     const grid = $('#mp-grid');
     grid.innerHTML = '';
     const rnd = api.isRandom && api.isRandom();
-    // Niebla Tóxica y su versión por parejas van en la misma tarjeta, con un selector Solo / Dúo
+    // Niebla Tóxica y su versión por parejas van en la misma tarjeta, con un selector Solo / Dúo;
+    // y Duelo de Equipos, con 3vs3 / 2vs2 / 1vs1
     const cur = api.getMode();
-    for (const id of ['random'].concat(PB.MODE_ORDER.filter((m) => m !== 'duo'))) {
+    const DUELS = ['brawl', 'pair', 'duel'];
+    for (const id of ['random'].concat(PB.MODE_ORDER.filter((m) => m !== 'duo' && m !== 'pair' && m !== 'duel'))) {
       const M = id === 'random' ? { name: PB.T('Aleatorio'), desc: PB.T('Te mete en el modo donde más gente está buscando partida ahora mismo.') } : PB.MODES[id];
-      const fog = id === 'showdown';
-      const on = id === 'random' ? rnd : !rnd && (id === cur || (fog && cur === 'duo'));
+      const fog = id === 'showdown', fight = id === 'brawl';
+      const on = id === 'random' ? rnd : !rnd && (id === cur || (fog && cur === 'duo') || (fight && DUELS.includes(cur)));
       const el = document.createElement('button');
       el.className = 'mode-card2' + (on ? ' sel' : '') + (id === 'random' ? ' rnd' : '');
       el.dataset.mode = id;
-      const pick = fog ? `<em class="mc-sd"><i data-v="showdown" class="${cur !== 'duo' ? 'on' : ''}">${PB.T('Solo')}</i><i data-v="duo" class="${cur === 'duo' ? 'on' : ''}">${PB.T('Dúo')}</i></em>` : '';
+      const pick = fog ? `<em class="mc-sd"><i data-v="showdown" class="${cur !== 'duo' ? 'on' : ''}">${PB.T('Solo')}</i><i data-v="duo" class="${cur === 'duo' ? 'on' : ''}">${PB.T('Dúo')}</i></em>`
+        : fight ? `<em class="mc-sd">${[['brawl', '3vs3'], ['pair', '2vs2'], ['duel', '1vs1']].map(([v, t]) => `<i data-v="${v}" class="${(DUELS.includes(cur) ? cur : 'brawl') === v ? 'on' : ''}">${t}</i>`).join('')}</em>` : '';
       el.innerHTML = `<img src="${modeIcon(id)}" alt=""><b>${M.name}</b><span>${M.desc}</span>${pick}<em class="mc-live"></em>`;
       el.onclick = (e) => {
         PB.Audio.play('ui');
         const v = e.target && e.target.dataset && e.target.dataset.v;
-        api.setMode(fog ? v || (cur === 'duo' ? 'duo' : 'showdown') : id);
+        api.setMode(fog ? v || (cur === 'duo' ? 'duo' : 'showdown') : fight ? v || (DUELS.includes(cur) ? cur : 'brawl') : id);
         showModes();
       };
       grid.appendChild(el);
@@ -895,6 +898,11 @@ PB.Lobby = (() => {
     const pm = PB.MODES[api.getMode()];
     if (!(api.isRandom && api.isRandom()) && pm.ffa && p.members.length > (pm.duo ? 2 : 1)) {
       modal('Niebla Tóxica es todos contra todos: no se puede jugar en grupo. Cambia de modo o sal de la sala.');
+      return false;
+    }
+    // Duelo 2vs2 / 1vs1: el grupo no puede ser más grande que un equipo
+    if (!(api.isRandom && api.isRandom()) && !pm.ffa && p.members.length > PB.teamSize(pm.id)) {
+      modal(PB.T('En {m} los equipos son de {n}: tu grupo es demasiado grande. Cambia de modo o sal de la sala.', { m: pm.name, n: PB.teamSize(pm.id) }));
       return false;
     }
     if (!p.members.every((m) => m.ready)) { toast('Esperando a que todos estén listos'); return false; }
@@ -1237,6 +1245,43 @@ PB.Lobby = (() => {
       $('#modal-ok').onclick = () => { $('#modal').classList.add('hidden'); resolve(true); };
       $('#modal-cancel').onclick = () => { $('#modal').classList.add('hidden'); resolve(false); };
     });
+  }
+
+  // ------------------------------------------------------------------ encuesta de modos
+  let pollPending = false, pollPick = [];
+  function showPoll() {
+    const p = PB.Online.poll;
+    pollPending = false;
+    if (!p) return;
+    pollPick = [];
+    $('#poll-q').textContent = p.q || PB.T('¿Cuáles son tus modos favoritos? Elige hasta {n}. Los menos votados se quitarán un tiempo.', { n: p.max });
+    const left = () => Math.max(0, Math.ceil((p.ends - PB.Online.now()) / 60000));
+    $('#poll-left').textContent = PB.T('Quedan {n} min', { n: left() });
+    const draw = () => {
+      $('#poll-grid').innerHTML = p.modes.map((id) => `<button class="poll-opt${pollPick.includes(id) ? ' on' : ''}" data-pm="${id}"><img src="${modeIcon(id)}" alt=""><span>${PB.MODES[id].name}</span></button>`).join('');
+      $('#poll-grid').querySelectorAll('[data-pm]').forEach((b) => (b.onclick = () => {
+        const id = b.dataset.pm;
+        if (pollPick.includes(id)) pollPick = pollPick.filter((x) => x !== id);
+        else if (pollPick.length < p.max) pollPick.push(id);
+        else return toast(PB.T('Como mucho {n}', { n: p.max }));
+        PB.Audio.play('ui');
+        draw();
+      }));
+      $('#poll-send').textContent = PB.T('Votar') + ' (' + pollPick.length + '/' + p.max + ')';
+    };
+    draw();
+    const close = () => $('#poll').classList.add('hidden');
+    $('#poll-close').onclick = close;
+    $('#poll-later').onclick = close;
+    $('#poll-send').onclick = async () => {
+      if (!pollPick.length) return toast(PB.T('Elige al menos un modo.'));
+      const r = await PB.Online.votePoll(pollPick);
+      close();
+      if (r.error) return toast(r.error);
+      PB.Audio.play('win');
+      toast(PB.T('¡Gracias por votar!'));
+    };
+    $('#poll').classList.remove('hidden');
   }
 
   // ------------------------------------------------------------------ perfil
@@ -2383,6 +2428,13 @@ PB.Lobby = (() => {
       show('lobby');
     };
     // regalo del creador: aviso con lo que ha llegado
+    // la nube tenía un progreso más nuevo (de otro dispositivo): se recarga lo que se ve
+    PB.Online.on('cloudLoaded', () => {
+      if (current === 'lobby') refreshLobby();
+      toast(PB.T('Progreso actualizado desde tu cuenta'));
+    });
+    // hay una encuesta abierta y no he votado: sale al estar en la lobby
+    PB.Online.on('poll', () => { if (current === 'lobby') showPoll(); else pollPending = true; });
     // me han quitado el tag: aviso para que me ponga otro
     PB.Online.on('tagRemoved', (t) => {
       modal(PB.T('El equipo del juego te ha quitado el tag «{t}» porque no cumple las normas. Puedes ponerte otro desde tu Perfil.', { t: t || '?' }));

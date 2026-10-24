@@ -369,8 +369,10 @@ PB.Online = (() => {
       listenInvites();
       await syncProfile(true).catch(() => {});
       if (!isGuest()) processAccepted().catch(() => {});
+      if (!isGuest()) syncCloud().catch(() => {});
       claimGifts().catch(() => {});
       checkTagBan().catch(() => {});
+      checkPoll().catch(() => {});
       emit('ready');
     })();
     return ready;
@@ -455,14 +457,35 @@ PB.Online = (() => {
     tg: PB.Chat.cleanTag(u.tg), tc: u.tc | 0,
   });
 
-  async function usersByIds(ids) {
-    const out = [];
-    for (let i = 0; i < ids.length; i += 10) {
-      const part = ids.slice(i, i + 10);
-      if (!part.length) break;
-      const q = await fs.collection('users').where(fb.firestore.FieldPath.documentId(), 'in', part).get();
-      q.forEach((s) => out.push(viewUser(s.id, s.data())));
+  // Perfiles de otros jugadores (amigos, miembros de un clan...): cada uno es una lectura, así que se
+  // guardan 15 minutos (también al recargar) y solo se piden los que falten o estén viejos.
+  const USER_TTL = 900000;
+  let userCache = {};
+  try { userCache = JSON.parse(localStorage.getItem('pb.users') || '{}') || {}; } catch (e) { userCache = {}; }
+  let userSaveT = null;
+  const saveUserCache = () => {
+    clearTimeout(userSaveT);
+    userSaveT = setTimeout(() => {
+      const keys = Object.keys(userCache).sort((a, b) => userCache[b].t - userCache[a].t).slice(0, 300);
+      const keep = {};
+      for (const k of keys) keep[k] = userCache[k];
+      userCache = keep;
+      try { localStorage.setItem('pb.users', JSON.stringify(keep)); } catch (e) {}
+    }, 1000);
+  };
+  async function usersByIds(ids, fresh) {
+    const now0 = Date.now(), out = [], need = [];
+    for (const id of ids) {
+      const c = userCache[id];
+      if (!fresh && c && now0 - c.t < USER_TTL) out.push(Object.assign({}, c.v, { me: id === uid }));
+      else need.push(id);
     }
+    for (let i = 0; i < need.length; i += 10) {
+      const part = need.slice(i, i + 10);
+      const q = await fs.collection('users').where(fb.firestore.FieldPath.documentId(), 'in', part).get();
+      q.forEach((s) => { const v = viewUser(s.id, s.data()); userCache[s.id] = { t: now0, v }; out.push(Object.assign({}, v)); });
+    }
+    if (need.length) saveUserCache();
     return out;
   }
 
@@ -486,6 +509,33 @@ PB.Online = (() => {
     clearTimeout(saveT);
     saveT = setTimeout(writeCloud, soon ? 500 : 240000); // (al acabar cada partida se guarda enseguida; si no, cada 4 min como mucho: el plan gratis tiene un límite de escrituras al día)
   }
+
+  // Misma cuenta en varios dispositivos (PC y móvil): al entrar, y al volver al juego tras un rato, se mira
+  // la copia de la nube y se queda la más nueva. Antes cada dispositivo seguía con lo suyo y el último en
+  // guardar pisaba al otro. (Copias de antes sin hora: gana la que tenga más partidas jugadas.)
+  let lastSync = 0;
+  async function syncCloud() {
+    if (!uid || isGuest()) return;
+    lastSync = Date.now();
+    const s = await fs.collection('users').doc(uid).collection('private').doc('save').get();
+    if (!s.exists) return saveCloud(true);
+    const c = s.data() || {}, local = PB.Save.get();
+    let cloud = null;
+    try { cloud = JSON.parse(c.json || 'null'); } catch (e) { cloud = null; }
+    if (!cloud) return;
+    const played = (x) => (x && x.stats && x.stats.played) || 0;
+    const cloudT = cloud.savedAt || c.t || 0, localT = local.savedAt || 0;
+    const cloudNewer = local.savedAt && cloud.savedAt ? cloudT > localT + 2000 : played(cloud) > played(local);
+    if (cloudNewer) {
+      lastCloud = c.json;
+      PB.Save.importJSON(c.json, cloudT);
+      emit('cloudLoaded');
+    } else if (c.json !== JSON.stringify(local)) saveCloud(true);
+  }
+  // (volver a la pestaña después de 10 minutos o más: se vuelve a mirar)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && uid && !isGuest() && Date.now() - lastSync > 600000 && !(PB.Match && PB.Match.busy)) syncCloud().catch(() => {});
+  });
 
   // Vincular con Google: el progreso de este navegador pasa a esa cuenta.
   // Si la cuenta de Google ya tenía partida guardada, se puede recuperar.
@@ -603,7 +653,7 @@ PB.Online = (() => {
   let friendsCache = null, friendsT = 0;
   async function friends(force) {
     if (!(await start()) || isGuest()) return [];
-    if (!force && friendsCache && Date.now() - friendsT < 300000) return friendsCache;
+    if (!force && friendsCache && Date.now() - friendsT < 600000) return friendsCache;
     await processAccepted().catch(() => {});
     const ids = (myDoc.friends || []).slice(0, 100);
     const list = await usersByIds(ids);
@@ -613,11 +663,11 @@ PB.Online = (() => {
     return friendsCache;
   }
 
-  // (la lobby lo pide cada vez que se actualiza: se guarda 5 minutos para no gastar lecturas)
+  // (la lobby lo pide cada vez que se actualiza: se guarda 10 minutos para no gastar lecturas)
   let reqCache = null, reqT = 0;
   async function requests(force) {
     if (!(await start()) || isGuest()) return [];
-    if (!force && reqCache && Date.now() - reqT < 300000) return reqCache;
+    if (!force && reqCache && Date.now() - reqT < 600000) return reqCache;
     reqT = Date.now();
     reqCache = await requestsNow().catch(() => reqCache || []);
     return reqCache;
@@ -694,7 +744,7 @@ PB.Online = (() => {
   // Además se comparte entre todos: el primero que lo pide pasado el rato hace la consulta de 50 y deja
   // el resultado en cache/<ranking> (1 documento); los demás leen solo ese documento (1 lectura).
   const rankCache = {};
-  const RANK_TTL = 600000, SHARED_TTL = 900000;
+  const RANK_TTL = 900000, SHARED_TTL = 1800000;
   // (lo que viene del documento compartido lo ha escrito otro jugador: se vuelve a limpiar todo)
   const safeId = (x) => String(x == null ? '' : x).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
   const fixUsers = (v) => v.map((p) => Object.assign(viewUser(safeId(p.id), Object.assign({}, p, { clan: p.clan ? safeId(p.clan) : null })), p && p.c != null ? { c: p.c | 0 } : {}));
@@ -743,7 +793,7 @@ PB.Online = (() => {
     if (!(await start()) || !PB.brawlerById(id)) return [];
     await syncProfile().catch(() => {});
     const list = await cached('mon-' + id, async () => {
-      const q = await fs.collection('users').orderBy('pc.' + id, 'desc').limit(50).get();
+      const q = await fs.collection('users').orderBy('pc.' + id, 'desc').limit(25).get(); // (de cada Pokémon basta con el top 25)
       return q.docs.map((s) => Object.assign(viewUser(s.id, s.data()), { c: ((s.data().pc || {})[id]) | 0 }));
     }, fixUsers);
     return list.map((p, i) => Object.assign({}, p, { pos: i + 1, me: p.id === uid }));
@@ -752,9 +802,18 @@ PB.Online = (() => {
   async function getUser(id) {
     if (!(await start()) || !id) return null;
     if (id === uid) { await syncProfile().catch(() => {}); return Object.assign(viewUser(uid, myDoc), { online: true }); }
-    const s = await fs.collection('users').doc(id).get().catch(() => null);
-    if (!s || !s.exists) return null;
-    const u = viewUser(id, s.data());
+    // (si se ha visto hace poco, del guardado; si no, una lectura)
+    let u = null;
+    const c = userCache[id];
+    if (c && Date.now() - c.t < USER_TTL) u = Object.assign({}, c.v);
+    else {
+      const s = await fs.collection('users').doc(id).get().catch(() => null);
+      if (!s || !s.exists) return null;
+      u = viewUser(id, s.data());
+      userCache[id] = { t: Date.now(), v: u };
+      saveUserCache();
+      u = Object.assign({}, u);
+    }
     u.online = await isOnline(id).catch(() => false);
     u.friend = (myDoc.friends || []).includes(id);
     return u;
@@ -798,11 +857,11 @@ PB.Online = (() => {
     await syncProfile(false, true);
   }
 
-  // (mirar el clan cuesta una lectura por miembro: se guarda 2 minutos; al cambiar algo se vuelve a leer)
+  // (mirar el clan cuesta una lectura por miembro: se guarda 5 minutos; al cambiar algo se vuelve a leer)
   let clanC = null, clanCT = 0;
   async function myClan() {
     if (!(await start()) || isGuest()) return null;
-    if (clanC && myDoc.clan === clanC.id && Date.now() - clanCT < 120000) return clanC;
+    if (clanC && myDoc.clan === clanC.id && Date.now() - clanCT < 300000) return clanC;
     if (!myDoc.clan) {
       const q = await fs.collection('clans').where('members', 'array-contains', uid).limit(1).get().catch(() => null);
       if (!q || q.empty) return null;
@@ -1077,6 +1136,32 @@ PB.Online = (() => {
   // borrar un mensaje también borra su audio
   const deleteChat = (id) => { rtdb.ref('chatAudio/' + id).remove().catch(() => {}); return rtdb.ref('chat/' + id).remove().catch(() => {}); };
   const banChat = (id) => rtdb.ref('chatBan/' + id).set(true).catch(() => {});
+  // Encuesta de modos: poll = { id, ends, max, modes: 'gems,ball,...' } la abre el creador desde stats.html.
+  // Cada jugador vota una sola vez (pollVotes/<id>/<uid> = 'modo,modo'); los resultados solo los ve el creador.
+  let poll = null;
+  async function checkPoll() {
+    const s = await rtdb.ref('poll').once('value').catch(() => null);
+    const p = s && s.val();
+    if (!p || !p.id || !(p.ends > now())) return;
+    let voted = false;
+    try { voted = localStorage.getItem('pb.poll') === p.id; } catch (e) {}
+    if (voted) return;
+    poll = { id: String(p.id).slice(0, 20), ends: +p.ends, max: Math.max(1, Math.min(8, p.max | 0 || 4)), modes: String(p.modes || '').split(',').filter((m) => PB.MODES[m]), q: clean(p.q || '', 120) };
+    if (poll.modes.length) emit('poll', poll);
+  }
+  async function votePoll(modes) {
+    if (!poll || !(await start())) return err('Sin conexión.');
+    const list = [...new Set(modes)].filter((m) => poll.modes.includes(m)).slice(0, poll.max);
+    if (!list.length) return err('Elige al menos un modo.');
+    try { await rtdb.ref('pollVotes/' + poll.id + '/' + uid).set(list.join(',')); } catch (e) {
+      // (si ya había votado desde otro dispositivo, las reglas no dejan votar otra vez)
+      try { localStorage.setItem('pb.poll', poll.id); } catch (e2) {}
+      return err('Ya has votado en esta encuesta.');
+    }
+    try { localStorage.setItem('pb.poll', poll.id); } catch (e) {}
+    return { ok: true };
+  }
+
   // (solo el creador) quitarle el tag a alguien: al entrar le sale un aviso y tiene que ponerse otro
   async function removeTag(id, tag) {
     if (!(await start()) || uid !== ADMIN) return err('Solo el creador puede hacer esto.');
@@ -1311,15 +1396,16 @@ PB.Online = (() => {
   // junta tickets hasta llenar la partida (o hasta que pasen unos segundos) y crea la partida.
   let search = null;
 
-  // reparte grupos en dos equipos de 3 sin separar a los amigos
-  function fitTeams(tickets) {
+  // reparte grupos en dos equipos (de 3, 2 o 1 según el modo) sin separar a los amigos
+  function fitTeams(tickets, size) {
+    size = size || 3;
     const blue = [], red = [];
     let nb = 0, nr = 0;
     const used = [];
     for (const t of tickets) {
       const n = Object.keys(t.uids || {}).length;
-      if (nb + n <= 3 && (nb <= nr || nr + n > 3)) { blue.push(t); nb += n; used.push(t); }
-      else if (nr + n <= 3) { red.push(t); nr += n; used.push(t); }
+      if (nb + n <= size && (nb <= nr || nr + n > size)) { blue.push(t); nb += n; used.push(t); }
+      else if (nr + n <= size) { red.push(t); nr += n; used.push(t); }
     }
     return { blue, red, used, n: nb + nr };
   }
@@ -1328,7 +1414,7 @@ PB.Online = (() => {
     if (!(await start())) return { local: true };
     if (search) cancelMatch();
     const M = PB.MODES[mode];
-    const cap = M.ffa ? M.players || 10 : 6;
+    const cap = M.ffa ? M.players || 10 : PB.teamSize(mode) * 2;
     const members = party ? party.members : [{ id: uid }];
     const uids = {};
     if (party) {
@@ -1385,7 +1471,7 @@ PB.Online = (() => {
           for (const [k, t] of open) { const c = Object.keys(t.uids || {}).length; if (n + c <= cap) { group.push([k, t]); n += c; } }
           group.n = n;
         } else {
-          const ft = fitTeams(open.map(([k, t]) => Object.assign({ key: k }, t)));
+          const ft = fitTeams(open.map(([k, t]) => Object.assign({ key: k }, t)), PB.teamSize(mode));
           group = ft.used.map((t) => [t.key, t]);
           group.n = ft.n;
         }
@@ -1435,7 +1521,7 @@ PB.Online = (() => {
         for (const t of solos) order.push(...Object.keys(t.uids || {}));
       }
     } else {
-      const ft = fitTeams(tickets);
+      const ft = fitTeams(tickets, PB.teamSize(mode));
       teams = { blue: [], red: [] };
       for (const side of ['blue', 'red']) for (const t of ft[side]) for (const [id, inf] of Object.entries(t.uids || {})) { players[id] = inf; teams[side].push(id); }
     }
@@ -1682,7 +1768,8 @@ PB.Online = (() => {
       else for (let i = 0; i < n; i++) slots.push(humans[i] || null);
       opts.ffa = slots.map((u) => (u ? m.players[u].fav : rnd()));
     } else {
-      const side = (t) => { const l = (m.teams[t] || []).filter((u) => humans.includes(u)); while (l.length < 3) l.push(null); return l.slice(0, 3); };
+      const size = PB.teamSize(m.mode);
+      const side = (t) => { const l = (m.teams[t] || []).filter((u) => humans.includes(u)); while (l.length < size) l.push(null); return l.slice(0, size); };
       const b = side('blue'), r = side('red');
       slots.push(...b, ...r);
       opts.blue = b.map((u) => (u ? m.players[u].fav : rnd()));
@@ -1723,7 +1810,7 @@ PB.Online = (() => {
     topPlayers, topClans, topByPokemon, topForPokemon, getUser,
     searchClans, getClan, myClan, createClan, joinClan, leaveClan, clanRequests, answerClanRequest,
     chat, sendChat,
-    watchChat, unwatchChat, peekChat, sendGlobalChat, deleteChat, banChat, removeTag, sendPartyChat, inviteToPlay, sendVoice, getVoice,
+    watchChat, unwatchChat, peekChat, sendGlobalChat, deleteChat, banChat, removeTag, votePoll, get poll() { return poll; }, sendPartyChat, inviteToPlay, sendVoice, getVoice,
     chatMsgs: () => gMsgs, partyMsgs: () => pMsgs, isAdmin: () => uid === ADMIN, get myUid() { return uid; },
     party: () => party, createParty, invite, joinByCode, setReady, updateMe, kick, leaveParty,
     voteRematch, cancelRematch, rematchGo, rematchLeft,

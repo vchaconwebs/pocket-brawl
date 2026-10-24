@@ -2681,7 +2681,7 @@ PB.Renderer = class {
       this.outlined(PB.T('ENTRENAMIENTO'), cx, 26, 15, '#ffd23a');
       const me2 = game.player;
       this.outlined(PB.T('K.O.: {n}', { n: game.kos.blue }) + '  ·  ' + PB.T('Daño: {n}', { n: Math.round((me2 && me2.dmgDone) || 0).toLocaleString('es-ES') }), cx, 44, 13, '#ffffff');
-    } else if (id === 'brawl') {
+    } else if (id === 'brawl' || id === 'pair' || id === 'duel') {
       // K.O. de cada equipo
       panel(220, 50);
       UI.panel(ctx, cx - 100, 13, 74, 36, { p: 2, fill: '#2a5ab8' });

@@ -70,7 +70,7 @@
         },
         "modes": {
           "$m": {
-            ".write": "$m.matches(/^(gems|showdown|duo|heist|ball|zone|brawl|knockout)$/)",
+            ".write": "$m.matches(/^(gems|showdown|duo|heist|ball|zone|brawl|pair|duel|knockout)$/)",
             ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1"
           }
         },
@@ -130,7 +130,7 @@
       ".read": true,
       "$sid": {
         ".write": "$sid.matches(/^[a-z0-9]{12}$/)",
-        ".validate": "newData.isNumber() && (newData.val() === 1 || newData.val() === 2) || newData.isString() && newData.val().matches(/^(m|[ps]:(gems|showdown|duo|heist|ball|zone|brawl|knockout))$/)"
+        ".validate": "newData.isNumber() && (newData.val() === 1 || newData.val() === 2) || newData.isString() && newData.val().matches(/^(m|[ps]:(gems|showdown|duo|heist|ball|zone|brawl|pair|duel|knockout))$/)"
       }
     },
     "onlineSum": {
@@ -142,7 +142,7 @@
       "by": { ".validate": true },
       "m": {
         "$m": {
-          ".validate": "$m.matches(/^(gems|showdown|duo|heist|ball|zone|brawl|knockout)$/) && newData.isString() && newData.val().matches(/^[0-9]{1,5},[0-9]{1,5}$/)"
+          ".validate": "$m.matches(/^(gems|showdown|duo|heist|ball|zone|brawl|pair|duel|knockout)$/) && newData.isString() && newData.val().matches(/^[0-9]{1,5},[0-9]{1,5}$/)"
         }
       },
       "$other": { ".validate": false }
@@ -204,6 +204,20 @@
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid",
         ".validate": "newData.isNumber() && newData.val() === now && (!data.exists() || now - data.val() >= 2500)"
+      }
+    },
+    "poll": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3'"
+    },
+    "pollVotes": {
+      ".read": "auth != null && auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3'",
+      "$pid": {
+        ".write": "auth != null && auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3' && !newData.exists()",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('poll/id').val() === $pid && root.child('poll/ends').val() > now",
+          ".validate": "newData.isString() && newData.val().matches(/^[a-z]+(,[a-z]+){0,7}$/)"
+        }
       }
     },
     "tagBan": {

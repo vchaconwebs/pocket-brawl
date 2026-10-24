@@ -59,11 +59,13 @@
       const party = PB.Online.party();
       const mates = party ? party.members.filter((m) => !m.me).map((m) => m.fav).filter((id) => PB.brawlerById(id)) : [];
       opts.partyNames = party ? party.members.filter((m) => !m.me).map((m) => m.name) : [];
-      opts.blue = [playerId, ...mates, ...shuffle(ids.filter((i) => i !== playerId)).slice(0, 2 - mates.length)];
-      opts.red = shuffle(ids.slice()).slice(0, 3);
+      const n = PB.teamSize(gameMode);
+      const mine = mates.slice(0, n - 1);
+      opts.blue = [playerId, ...mine, ...shuffle(ids.filter((i) => i !== playerId)).slice(0, n - 1 - mine.length)];
+      opts.red = shuffle(ids.slice()).slice(0, n);
     } else {
-      opts.blue = shuffle(ids.slice()).slice(0, 3);
-      opts.red = shuffle(ids.slice()).slice(0, 3);
+      opts.blue = shuffle(ids.slice()).slice(0, PB.teamSize(gameMode));
+      opts.red = shuffle(ids.slice()).slice(0, PB.teamSize(gameMode));
     }
     // rama de evolución de cada uno: la que eligió el jugador; los bots, una al azar
     const all = [].concat(opts.ffa || [], opts.blue || [], opts.red || []);
@@ -118,7 +120,7 @@
     const myLvl = playerId ? PB.Save.level(playerId) : 1;
     for (const b of game.brawlers) {
       const lvl = b.isPlayer ? myLvl : Math.max(1, Math.min(PB.META.maxLevel, myLvl + Math.floor(Math.random() * 3) - 1));
-      const k = PB.levelMul(lvl);
+      const k = game.mode.noLevels ? 1 : PB.levelMul(lvl); // (en Voltorbol los niveles no cuentan)
       b.lvl = lvl;
       b.lvlMul = k;
       b.maxHp = b.hp = Math.round(b.def.hp * k);
@@ -154,7 +156,7 @@
       b.mastery = h ? Math.max(0, Math.min(PB.MASTERY.length, h.mt | 0)) : 0;
       const lvl = h ? h.lvl || 1 : opts.botLvls ? opts.botLvls[i] : Math.max(1, Math.min(PB.META.maxLevel, avg + Math.floor(Math.random() * 3) - 1));
       b.lvl = lvl;
-      b.lvlMul = PB.levelMul(lvl);
+      b.lvlMul = game.mode.noLevels ? 1 : PB.levelMul(lvl);
       b.maxHp = b.hp = Math.round(b.def.hp * b.lvlMul);
     });
     const me = game.brawlers[myIdx];
@@ -167,7 +169,16 @@
     });
     // los bots solo piensan en el anfitrión (los demás ven lo que él les manda)
     const skill = Math.min(0.85, 0.6 + (opts.copas || 0) / 4000);
-    bots = net && net.role === 'host' ? game.brawlers.filter((b) => !opts.humans[b.idx]).map((b) => new PB.Bot(game, b, skill)) : [];
+    // equipo con menos personas que el rival (gente sola contra un grupo): sus bots juegan al máximo y con +1 de nivel
+    const humansIn = (t) => game.brawlers.filter((b) => b.team === t && opts.humans[b.idx]).length;
+    const underdog = (b) => !game.mode.ffa && humansIn(otherOf(b.team)) > humansIn(b.team);
+    for (const b of game.brawlers) {
+      if (opts.humans[b.idx] || !underdog(b)) continue;
+      b.lvl = Math.min(PB.META.maxLevel, (b.lvl || 1) + 1);
+      b.lvlMul = game.mode.noLevels ? 1 : PB.levelMul(b.lvl);
+      b.maxHp = b.hp = Math.round(b.def.hp * b.lvlMul);
+    }
+    bots = net && net.role === 'host' ? game.brawlers.filter((b) => !opts.humans[b.idx]).map((b) => new PB.Bot(game, b, underdog(b) ? 0.92 : skill)) : [];
     renderer.cam.x = me.x;
     renderer.cam.y = me.y;
     spectate = 0;
@@ -409,9 +420,10 @@
         if (full) net.fullT = 4;
         const snap = net.host.snapshot(full);
         // por relevo (sin conexión directa, pasa por el servidor y gasta su cuota de descargas) va una foto
-        // de cada tres (~7 por segundo) y sin las partículas de adorno. Lo que no se manda se junta en la siguiente.
+        // de cada dos (10 por segundo; comprimidas gastan poco) y sin las partículas de adorno.
+        // Lo que no se manda se junta en la siguiente.
         net.relayN = (net.relayN || 0) + 1;
-        const relayTurn = full || net.relayN % 3 === 0;
+        const relayTurn = full || net.relayN % 2 === 0;
         for (const [peer, idx] of Object.entries(net.seats)) {
           const msg = Object.assign({ k: 's', ack: net.remotes[idx] ? net.remotes[idx].ack : 0 }, snap);
           if (net.link.isRelay && net.link.isRelay(peer)) {
@@ -664,7 +676,7 @@
     const res = M.result(game, me);
     $('#result').textContent = res.title;
     $('#result').className = res.cls;
-    const statTxt = (b) => (M.id === 'zone' ? Math.round(b.stat) + ' s' : M.id === 'heist' ? short(b.stat) : M.id === 'brawl' || M.id === 'knockout' ? b.kills : Math.round(b.stat));
+    const statTxt = (b) => (M.id === 'zone' ? Math.round(b.stat) + ' s' : M.id === 'heist' ? short(b.stat) : M.id === 'brawl' || M.id === 'pair' || M.id === 'duel' || M.id === 'knockout' ? b.kills : Math.round(b.stat));
     const short = (n) => (n >= 1000 ? (Math.round(n / 100) / 10).toString().replace('.', ',') + 'k' : String(Math.round(n)));
     // el mejor de la partida (MVP): más K.O. y daño
     const score = (b) => b.kills * 2500 + b.dmgDone + (b.stat || 0) * (M.id === 'heist' ? 0.5 : M.id === 'zone' ? 40 : 800);
@@ -698,13 +710,16 @@
     // en el dúo el puesto es de la pareja (1 a 5): para las copas cuenta como el puesto equivalente de 10
     const rank = M.duo ? Math.min(10, (me.rank || 5) * 2 - 1) : me.rank;
     const win = M.ffa ? (rank || 99) <= 3 : game.winner === me.team;
-    const reward = PB.Save.applyMatch({ win, draw: game.winner === 'draw', rank, mode: M.id, me });
+    // ¿el rival tenía bastantes más personas (un grupo) que tu equipo? (solo en partidas en red por equipos)
+    const humansOf = (t) => game.brawlers.filter((b) => b.team === t && !b.isBot).length;
+    const unfair = !!(game.online && !M.ffa && humansOf(otherOf(me.team)) - humansOf(me.team) >= 2);
+    const reward = PB.Save.applyMatch({ win, draw: game.winner === 'draw', rank, mode: M.id, me, unfair });
     const d = PB.Save.get();
     const pct = Math.round((100 * d.tokens) / PB.META.tokensPerChest);
     const pend = PB.Save.pending();
     const dc = reward.copas;
     $('#end-rewards').innerHTML =
-      `<div class="copas-change ${dc > 0 ? 'up' : dc < 0 ? 'down' : ''}"><img src="${PB.Icons.cup()}" alt=""><b>${dc > 0 ? '+' : ''}${dc}</b><small>${me.def.name}: ${reward.copasNow} copas</small></div>` +
+      `<div class="copas-change ${dc > 0 ? 'up' : dc < 0 ? 'down' : ''}"><img src="${PB.Icons.cup()}" alt=""><b>${dc > 0 ? '+' : ''}${dc}</b><small>${me.def.name}: ${reward.copasNow} copas${reward.unfair ? ' · ' + PB.T('sin perder copas: el rival iba en grupo') : ''}</small></div>` +
       (reward.mastery ? `<div class="pill mastery-up" style="--mc:${PB.MASTERY[reward.mastery.tier - 1].color}"><img class="mast-up-ic" src="${PB.PixUI.masteryURL(reward.mastery.tier, 3)}" alt=""><b>${PB.T('¡Maestría {m}!', { m: PB.T(PB.MASTERY[reward.mastery.tier - 1].name) })}</b>` +
         `<img src="${PB.Icons.coin()}" alt=""><b>+${reward.mastery.coins}</b>` + (reward.mastery.rainbow ? `<img src="${PB.Icons.rainbow()}" alt=""><b>+${reward.mastery.rainbow}</b>` : '') + '</div>' : '') +
       `<div class="pill pay"><img src="${PB.Icons.coin()}" alt=""><b>+${reward.coins}</b><img src="${PB.Icons.star()}" alt=""><b>+${reward.points}</b>` +
@@ -866,7 +881,7 @@
   // y nunca repite el modo de la partida anterior si hay otro con gente.
   function pickRandomMode() {
     const p = PB.Online.party();
-    const ids = PB.MODE_ORDER.filter((id) => !(p && p.members.length > (PB.MODES[id].duo ? 2 : 1) && PB.MODES[id].ffa));
+    const ids = PB.MODE_ORDER.filter((id) => !(p && p.members.length > (PB.MODES[id].duo ? 2 : 1) && PB.MODES[id].ffa) && !(p && !PB.MODES[id].ffa && p.members.length > PB.teamSize(id)));
     const L = PB.Online.live.modes || {};
     let last = null;
     try { last = localStorage.getItem('pb.lastRandom'); } catch (e) {}

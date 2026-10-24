@@ -313,6 +313,52 @@ PB.MAPS = {
     ] },
   ],
   // Duelo de Equipos: abiertos, para pelear a media distancia
+  // Duelo 2vs2: más pequeño que el de 3 (17 de ancho), con coberturas y hierba en los lados
+  pair: [
+    { name: 'Patio', top: [
+      'TTT...........TTT',
+      'T.......R.......T',
+      '.................',
+      '..##...bbb...##..',
+      '..#....bbb....#..',
+      '.................',
+      '.....W.....W.....',
+      '..bb.........bb..',
+      '..bb...#.#...bb..',
+    ] },
+    { name: 'Dunas', theme: 'arena', top: [
+      'TTT...........TTT',
+      'T.......R.......T',
+      '....#.......#....',
+      '....#..bbb..#....',
+      '.......bbb.......',
+      '..WW.........WW..',
+      '.................',
+      '..bb...#.#...bb..',
+      '..bb...#.#...bb..',
+    ] },
+  ],
+  // Duelo 1vs1: el más pequeño (13 de ancho)
+  duel: [
+    { name: 'Ring', top: [
+      'TT.........TT',
+      'T.....R.....T',
+      '.............',
+      '..#..bbb..#..',
+      '..#..bbb..#..',
+      '.............',
+      '...W.....W...',
+    ] },
+    { name: 'Hielo', theme: 'nieve', top: [
+      'TT.........TT',
+      'T.....R.....T',
+      '....#...#....',
+      '.bb.#...#.bb.',
+      '.bb.......bb.',
+      '.............',
+      '....W...W....',
+    ] },
+  ],
   // campo de entrenamiento (botón «Probar»): pequeño, con rocas, hierba alta y barriles para probarlo todo
   practice: [
     { name: 'Entrenamiento', top: [

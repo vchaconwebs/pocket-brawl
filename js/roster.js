@@ -302,8 +302,9 @@
     25: 'Impactrueno', 4: 'Ascuas', 6: 'Lanzallamas', 59: 'Lanzallamas', 133: 'Rapidez', 197: 'Pulso Umbrío', 700: 'Fuerza Lunar',
     94: 'Bola Sombra', 448: 'Esfera Aural', 149: 'Hiperrayo', 7: 'Pistola Agua', 9: 'Hidrobomba', 129: 'Salpicadura', 130: 'Hidrobomba',
     658: 'Shuriken de Agua', 39: 'Canto', 282: 'Psíquico', 248: 'Triturar', 1: 'Látigo Cepa', 778: 'Carantoña', 131: 'Rayo Hielo',
-    52: 'Día de Pago', 257: 'Patada Ígnea', 445: 'Garra Dragón', 461: 'Garra Umbría',
+    52: 'Día de Pago', 257: 'Patada Ígnea', 445: 'Garra Dragón', 461: 'Garra Umbría', 903: 'Garra Umbría',
   };
+  const KEEP_SIG = new Set(['sneasel']);
   // ataque básico propio de una especie (set nuevo): Hitmontop gira y golpea a todo su alrededor
   const BASIC_DEX = { 237: 'Patada Giro' };
   const specialCache = {};
@@ -328,7 +329,7 @@
     burst3: (t, r) => ({ kind: 'burst', count: 3, delay: 0.1, range: r.range, speed: 860, dmg: t / 3, r: 11, scale: 1 }),
     orb: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: r.range, speed: 540, dmg: t * 1.05, r: 25, pierce: true, scale: 1.8 }),
     homing: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 1.05), speed: 560, dmg: t * 0.72, r: 16, homing: 2.8, scale: 1.4 }),
-    melee: (t, r) => ({ kind: 'melee', range: r.count > 3 ? 160 : 150, arc: 2.0, dmg: t * 1.32, scale: 1 }),
+    melee: (t, r) => ({ kind: 'melee', range: r.count > 3 ? 160 : 150, arc: 2.0, dmg: t * 1.15, scale: 1 }), // (1.32 hasta la v1.8: con la vida y la velocidad extra pegaban demasiado)
     twin: (t, r) => ({ kind: 'twin', gap: 13, range: r.range, speed: 720, dmg: t / 2, r: 12, scale: 1.1 }),
     boomer: (t, r) => ({ kind: 'spread', count: 1, spread: 0, range: Math.round(r.range * 0.85), speed: 620, dmg: t * (r.count > 3 ? 0.68 : 0.78), r: 18, boomerang: true, pierce: true, scale: 1.6 }),
     // --- formas nuevas (v1.3) ---
@@ -345,7 +346,7 @@
     // onda corta y ancha (como la ola del súper, pero pequeña y se para en los muros)
     ripple: (t, r) => ({ kind: 'spread', count: 1, spread: 0, ripple: 90, range: Math.round(r.range * 0.8), speed: 520, dmg: t * 0.85, r: 14, pierce: true, knockback: 120, scale: 1 }),
     // golpe que da la vuelta entera
-    spin: (t, r) => ({ kind: 'melee', range: 145, arc: Math.PI * 2, dmg: t * 1.08, scale: 1 }),
+    spin: (t, r) => ({ kind: 'melee', range: 145, arc: Math.PI * 2, dmg: t * 0.95, scale: 1 }),
     // láser instantáneo y estrecho
     laser: (t, r) => ({ kind: 'laser', range: Math.round(r.range * 1.05), width: 20, delay: 0.12, dmg: t * 0.84 }),
     // lanzadores: estalla en el centro y luego en tres trozos alrededor
@@ -482,7 +483,9 @@
     const look = { shape: PB.VFX.forType(basicType).proj, trail: TRAIL[basicType] || 'spark' };
     const second = types.find((t) => t !== atkType && t !== 'normal' && KIT[t]);
     const leg = typesOverride || classic ? null : LEGEND[fam.id];
-    const sig = leg || (typesOverride || !classic ? null : SIGNATURE[fam.id]);
+    // (las familias de KEEP_SIG conservan su súper clásica propia también en la rama que cambia de tipo:
+    // Sneasel -> Sneasler sigue teniendo Finta)
+    const sig = leg || (!classic || (typesOverride && !KEEP_SIG.has(fam.id)) ? null : SIGNATURE[fam.id]);
     const classicSupType = second || atkType;
     const supType = sig ? sig[2] : !classic && !typesOverride && SUPER_NEW[fam.id] ? SUPER_NEW[fam.id][2] : classic ? classicSupType : classicSupType === atkType ? other || atkType : atkType;
     const classicSup = () => (KIT[supType] || KIT.normal).sup[roleId === 'assassin' || roleId === 'thrower' || roleId === 'tank' ? 1 : 0];
@@ -509,7 +512,7 @@
     // los de corto alcance (cuerpo a cuerpo y llamaradas en abanico) tienen que acercarse: algo más de vida y velocidad;
     // los cuerpo a cuerpo, además, cargan antes el súper
     const close = atk.kind === 'melee' ? 2 : (atk.range || 999) < 250 ? 1 : 0;
-    const closeHp = [1, 1.08, 1.14][close], closeSpd = [0, 6, 12][close];
+    const closeHp = [1, 1.08, 1.1][close], closeSpd = [0, 6, 6][close];
     return {
       id: fam.id, dex: line[0], line, name: base.name, types, atkType, gen: base.gen,
       roleId, role: PB.T(R.name),
@@ -626,7 +629,7 @@
     if (sp && sp.name !== n.super.name) n = Object.assign({}, n, { super: sp });
     if (BASIC_DEX[line[stage]]) {
       // mismo daño total que su golpe, repartido en un giro completo (como el estilo «Rueda»)
-      const a = n.attack, dmg = Math.round((a.dmg * (a.kind === 'melee' && a.arc < 6 ? 1.08 / 1.32 : 1)) / 10) * 10;
+      const a = n.attack, dmg = Math.round((a.dmg * (a.kind === "melee" && a.arc < 6 ? 0.95 / 1.15 : 1)) / 10) * 10;
       n = Object.assign({}, n, { attack: Object.assign({}, a, { kind: 'melee', range: 145, arc: Math.PI * 2, dmg, style: 'spin', name: PB.TM(BASIC_DEX[line[stage]]) }) });
     }
     // set de movimientos elegido (kit): el clásico cambia el ataque y/o el súper por los de la v1.2

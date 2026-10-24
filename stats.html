@@ -247,6 +247,12 @@
     </div></div>
   </section>
 
+  <section class="panel" style="margin-bottom:14px">
+    <div class="ph"><div><h2>Encuesta de modos</h2><p class="note" id="poll-note">Cada jugador elige hasta 4 modos favoritos (una sola vez). Le sale al entrar al juego mientras esté abierta.</p></div>
+      <div class="links"><button class="rbtn" id="poll-open">Abrir encuesta (1 hora)</button><button class="rbtn" id="poll-end" style="background:#ff7a7a">Cerrar ya</button></div></div>
+    <div class="pb"><div class="rows" id="poll-rows"></div></div>
+  </section>
+
   <section class="panel">
     <div class="ph"><div><h2>Día a día</h2><p class="note">Del más reciente al más antiguo</p></div></div>
     <div class="pb"><div class="tbl"><table>
@@ -524,6 +530,35 @@
     $('#srv-month').innerHTML = meter('Realtime Database', tot, 10, ' GB', 'var(--c-newacc)');
     $('#srv-month-note').textContent = ks.length ? `Contado desde el ${label(ks.sort()[0], true)}. La consola de Firebase (Realtime Database → Uso) da el dato exacto.` : 'Se empieza a contar ahora.';
   }
+  // ---------- encuesta de modos (poll y pollVotes en la Realtime Database)
+  const POLL_MODES = 'gems,showdown,duo,heist,ball,zone,brawl,pair,duel,knockout';
+  const POLL_NAMES = { gems: 'Atrapa Pokéballs', showdown: 'Niebla Tóxica', duo: 'Niebla Tóxica Dúo', heist: 'Despierta a Snorlax', ball: 'Voltorbol', zone: 'Territorio', brawl: 'Duelo 3vs3', pair: 'Duelo 2vs2', duel: 'Duelo 1vs1', knockout: 'Eliminación' };
+  async function pollLoad() {
+    try {
+      const p = await (await fetch(DB + '/poll.json' + authQ(), { cache: 'no-store' })).json();
+      if (!p || !p.id) { $('#poll-note').textContent = 'No hay ninguna encuesta todavía.'; $('#poll-rows').innerHTML = ''; return; }
+      const v = (await (await fetch(DB + '/pollVotes/' + p.id + '.json' + authQ(), { cache: 'no-store' })).json()) || {};
+      const counts = {}, voters = Object.keys(v).length;
+      for (const x of Object.values(v)) for (const m of String(x).split(',')) counts[m] = (counts[m] || 0) + 1;
+      const open = p.ends > Date.now(), left = Math.max(0, Math.ceil((p.ends - Date.now()) / 60000));
+      $('#poll-note').textContent = (open ? `Abierta · quedan ${left} min` : 'Cerrada') + ` · ${fmt(voters)} jugadores han votado (cada uno hasta ${p.max || 4} modos)`;
+      const list = String(p.modes || POLL_MODES).split(',').map((m) => [m, counts[m] || 0]).sort((a, b) => b[1] - a[1]);
+      const top = Math.max(1, ...list.map((x) => x[1]));
+      $('#poll-rows').innerHTML = list.map(([m, n], i) => `<div class="fstep" style="--c:${i >= list.length - 2 ? 'var(--down)' : 'var(--c-matches)'}"><div class="tl"><span>${POLL_NAMES[m] || m}</span><b class="num">${fmt(n)}</b></div><div class="bar"><span style="width:${Math.max(1.5, (n / top) * 100)}%"></span></div><div class="pct">${voters ? Math.round((n / voters) * 100) : 0} % de los votantes</div></div>`).join('');
+    } catch (e) { $('#poll-note').textContent = 'No se ha podido leer la encuesta.'; }
+  }
+  $('#poll-open').onclick = async () => {
+    if (!confirm('¿Abrir una encuesta de modos de 1 hora? Les saldrá a todos los que entren.')) return;
+    const p = { id: Date.now().toString(36), ends: Date.now() + 3600000, max: 4, modes: POLL_MODES };
+    await fetch(DB + '/poll.json' + authQ(), { method: 'PUT', body: JSON.stringify(p) });
+    pollLoad();
+  };
+  $('#poll-end').onclick = async () => {
+    if (!confirm('¿Cerrar la encuesta ya?')) return;
+    await fetch(DB + '/poll/ends.json' + authQ(), { method: 'PUT', body: JSON.stringify(Date.now()) });
+    pollLoad();
+  };
+
   function render() { today(); tiles(); chips(); trend(); breakdowns(); table(); serverUse(); }
 
   let loadedAll = false;
@@ -604,6 +639,8 @@
     started = true;
     load();
     loadOnline();
+    pollLoad();
+    setInterval(pollLoad, 60000);
     setInterval(load, 60000);
     setInterval(loadOnline, 30000);
   });

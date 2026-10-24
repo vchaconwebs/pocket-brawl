@@ -540,6 +540,7 @@ PB.Game = class {
     const { ang, dist } = this.aim(b, aimIn, s.range || s.radius || 400);
     b.superCharge = 0;
     b.supersUsed = (b.supersUsed || 0) + 1;
+    if (this.mode.onSuper) this.mode.onSuper(this, b); // (Voltorbol: al usar el súper se suelta la pelota)
     this.events.push({ type: 'super', b });
     const sT = s.type || b.def.atkType;
     const pal = PB.VFX.PAL[sT] || PB.VFX.PAL.normal;
