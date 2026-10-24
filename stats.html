@@ -126,7 +126,7 @@
   .srv .pct { color: var(--muted); font-size: 12px; margin-top: 3px; }
   .srv .split { display: grid; gap: 6px; margin-top: 12px; font-size: 13px; color: var(--text-2); }
   .srv .split div { display: flex; justify-content: space-between; gap: 8px; }
-  .srv .split b { color: var(--text); font-weight: normal; }
+  .srv .split b { color: var(--text); font-weight: normal; white-space: nowrap; }
   @media (max-width: 980px) { .srv { grid-template-columns: minmax(0, 1fr); } }
   .real { padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px dashed var(--edge); }
   .real-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
@@ -241,7 +241,7 @@
       </div>
       <h3 class="est">Estimación del juego (aproximada, hasta ~2 min por detrás)</h3>
       <div class="srv">
-      <div><h3>Firestore hoy</h3><div class="funnel" id="srv-fs"></div><p class="pct">Se reinicia a las 9:00 (hora de España). Si se pasa, fallan login, chat de clan y ranking.</p></div>
+      <div><h3>Firestore hoy</h3><div class="funnel" id="srv-fs"></div><div class="split" id="srv-fsr"></div><p class="pct">«Listas de jugadores» = ranking al refrescarse, amigos, miembros de clan y búsquedas. Se reinicia a las 9:00 (hora de España). Si se pasa, fallan login, chat de clan y ranking.</p></div>
       <div><h3>Descargas hoy</h3><div class="funnel" id="srv-dl"></div><div class="split" id="srv-split"></div></div>
       <div><h3>Descargas este mes</h3><div class="funnel" id="srv-month"></div><p class="pct" id="srv-month-note"></p></div>
     </div></div>
@@ -507,6 +507,13 @@
   function serverUse() {
     const k = dayKey(new Date()), r = data[k] || {}, f = r.fs || {}, d = r.dl || {};
     $('#srv-fs').innerHTML = meter('Lecturas', f.r || 0, 50000, '', 'var(--c-visits)') + meter('Escrituras', f.w || 0, 20000, '', 'var(--c-matches)');
+    // de dónde salen (por colección): lo que más gasta, arriba
+    const FSN = { ranking: 'Ranking (compartido)', jugadores: 'Listas de jugadores', perfil: 'Perfiles', nube: 'Guardado en la nube', clanes: 'Clanes', chatclan: 'Chat de clan', amistad: 'Solicitudes de amistad', nombres: 'Nombres', regalos: 'Regalos', otros: 'Otros' };
+    const fr = r.fsr || {}, fw = r.fsw || {}, tr = Object.values(fr).reduce((a, b) => a + b, 0);
+    const kinds = Object.keys(FSN).filter((x) => fr[x] || fw[x]).sort((a, b) => (fr[b] || 0) - (fr[a] || 0));
+    $('#srv-fsr').innerHTML = kinds.length
+      ? '<div><span><b>Por tipo</b></span><b>lecturas · escrituras</b></div>' + kinds.map((x) => `<div><span>${FSN[x]}</span><b>${fmt(fr[x])}${tr ? ` (${Math.round(((fr[x] || 0) / tr) * 100)} %)` : ''} · ${fmt(fw[x])}</b></div>`).join('')
+      : '<div><span>Por tipo: se empieza a contar ahora</span></div>';
     $('#srv-dl').innerHTML = meter('Realtime Database', dlMB(r), 330, ' MB', 'var(--c-players)');
     const mb = (x) => dec((x || 0) / 1024) + ' MB';
     $('#srv-split').innerHTML = `<div><span>Partidas por relevo</span><b>${mb(d.relay)}</b></div><div><span>Chat general</span><b>${mb(d.chat)}</b></div>` +

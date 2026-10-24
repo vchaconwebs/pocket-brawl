@@ -86,6 +86,18 @@
             ".validate": "newData.isNumber() && newData.val() > (data.exists() ? data.val() : 0) && newData.val() <= (data.exists() ? data.val() : 0) + 2000"
           }
         },
+        "fsr": {
+          "$k": {
+            ".write": "$k.matches(/^(ranking|nube|perfil|jugadores|chatclan|clanes|amistad|nombres|regalos|otros)$/)",
+            ".validate": "newData.isNumber() && newData.val() > (data.exists() ? data.val() : 0) && newData.val() <= (data.exists() ? data.val() : 0) + 2000"
+          }
+        },
+        "fsw": {
+          "$k": {
+            ".write": "$k.matches(/^(ranking|nube|perfil|jugadores|chatclan|clanes|amistad|nombres|regalos|otros)$/)",
+            ".validate": "newData.isNumber() && newData.val() > (data.exists() ? data.val() : 0) && newData.val() <= (data.exists() ? data.val() : 0) + 2000"
+          }
+        },
         "dl": {
           "$k": {
             ".write": "$k.matches(/^(relay|chat|online)$/)",

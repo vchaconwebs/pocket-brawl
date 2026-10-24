@@ -79,30 +79,60 @@ PB.Online = (() => {
   const day = () => new Date(Date.now() + offset).toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
   const testing = /^(localhost|127\.0\.0\.1)$/.test(location.hostname); // las pruebas en local no cuentan
   // Cuántas lecturas y escrituras de Firestore hace este navegador (aprox.): se suman cada 2 min en
-  // stats/<día>/fs/{r,w} para ver en stats.html si el día se acerca al límite gratis (50.000 / 20.000)
+  // stats/<día>/fs/{r,w} para ver en stats.html si el día se acerca al límite gratis (50.000 / 20.000),
+  // y por tipo (según la colección) en stats/<día>/fsr/<tipo> y fsw/<tipo> para ver qué gasta más
+  const FS_KIND = (path) => {
+    const p = String(path || '').split('/');
+    if (p[0] === 'cache') return 'ranking';
+    if (p[0] === 'users') return p[2] === 'private' ? 'nube' : p.length >= 2 ? 'perfil' : 'jugadores';
+    if (p[0] === 'clans') return p[2] === 'chat' ? 'chatclan' : 'clanes';
+    if (p[0] === 'friendReqs') return 'amistad';
+    if (p[0] === 'names') return 'nombres';
+    if (p[0] === 'gifts') return 'regalos';
+    return 'otros';
+  };
   function countFirestore() {
     if (testing) return;
-    const n = { r: 0, w: 0 };
-    const wrap = (proto, name, kind, cnt) => {
+    const n = { r: 0, w: 0 }, by = { r: {}, w: {} };
+    const add = (kind, path, c) => { n[kind] += c; const k = FS_KIND(path); by[kind][k] = (by[kind][k] || 0) + c; };
+    const qPath = (q) => { try { return q._delegate._query.path.canonicalString(); } catch (e) { return ''; } };
+    const wrap = (proto, name, kind, cnt, pathOf) => {
       const f = proto && proto[name];
       if (!f || f._pv) return;
       proto[name] = function (...a) {
-        const p = f.apply(this, a);
-        if (p && p.then) p.then((x) => { n[kind] += cnt ? cnt(x) : 1; }, () => {});
+        const p = f.apply(this, a), path = pathOf(this);
+        if (p && p.then) p.then((x) => add(kind, path, cnt ? cnt(x) : 1), () => {});
         return p;
       };
       proto[name]._pv = true;
     };
-    const F = fb.firestore;
-    wrap(F.DocumentReference.prototype, 'get', 'r');
-    wrap(F.Query.prototype, 'get', 'r', (q) => Math.max(1, (q && q.size) || 0));
-    for (const m of ['set', 'update', 'delete']) wrap(F.DocumentReference.prototype, m, 'w');
+    const F = fb.firestore, docPath = (d) => d.path;
+    wrap(F.DocumentReference.prototype, 'get', 'r', null, docPath);
+    wrap(F.Query.prototype, 'get', 'r', (q) => Math.max(1, (q && q.size) || 0), qPath);
+    for (const m of ['set', 'update', 'delete']) wrap(F.DocumentReference.prototype, m, 'w', null, docPath);
+    wrap(F.CollectionReference && F.CollectionReference.prototype, 'add', 'w', null, qPath);
+    // escuchas en directo (chat del clan): cada documento que llega es una lectura
+    const os = F.Query.prototype.onSnapshot;
+    if (os && !os._pv) {
+      F.Query.prototype.onSnapshot = function (...a) {
+        const path = qPath(this), i = a.findIndex((x) => typeof x === 'function');
+        if (i >= 0) { const next = a[i]; a[i] = (snap) => { try { add('r', path, Math.max(1, snap.docChanges().length)); } catch (e) {} return next(snap); }; }
+        return os.apply(this, a);
+      };
+      F.Query.prototype.onSnapshot._pv = true;
+    }
     setInterval(() => {
       for (const k of ['r', 'w']) {
         const v = Math.min(n[k], 2000);
         if (!v) continue;
         n[k] -= v;
         rtdb.ref('stats/' + day() + '/fs/' + k).set(fb.database.ServerValue.increment(v)).catch(() => {});
+        for (const t in by[k]) {
+          const x = Math.min(by[k][t], 2000);
+          if (!x) continue;
+          by[k][t] -= x;
+          rtdb.ref('stats/' + day() + '/fs' + k + '/' + t).set(fb.database.ServerValue.increment(x)).catch(() => {});
+        }
       }
       // descargas de la Realtime Database (en KB, aprox.) por tipo: stats/<día>/dl/<tipo>
       for (const k in dl) {
