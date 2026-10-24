@@ -1191,7 +1191,7 @@ PB.Online = (() => {
   }
   // ¿tengo prohibido jugar online? (devuelve hasta cuándo: true = para siempre, un número = hora, 0 = no)
   async function playBanned() {
-    if (!uid) return 0;
+    if (!(await init()) || !uid) return 0;
     const s = await rtdb.ref('playBan/' + uid).once('value').catch(() => null);
     const v = s && s.val();
     return v === true ? true : typeof v === 'number' && v > now() ? v : 0;

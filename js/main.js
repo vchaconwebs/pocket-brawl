@@ -849,8 +849,12 @@
     $('#ld-tip').classList.toggle('hidden', title !== 'Buscando partida…');
     showScreen('loading');
   }
+  // castigado sin jugar (por el creador): ni online ni con bots, para que no se ganen copas así
+  const banText = (b) => (b === true ? PB.T('Estás castigado sin poder jugar.') : PB.T('Estás castigado sin poder jugar hasta las {h}.', { h: new Date(b).toLocaleString(PB.lang || 'es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }));
   async function play() {
     if (searching || starting) return;
+    const ban = await PB.Online.playBanned().catch(() => 0);
+    if (ban) { PB.Lobby.toast(banText(ban)); return; }
     const wait = PB.Save.abandonWait();
     if (wait > 0) { PB.Lobby.toast(PB.T('Has abandonado varias partidas. Podrás jugar online en {n} s', { n: wait })); return; }
     searching = true;
@@ -871,7 +875,7 @@
     PB.Online.setSearching(null);
     searching = false;
     if (r.cancelled) { backToLobby(); return; }
-    if (r.banned) PB.Lobby.toast(r.banned === true ? PB.T('Tienes prohibido jugar online. Juegas con bots.') : PB.T('No puedes jugar online hasta las {h}. Juegas con bots.', { h: new Date(r.banned).toLocaleString(PB.lang || 'es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }));
+    if (r.banned) { PB.Lobby.toast(banText(r.banned)); backToLobby(); return; }
     if (r.mid) return joinAndStart(r.mid);
     startMatch();
   }
@@ -903,6 +907,8 @@
   }
   async function joinAndStart(mid, fromParty) {
     if (mode === 'play') return;
+    const ban = await PB.Online.playBanned().catch(() => 0);
+    if (ban) { PB.Lobby.toast(banText(ban)); return; }
     if (partyWait) stopPartyWait();
     searchScreen('¡Partida encontrada!', PB.T('Conectando con los demás jugadores…'), true);
     // si se queda colgado conectando, se puede salir; y como mucho a los 40 s se juega con bots.

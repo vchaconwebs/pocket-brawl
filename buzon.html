@@ -77,7 +77,7 @@
     }));
     // sancionar por un tiempo: sin chat, sin jugar online o las dos cosas (se quita sola al acabar)
     document.querySelectorAll('.sanc').forEach((b) => (b.onclick = async () => {
-      const what = prompt('Sancionar a ' + b.dataset.n + '\n¿Qué? 1 = sin chat y sin online · 2 = solo chat · 3 = solo online', '1');
+      const what = prompt('Sancionar a ' + b.dataset.n + '\n¿Qué? 1 = sin chat y sin jugar · 2 = solo chat · 3 = solo sin jugar (ni con bots)', '1');
       if (!what || !['1', '2', '3'].includes(what.trim())) return;
       const time = prompt('¿Cuánto tiempo? Escribe horas (ej. 1, 24, 168), 0 = quitar la sanción, -1 = para siempre', '24');
       if (time === null || isNaN(+time)) return;

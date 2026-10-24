@@ -1700,7 +1700,7 @@ PB.Lobby = (() => {
       box.id = 'sanc';
       box.className = 'patch hidden';
       box.innerHTML = '<div class="panel patch-panel sanc-panel"><div class="patch-head"><h2 id="sanc-title"></h2><button class="fb-close" id="sanc-close">✕</button></div>' +
-        `<label>${PB.T('Qué')}<select id="sanc-what"><option value="both">${PB.T('Sin chat y sin jugar online')}</option><option value="chat">${PB.T('Sin chat')}</option><option value="play">${PB.T('Sin jugar online')}</option></select></label>` +
+        `<label>${PB.T('Qué')}<select id="sanc-what"><option value="both">${PB.T('Sin chat y sin jugar')}</option><option value="chat">${PB.T('Sin chat')}</option><option value="play">${PB.T('Sin jugar (ni con bots)')}</option></select></label>` +
         `<label>${PB.T('Cuánto')}<select id="sanc-time"><option value="3600000">1 h</option><option value="21600000">6 h</option><option value="86400000">${PB.T('1 día')}</option><option value="259200000">${PB.T('3 días')}</option><option value="604800000">${PB.T('1 semana')}</option><option value="-1">${PB.T('Para siempre')}</option><option value="0">${PB.T('Quitar la sanción')}</option></select></label>` +
         `<div class="row"><button class="act gray" id="sanc-cancel">${PB.T('Cancelar')}</button><button class="act red" id="sanc-ok">⛔ ${PB.T('Sancionar')}</button></div></div>`;
       document.body.appendChild(box);

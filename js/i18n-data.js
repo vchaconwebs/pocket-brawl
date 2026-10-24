@@ -933,4 +933,8 @@ PB.I18N = {
   "Tienes prohibido jugar online. Juegas con bots.": ["You are banned from online play. You play with bots.", "Estás proibido de jogar online. Jogas com bots.", "Tu es interdit de jeu en ligne. Tu joues avec des bots.", "Ti è vietato giocare online. Giochi con i bot.", "Du bist vom Online-Spiel gesperrt. Du spielst mit Bots."],
   "No puedes jugar online hasta las {h}. Juegas con bots.": ["You can’t play online until {h}. You play with bots.", "Não podes jogar online até {h}. Jogas com bots.", "Tu ne peux pas jouer en ligne avant {h}. Tu joues avec des bots.", "Non puoi giocare online fino a {h}. Giochi con i bot.", "Du kannst bis {h} nicht online spielen. Du spielst mit Bots."],
   "Cancelar": ["Cancel", "Cancelar", "Annuler", "Annulla", "Abbrechen"],
+  "Estás castigado sin poder jugar.": ["You are banned from playing.", "Estás castigado sem poder jogar.", "Tu es puni et ne peux pas jouer.", "Sei in punizione e non puoi giocare.", "Du bist gesperrt und kannst nicht spielen."],
+  "Estás castigado sin poder jugar hasta las {h}.": ["You are banned from playing until {h}.", "Estás castigado sem poder jogar até {h}.", "Tu es puni et ne peux pas jouer avant {h}.", "Sei in punizione e non puoi giocare fino a {h}.", "Du bist bis {h} gesperrt und kannst nicht spielen."],
+  "Sin chat y sin jugar": ["No chat and no playing", "Sem chat e sem jogar", "Pas de chat ni de jeu", "Niente chat e niente partite", "Kein Chat und kein Spielen"],
+  "Sin jugar (ni con bots)": ["No playing (not even with bots)", "Sem jogar (nem com bots)", "Pas de jeu (même avec des bots)", "Niente partite (nemmeno con i bot)", "Kein Spielen (auch nicht mit Bots)"],
 };
