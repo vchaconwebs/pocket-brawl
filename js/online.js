@@ -407,14 +407,28 @@ PB.Online = (() => {
       return true;
     } catch (e) { return false; }
   }
+  // Copia del progreso en la nube: desde la v1.9 en la Realtime Database (saves/<uid> = { json, t }), que no tiene
+  // límite diario de escrituras como Firestore. Las copias de antes (Firestore users/<uid>/private/save) se leen
+  // una vez, si no hay copia nueva, y se pasan.
+  const saveRef = (id) => rtdb.ref('saves/' + (id || uid));
+  async function cloudGet() {
+    const s = await saveRef().once('value').catch(() => null);
+    const v = s && s.val();
+    if (v && typeof v.json === 'string') return { json: v.json, t: +v.t || 0 };
+    const f = await fs.collection('users').doc(uid).collection('private').doc('save').get().catch(() => null);
+    return f && f.exists ? { json: f.data().json, t: +f.data().t || 0, old: true } : null;
+  }
+  // s = la hora del último cambio de ese progreso (para comparar sin bajar la copia entera)
+  const cloudPut = (json) => saveRef().set({ json, t: Date.now(), s: PB.Save.get().savedAt || 0 });
+
   // Tras entrar en una cuenta que ya existía: si tenía partida guardada se devuelve para cargarla;
   // si no, el progreso de este navegador pasa a esa cuenta. Luego se recarga la página.
   async function enteredExisting(u, extra) {
     user = u;
     uid = u.uid;
-    const s = await fs.collection('users').doc(uid).collection('private').doc('save').get();
-    if (s.exists) return Object.assign({ ok: true, switched: true, save: s.data().json }, extra);
-    await fs.collection('users').doc(uid).collection('private').doc('save').set({ json: JSON.stringify(PB.Save.get()), t: Date.now() });
+    const c = await cloudGet();
+    if (c) return Object.assign({ ok: true, switched: true, save: c.json }, extra);
+    await cloudPut(JSON.stringify(PB.Save.get())).catch(() => {});
     return Object.assign({ ok: true, switched: true, save: null }, extra);
   }
 
@@ -434,7 +448,7 @@ PB.Online = (() => {
   let myDoc = { friends: [], clan: null };
 
   const isGuest = () => !user || user.isAnonymous;
-  // (como mucho una escritura del perfil cada 10 minutos; lo que cambie entre medias va en la siguiente)
+  // (como mucho una escritura del perfil cada 15 minutos; lo que cambie entre medias va en la siguiente)
   let profWT = 0, profLater = null;
   async function syncProfile(first, force) {
     if (!uid || isGuest()) return;
@@ -463,7 +477,7 @@ PB.Online = (() => {
     if (stored && keyOf(stored) === key) lastProfile = key; // al entrar, si el perfil guardado ya está al día no se reescribe
     Object.assign(myDoc, p);
     if (key === lastProfile) return;
-    const wait = 600000 - (Date.now() - profWT); // (como mucho una escritura del perfil cada 10 min)
+    const wait = 900000 - (Date.now() - profWT); // (como mucho una escritura del perfil cada 15 min)
     if (!first && !force && wait > 0) {
       if (!profLater) profLater = setTimeout(() => { profLater = null; syncProfile(false, true).catch(() => {}); }, wait);
       return;
@@ -530,8 +544,7 @@ PB.Online = (() => {
     const json = JSON.stringify(PB.Save.get());
     if (json === lastCloud) return;
     lastCloud = json;
-    fs.collection('users').doc(uid).collection('private').doc('save')
-      .set({ json, t: Date.now() }).catch(() => { lastCloud = ''; });
+    cloudPut(json).catch(() => { lastCloud = ''; });
   }
   // al cerrar o esconder el juego, lo que faltaba por copiar se copia ya (si no, al entrar desde
   // otro móvil u ordenador faltaba lo de los últimos minutos)
@@ -555,9 +568,13 @@ PB.Online = (() => {
   async function syncCloud() {
     if (!uid || isGuest()) return;
     lastSync = Date.now();
-    const s = await fs.collection('users').doc(uid).collection('private').doc('save').get();
-    if (!s.exists) return saveCloud(true);
-    const c = s.data() || {}, local = PB.Save.get();
+    const local = PB.Save.get();
+    // primero solo la hora de la copia (unos bytes): si la de aquí es igual o más nueva, no hace falta bajarla
+    const ts = await saveRef().child('s').once('value').catch(() => null);
+    const sc = ts && ts.val();
+    if (typeof sc === 'number' && sc > 0 && local.savedAt && sc <= local.savedAt + 2000) { if (sc < local.savedAt) saveCloud(); return; }
+    const c = await cloudGet();
+    if (!c) return saveCloud(true);
     let cloud = null;
     try { cloud = JSON.parse(c.json || 'null'); } catch (e) { cloud = null; }
     if (!cloud) return;
@@ -568,7 +585,7 @@ PB.Online = (() => {
       lastCloud = c.json;
       PB.Save.importJSON(c.json, cloudT);
       emit('cloudLoaded');
-    } else if (c.json !== JSON.stringify(local)) saveCloud(); // (sin prisa: se junta con el siguiente guardado)
+    } else if (c.old || c.json !== JSON.stringify(local)) saveCloud(c.old); // (la copia vieja de Firestore se pasa ya; si no, sin prisa)
   }
   // (volver a la pestaña después de 10 minutos o más: se vuelve a mirar)
   document.addEventListener('visibilitychange', () => {
@@ -653,8 +670,7 @@ PB.Online = (() => {
     try { localStorage.removeItem('pb.account'); } catch (e) {}
     // el progreso ya queda en la cuenta; en este navegador se empieza de cero
     if (user && !user.isAnonymous) {
-      await fs.collection('users').doc(uid).collection('private').doc('save')
-        .set({ json: JSON.stringify(PB.Save.get()), t: Date.now() }).catch(() => {});
+      await cloudPut(JSON.stringify(PB.Save.get())).catch(() => {});
     }
     clearTimeout(saveT);
     user = null;
@@ -1899,5 +1915,6 @@ PB.Online = (() => {
     now: () => now(),
     trace,
     _testLink: (me, db) => makeLink(me, db), // para las pruebas del relevo
+    _syncCloud: () => syncCloud(), // (para las pruebas)
   };
 })();

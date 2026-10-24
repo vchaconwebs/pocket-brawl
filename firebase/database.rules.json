@@ -227,6 +227,17 @@
         }
       }
     },
+    "saves": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['json', 't']) && newData.child('json').isString() && newData.child('json').val().length < 300000 && newData.child('t').isNumber()",
+        "json": { ".validate": true },
+        "t": { ".validate": true },
+        "s": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    },
     "giftFlag": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
