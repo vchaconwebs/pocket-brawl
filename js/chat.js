@@ -209,7 +209,7 @@ PB.Chat = (() => {
           menu += `<button data-rep="${esc(m.id)}">🚩 ${PB.T('Reportar')}</button>`;
         }
         if (m.mine || (admin && tab === 'global')) menu += `<button data-del="${esc(m.id)}">🗑 ${PB.T('Borrar')}</button>`;
-        if (admin && !m.mine && tab === 'global') menu += `<button data-ban="${esc(m.uid)}">⛔ ${PB.T('Bloquear')}</button>`;
+        if (admin && !m.mine && tab === 'global') menu += `<button data-sanc="${esc(m.uid)}" data-nm="${esc(m.name)}">⛔ ${PB.T('Sancionar')}</button>`;
         if (admin && !m.mine && cleanTag(m.tg)) menu += `<button data-untag="${esc(m.uid)}" data-tg="${esc(cleanTag(m.tg))}">🏷 ${PB.T('Quitar tag')}</button>`;
         menu += '</div>';
       }
@@ -241,7 +241,7 @@ PB.Chat = (() => {
     });
     act('[data-mute]', (b) => { setMuted(b.dataset.mute, true); PB.Lobby.toast(PB.T('No verás más sus mensajes')); });
     act('[data-del]', (b) => PB.Online.deleteChat(b.dataset.del));
-    act('[data-ban]', async (b) => { await PB.Online.banChat(b.dataset.ban); PB.Lobby.toast(PB.T('Bloqueado del chat')); });
+    act('[data-sanc]', async (b) => PB.Lobby.sanction(b.dataset.sanc, b.dataset.nm));
     act('[data-untag]', async (b) => { const r = await PB.Online.removeTag(b.dataset.untag, b.dataset.tg); PB.Lobby.toast(r.error || PB.T('Tag quitado: le saldrá un aviso al entrar')); });
     if (atBottom || !log.dataset.ready) { log.scrollTop = log.scrollHeight; log.dataset.ready = '1'; }
     markSeen();

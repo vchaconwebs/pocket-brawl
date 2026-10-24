@@ -871,6 +871,7 @@
     PB.Online.setSearching(null);
     searching = false;
     if (r.cancelled) { backToLobby(); return; }
+    if (r.banned) PB.Lobby.toast(r.banned === true ? PB.T('Tienes prohibido jugar online. Juegas con bots.') : PB.T('No puedes jugar online hasta las {h}. Juegas con bots.', { h: new Date(r.banned).toLocaleString(PB.lang || 'es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }));
     if (r.mid) return joinAndStart(r.mid);
     startMatch();
   }

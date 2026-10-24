@@ -1118,7 +1118,8 @@ PB.Online = (() => {
     gWatch = listen(rtdb.ref('chat'), gMsgs, 'gchat', last);
     if (chatInit) return true;
     chatInit = true;
-    rtdb.ref('chatBan/' + uid).on('value', (s) => { banned = !!s.val(); }, () => {});
+    // sanción de chat: true = para siempre; un número = hasta esa hora
+    rtdb.ref('chatBan/' + uid).on('value', (s) => { const v = s.val(); banned = v === true || (typeof v === 'number' && v > now()); }, () => {});
     // limpieza: los mensajes de hace más de un día se borran (cualquiera puede, poco a poco), con su audio
     rtdb.ref('chat').orderByChild('t').endAt(now() - DAY).limitToFirst(10).once('value')
       .then((s) => s.forEach((c) => { c.ref.remove().catch(() => {}); rtdb.ref('chatAudio/' + c.key).remove().catch(() => {}); })).catch(() => {});
@@ -1180,6 +1181,21 @@ PB.Online = (() => {
   // borrar un mensaje también borra su audio
   const deleteChat = (id) => { rtdb.ref('chatAudio/' + id).remove().catch(() => {}); return rtdb.ref('chat/' + id).remove().catch(() => {}); };
   const banChat = (id) => rtdb.ref('chatBan/' + id).set(true).catch(() => {});
+  // (solo el creador) sancionar a un jugador: what = 'chat' | 'play' | 'both'; ms = duración (0 = quitar, -1 = para siempre)
+  async function sanction(id, what, ms) {
+    if (!(await start()) || uid !== ADMIN) return err('Solo el creador puede hacer esto.');
+    const v = ms < 0 ? true : ms > 0 ? now() + ms : null;
+    const refs = (what === 'both' ? ['chatBan', 'playBan'] : [what === 'chat' ? 'chatBan' : 'playBan']).map((k) => rtdb.ref(k + '/' + id));
+    try { await Promise.all(refs.map((r) => (v === null ? r.remove() : r.set(v)))); } catch (e) { return err('No se ha podido sancionar.'); }
+    return { ok: true };
+  }
+  // ¿tengo prohibido jugar online? (devuelve hasta cuándo: true = para siempre, un número = hora, 0 = no)
+  async function playBanned() {
+    if (!uid) return 0;
+    const s = await rtdb.ref('playBan/' + uid).once('value').catch(() => null);
+    const v = s && s.val();
+    return v === true ? true : typeof v === 'number' && v > now() ? v : 0;
+  }
   // Encuesta de modos: poll = { id, ends, max, modes: 'gems,ball,...' } la abre el creador desde stats.html.
   // Cada jugador vota una sola vez (pollVotes/<id>/<uid> = 'modo,modo'); los resultados solo los ve el creador.
   let poll = null;
@@ -1456,6 +1472,8 @@ PB.Online = (() => {
 
   async function findMatch(mode, onStatus) {
     if (!(await start())) return { local: true };
+    const pb = await playBanned();
+    if (pb) return { local: true, banned: pb };
     if (search) cancelMatch();
     const M = PB.MODES[mode];
     const cap = M.ffa ? M.players || 10 : PB.teamSize(mode) * 2;
@@ -1854,7 +1872,7 @@ PB.Online = (() => {
     topPlayers, topClans, topByPokemon, topForPokemon, getUser,
     searchClans, getClan, myClan, myClanLite, createClan, joinClan, leaveClan, clanRequests, answerClanRequest,
     chat, sendChat,
-    watchChat, unwatchChat, peekChat, sendGlobalChat, deleteChat, banChat, removeTag, votePoll, get poll() { return poll; }, sendPartyChat, inviteToPlay, sendVoice, getVoice,
+    watchChat, unwatchChat, peekChat, sendGlobalChat, deleteChat, banChat, sanction, playBanned, removeTag, votePoll, get poll() { return poll; }, sendPartyChat, inviteToPlay, sendVoice, getVoice,
     chatMsgs: () => gMsgs, partyMsgs: () => pMsgs, isAdmin: () => uid === ADMIN, get myUid() { return uid; },
     party: () => party, createParty, invite, joinByCode, setReady, updateMe, kick, leaveParty,
     voteRematch, cancelRematch, rematchGo, rematchLeft,

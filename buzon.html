@@ -69,10 +69,24 @@
       return `<div class="msg"><div class="top"><span class="tag ${m.report ? 'report' : m.kind}">${m.report ? 'REPORTE' : m.kind === 'idea' ? 'IDEA' : 'FALLO'}</span>` +
         (m.report ? `<span class="who">→ ${esc(m.report.name)} <small>(${esc(m.report.uid)})</small></span>` : '') +
         `<span class="who">${m.report ? 'de ' : ''}${esc(m.name) || 'Sin nombre'}</span><span>${when}</span><span>v${esc(m.v)}</span><span>${m.mobile ? 'móvil' : 'PC'}</span><span>${esc(m.lang)}</span>` +
+        (OWNER_ME && (m.report || m.uid) ? `<button class="del sanc" data-u="${esc(m.report ? m.report.uid : m.uid)}" data-n="${esc(m.report ? m.report.name : m.name)}">⛔ Sancionar${m.report ? ' al reportado' : ''}</button>` : '') +
         `<button class="del" data-id="${esc(m.id)}">Borrar</button></div><p>${esc(m.text)}</p></div>`;
     }).join('');
-    document.querySelectorAll('.del').forEach((b) => (b.onclick = () => {
+    document.querySelectorAll('.del:not(.sanc)').forEach((b) => (b.onclick = () => {
       if (confirm('¿Borrar este mensaje?')) firebase.database().ref('feedback/' + b.dataset.id).remove();
+    }));
+    // sancionar por un tiempo: sin chat, sin jugar online o las dos cosas (se quita sola al acabar)
+    document.querySelectorAll('.sanc').forEach((b) => (b.onclick = async () => {
+      const what = prompt('Sancionar a ' + b.dataset.n + '\n¿Qué? 1 = sin chat y sin online · 2 = solo chat · 3 = solo online', '1');
+      if (!what || !['1', '2', '3'].includes(what.trim())) return;
+      const time = prompt('¿Cuánto tiempo? Escribe horas (ej. 1, 24, 168), 0 = quitar la sanción, -1 = para siempre', '24');
+      if (time === null || isNaN(+time)) return;
+      const h = +time, v = h < 0 ? true : h > 0 ? Date.now() + h * 3600000 : null;
+      const keys = what.trim() === '1' ? ['chatBan', 'playBan'] : what.trim() === '2' ? ['chatBan'] : ['playBan'];
+      try {
+        await Promise.all(keys.map((k) => (v === null ? firebase.database().ref(k + '/' + b.dataset.u).remove() : firebase.database().ref(k + '/' + b.dataset.u).set(v))));
+        alert(v === null ? 'Sanción quitada' : 'Sanción puesta');
+      } catch (e) { alert('No se ha podido: ' + e.message); }
     }));
   }
   document.querySelectorAll('#filter button').forEach((b) => (b.onclick = () => {
@@ -80,7 +94,9 @@
     document.querySelectorAll('#filter button').forEach((x) => x.classList.toggle('on', x === b));
     render();
   }));
+  let OWNER_ME = false;
   firebase.auth().onAuthStateChanged((u) => {
+    OWNER_ME = !!(u && u.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3');
     if (!u || !ADMINS.includes(u.uid)) {
       $('#sub').textContent = '';
       $('#list').innerHTML = '<div class="lock">🔒 Este buzón solo lo pueden ver los administradores.<br>Entra primero en <a href="/">pokeversus.com</a> con tu cuenta y vuelve a abrir esta página.</div>';

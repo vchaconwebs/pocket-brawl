@@ -1667,6 +1667,11 @@ PB.Lobby = (() => {
     $('#pv-acts').innerHTML = (u.friend ? '' : `<button class="act blue" id="pv-add">➕ ${PB.T('Añadir amigo')}</button>`) + `<button class="act gold" id="pv-inv">🎮 ${PB.T('Invitar a jugar')}</button>` +
       `<button class="act red" id="pv-rep">🚩 ${PB.T('Reportar')}</button>`;
     $('#pv-rep').onclick = () => report(id, u.name);
+    // (solo el creador) sancionarle
+    if (PB.Online.isAdmin()) {
+      $('#pv-acts').insertAdjacentHTML('beforeend', `<button class="act red" id="pv-sanc">⛔ ${PB.T('Sancionar')}</button>`);
+      $('#pv-sanc').onclick = () => sanction(id, u.name);
+    }
     // (solo el creador) quitarle el tag
     if (PB.Online.isAdmin() && u.tg) {
       $('#pv-acts').insertAdjacentHTML('beforeend', `<button class="act gray" id="pv-untag">🏷 ${PB.T('Quitar tag')}</button>`);
@@ -1686,6 +1691,30 @@ PB.Lobby = (() => {
       toast(r.error || PB.T('¡Invitación enviada! Si acepta, entrará en tu grupo.'));
     };
     $('#pview').classList.remove('hidden');
+  }
+  // (solo el creador) sancionar a un jugador por un tiempo: sin chat, sin jugar online o las dos cosas
+  function sanction(id, name) {
+    let box = $('#sanc');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'sanc';
+      box.className = 'patch hidden';
+      box.innerHTML = '<div class="panel patch-panel sanc-panel"><div class="patch-head"><h2 id="sanc-title"></h2><button class="fb-close" id="sanc-close">✕</button></div>' +
+        `<label>${PB.T('Qué')}<select id="sanc-what"><option value="both">${PB.T('Sin chat y sin jugar online')}</option><option value="chat">${PB.T('Sin chat')}</option><option value="play">${PB.T('Sin jugar online')}</option></select></label>` +
+        `<label>${PB.T('Cuánto')}<select id="sanc-time"><option value="3600000">1 h</option><option value="21600000">6 h</option><option value="86400000">${PB.T('1 día')}</option><option value="259200000">${PB.T('3 días')}</option><option value="604800000">${PB.T('1 semana')}</option><option value="-1">${PB.T('Para siempre')}</option><option value="0">${PB.T('Quitar la sanción')}</option></select></label>` +
+        `<div class="row"><button class="act gray" id="sanc-cancel">${PB.T('Cancelar')}</button><button class="act red" id="sanc-ok">⛔ ${PB.T('Sancionar')}</button></div></div>`;
+      document.body.appendChild(box);
+    }
+    $('#sanc-title').textContent = '⛔ ' + PB.T('Sancionar a {a}', { a: name || '?' });
+    const close = () => box.classList.add('hidden');
+    $('#sanc-close').onclick = close;
+    $('#sanc-cancel').onclick = close;
+    $('#sanc-ok').onclick = async () => {
+      const r = await PB.Online.sanction(id, $('#sanc-what').value, +$('#sanc-time').value);
+      close();
+      toast(r.error || (+$('#sanc-time').value === 0 ? PB.T('Sanción quitada') : PB.T('Sanción puesta')));
+    };
+    box.classList.remove('hidden');
   }
   // reportar a un jugador (desde su perfil o desde un mensaje del chat)
   async function report(id, name, msg) {
@@ -2579,5 +2608,5 @@ PB.Lobby = (() => {
     window.addEventListener('resize', () => { if (current === 'chestopen') resizeFx(); });
   }
 
-  return { showPlayer, showDetail, showPoll, report, init, show, tick, openSettings, toast, refresh: refreshLobby, playPressed, get current() { return current; } };
+  return { showPlayer, showDetail, showPoll, sanction, report, init, show, tick, openSettings, toast, refresh: refreshLobby, playPressed, get current() { return current; } };
 })();
