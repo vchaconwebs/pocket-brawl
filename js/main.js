@@ -745,7 +745,7 @@
       stepN();
     }
     help().classList.add('hidden');
-    PB.Online.saveCloud(true);
+    PB.Online.saveCloud(); // (como mucho cada 4 min; al cerrar o esconder el juego se guarda ya. Antes: tras cada partida)
     PB.Online.updateMe();
     PB.Audio.play(res.cls === 'win' ? 'win' : 'lose');
   }

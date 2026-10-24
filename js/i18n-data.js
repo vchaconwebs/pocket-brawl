@@ -937,4 +937,5 @@ PB.I18N = {
   "Estás castigado sin poder jugar hasta las {h}.": ["You are banned from playing until {h}.", "Estás castigado sem poder jogar até {h}.", "Tu es puni et ne peux pas jouer avant {h}.", "Sei in punizione e non puoi giocare fino a {h}.", "Du bist bis {h} gesperrt und kannst nicht spielen."],
   "Sin chat y sin jugar": ["No chat and no playing", "Sem chat e sem jogar", "Pas de chat ni de jeu", "Niente chat e niente partite", "Kein Chat und kein Spielen"],
   "Sin jugar (ni con bots)": ["No playing (not even with bots)", "Sem jogar (nem com bots)", "Pas de jeu (même avec des bots)", "Niente partite (nemmeno con i bot)", "Kein Spielen (auch nicht mit Bots)"],
+  "Actualizando a la versión nueva…": ["Updating to the new version…", "A atualizar para a versão nova…", "Mise à jour vers la nouvelle version…", "Aggiornamento alla nuova versione…", "Aktualisiere auf die neue Version…"],
 };

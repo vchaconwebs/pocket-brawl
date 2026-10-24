@@ -434,7 +434,7 @@ PB.Online = (() => {
   let myDoc = { friends: [], clan: null };
 
   const isGuest = () => !user || user.isAnonymous;
-  // (como mucho una escritura del perfil cada 3 minutos; lo que cambie entre medias va en la siguiente)
+  // (como mucho una escritura del perfil cada 10 minutos; lo que cambie entre medias va en la siguiente)
   let profWT = 0, profLater = null;
   async function syncProfile(first, force) {
     if (!uid || isGuest()) return;
@@ -463,7 +463,7 @@ PB.Online = (() => {
     if (stored && keyOf(stored) === key) lastProfile = key; // al entrar, si el perfil guardado ya está al día no se reescribe
     Object.assign(myDoc, p);
     if (key === lastProfile) return;
-    const wait = 180000 - (Date.now() - profWT);
+    const wait = 600000 - (Date.now() - profWT); // (como mucho una escritura del perfil cada 10 min)
     if (!first && !force && wait > 0) {
       if (!profLater) profLater = setTimeout(() => { profLater = null; syncProfile(false, true).catch(() => {}); }, wait);
       return;
@@ -524,6 +524,7 @@ PB.Online = (() => {
   let saveT = null, lastCloud = '';
   function writeCloud() {
     saveT = null;
+    pendingSince = 0;
     if (!uid || !user || user.isAnonymous) return;
     // (si no ha cambiado nada desde la última copia, no se gasta la escritura)
     const json = JSON.stringify(PB.Save.get());
@@ -535,10 +536,16 @@ PB.Online = (() => {
   // al cerrar o esconder el juego, lo que faltaba por copiar se copia ya (si no, al entrar desde
   // otro móvil u ordenador faltaba lo de los últimos minutos)
   document.addEventListener('visibilitychange', () => { if (document.hidden && saveT) { clearTimeout(saveT); writeCloud(); } });
+  // Copia en la nube: 4 min después del último cambio, pero sin esperar nunca más de 10 min desde el primero
+  // que quedó sin copiar (jugando seguido no se copia tras cada partida: el plan gratis tiene un límite de
+  // escrituras al día). Al cerrar o esconder el juego se copia ya.
+  let pendingSince = 0;
   function saveCloud(soon) {
     if (!uid || !user || user.isAnonymous) return;
     clearTimeout(saveT);
-    saveT = setTimeout(writeCloud, soon ? 500 : 240000); // (al acabar cada partida se guarda enseguida; si no, cada 4 min como mucho: el plan gratis tiene un límite de escrituras al día)
+    if (!pendingSince) pendingSince = Date.now();
+    const wait = soon ? 500 : Math.max(500, Math.min(240000, 600000 - (Date.now() - pendingSince)));
+    saveT = setTimeout(writeCloud, wait);
   }
 
   // Misma cuenta en varios dispositivos (PC y móvil): al entrar, y al volver al juego tras un rato, se mira
@@ -561,7 +568,7 @@ PB.Online = (() => {
       lastCloud = c.json;
       PB.Save.importJSON(c.json, cloudT);
       emit('cloudLoaded');
-    } else if (c.json !== JSON.stringify(local)) saveCloud(true);
+    } else if (c.json !== JSON.stringify(local)) saveCloud(); // (sin prisa: se junta con el siguiente guardado)
   }
   // (volver a la pestaña después de 10 minutos o más: se vuelve a mirar)
   document.addEventListener('visibilitychange', () => {
@@ -685,7 +692,13 @@ PB.Online = (() => {
   async function friends(force) {
     if (!(await start()) || isGuest()) return [];
     if (!force && friendsCache && Date.now() - friendsT < 600000) return friendsCache;
-    await processAccepted().catch(() => {});
+    // (las aceptadas, como mucho cada 30 min: cada consulta cuesta una lectura aunque no haya ninguna)
+    let lastAcc = 0;
+    try { lastAcc = +localStorage.getItem('pb.accChk') || 0; } catch (e) {}
+    if (force || Date.now() - lastAcc > 1800000) {
+      try { localStorage.setItem('pb.accChk', String(Date.now())); } catch (e) {}
+      await processAccepted().catch(() => {});
+    }
     const ids = (myDoc.friends || []).slice(0, 100);
     const list = await usersByIds(ids);
     await Promise.all(list.map(async (f) => { f.online = await isOnline(f.id); }));
@@ -698,7 +711,7 @@ PB.Online = (() => {
   let reqCache = null, reqT = 0;
   async function requests(force) {
     if (!(await start()) || isGuest()) return [];
-    if (!force && reqCache && Date.now() - reqT < 900000) return reqCache;
+    if (!force && reqCache && Date.now() - reqT < 1800000) return reqCache;
     reqT = Date.now();
     reqCache = await requestsNow().catch(() => reqCache || []);
     return reqCache;
@@ -927,6 +940,8 @@ PB.Online = (() => {
   async function searchClans(q) {
     if (!(await start())) return [];
     const s = clean(q, 20).toLowerCase();
+    // sin buscar nada: la lista de los mejores clanes del ranking (compartida y guardada; antes, 20 lecturas cada vez)
+    if (!s) return (await topClans()).slice(0, 20).filter((c) => c.count > 0);
     const res = s
       ? await fs.collection('clans').orderBy('nameLower').startAt(s).endAt(s + '').limit(20).get()
       : await fs.collection('clans').orderBy('copas', 'desc').limit(20).get();
@@ -1058,7 +1073,7 @@ PB.Online = (() => {
       stopChat();
       chatClan = myDoc.clan;
       await new Promise((res) => {
-        chatOff = fs.collection('clans').doc(chatClan).collection('chat').orderBy('t', 'desc').limit(25).onSnapshot((q) => {
+        chatOff = fs.collection('clans').doc(chatClan).collection('chat').orderBy('t', 'desc').limit(15).onSnapshot((q) => {
           chatMsgs = q.docs.map((d) => d.data()).reverse().map((m) => ({ sys: !!m.sys, from: m.uid === uid ? 'me' : m.uid, name: clean(m.name, 16), text: clean(m.text, 140), time: m.t }));
           res();
           emit('chat');

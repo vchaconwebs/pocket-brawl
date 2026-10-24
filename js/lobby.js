@@ -209,7 +209,14 @@ PB.Lobby = (() => {
     try {
       const html = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
       const m = /main\.js\?v=(\d+)/.exec(html);
-      if (m && +m[1] > loadedV) { newVersion = true; $('#update-bar').classList.remove('hidden'); }
+      if (m && +m[1] > loadedV) {
+        newVersion = true;
+        $('#update-bar').classList.remove('hidden');
+        // si está tranquilo en la lobby (sin grupo, sin chat abierto y sin buscar partida), se recarga solo:
+        // así todos pasan pronto a la versión nueva (las viejas gastan más del servidor)
+        const idle = current === 'lobby' && !PB.Online.party() && !PB.Online.searching && !(PB.Match && PB.Match.busy) && document.querySelector('#gchat').classList.contains('hidden');
+        if (idle) { toast(PB.T('Actualizando a la versión nueva…')); setTimeout(() => { if (current === 'lobby' && !PB.Online.searching) location.reload(); }, 2500); }
+      }
     } catch (e) {}
   }
   setInterval(checkUpdate, 120000);
