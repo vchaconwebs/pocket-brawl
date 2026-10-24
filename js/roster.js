@@ -163,7 +163,7 @@
     larvitar: ['meteor', 'Avalancha', 'rock'], gible: ['slam', 'Terremoto', 'ground'],
     magikarp: ['vortex', 'Cascada', 'water'], lapras: ['heal', 'Canto', 'water'], eevee: ['dash', 'Última Baza', 'normal'],
     abra: ['stealth', 'Teletransporte', 'psychic'], scyther: ['dash', 'Golpe Aéreo', 'flying'],
-    mimikyu: ['dash', 'Sombra Vil', 'ghost'], bulbasaur: ['toxic', 'Bomba Lodo', 'poison'], gastly: ['toxic', 'Tóxico', 'poison'],
+    mimikyu: ['dash', 'Sombra Vil', 'ghost'], sneasel: ['stealth', 'Finta', 'dark'], bulbasaur: ['toxic', 'Bomba Lodo', 'poison'], gastly: ['toxic', 'Tóxico', 'poison'],
   };
 
   // Súper de legendarios (v1.3): su movimiento característico, con una forma propia más espectacular
@@ -295,14 +295,17 @@
     'Día de Pago': { kind: 'payday', type: 'normal', pal: 'gold', count: 10, spread: 1.1, range: 340, speed: 600, dmg: 240, r: 12, bounces: 1, d: 'una lluvia de monedas que rebotan en los muros' },
     'Patada Ígnea': { kind: 'blazekick', type: 'fire', pal: 'sun', range: 320, time: 0.26, dmg: 1300, stun: 0.6, boom: 500, d: 'una patada en llamas que cruza la zona, deja fuego y explota al final' },
     'Garra Dragón': { kind: 'dragonclaw', type: 'dragon', pal: 'dragon', range: 220, radius: 110, count: 3, every: 0.16, dmg: 600, d: 'tres zarpazos gigantes de dragón seguidos' },
+    'Garra Umbría': { kind: 'dragonclaw', type: 'dark', pal: 'void', range: 220, radius: 105, count: 3, every: 0.13, dmg: 580, d: 'tres zarpazos oscuros muy rápidos, cuerpo a cuerpo' },
   };
   // qué especie usa cada uno (número de Pokédex: así no depende del idioma)
   const SPECIAL_DEX = {
     25: 'Impactrueno', 4: 'Ascuas', 6: 'Lanzallamas', 59: 'Lanzallamas', 133: 'Rapidez', 197: 'Pulso Umbrío', 700: 'Fuerza Lunar',
     94: 'Bola Sombra', 448: 'Esfera Aural', 149: 'Hiperrayo', 7: 'Pistola Agua', 9: 'Hidrobomba', 129: 'Salpicadura', 130: 'Hidrobomba',
     658: 'Shuriken de Agua', 39: 'Canto', 282: 'Psíquico', 248: 'Triturar', 1: 'Látigo Cepa', 778: 'Carantoña', 131: 'Rayo Hielo',
-    52: 'Día de Pago', 257: 'Patada Ígnea', 445: 'Garra Dragón',
+    52: 'Día de Pago', 257: 'Patada Ígnea', 445: 'Garra Dragón', 461: 'Garra Umbría',
   };
+  // ataque básico propio de una especie (set nuevo): Hitmontop gira y golpea a todo su alrededor
+  const BASIC_DEX = { 237: 'Patada Giro' };
   const specialCache = {};
   function makeSpecial(name) {
     if (specialCache[name]) return specialCache[name];
@@ -429,13 +432,14 @@
     return 'fighter';
   }
 
-  // Precio y rareza (provisional: la economía se ajusta cuando esté todo metido)
+  // Precio (en Puntos Pokémon) y rareza. ×5 desde la v1.8: se compraban todos de golpe (sobre todo los
+  // legendarios); ahora comprar es lento y la forma normal de conseguirlos son las Poké Balls y la Zona Safari
   const RARITY = {
-    starter: { name: 'Inicial', color: '#9ad08a', cost: 200 },
-    common: { name: 'Común', color: '#c8c8c8', cost: 100 },
-    rare: { name: 'Raro', color: '#5aa8ff', cost: 200 },
-    epic: { name: 'Épico', color: '#c07aff', cost: 400 },
-    legendary: { name: 'Legendario', color: '#ffd23a', cost: 800 },
+    starter: { name: 'Inicial', color: '#9ad08a', cost: 1000 },
+    common: { name: 'Común', color: '#c8c8c8', cost: 500 },
+    rare: { name: 'Raro', color: '#5aa8ff', cost: 1000 },
+    epic: { name: 'Épico', color: '#c07aff', cost: 2000 },
+    legendary: { name: 'Legendario', color: '#ffd23a', cost: 4000 },
   };
   PB.RARITY = RARITY;
   for (const r of Object.values(RARITY)) r.name = PB.T(r.name);
@@ -619,6 +623,11 @@
     // rama que cambia de tipo sin súper especial propio (Eevee -> Vaporeon): usa un súper de su nuevo tipo, no el heredado
     if (sp && n !== def && !SPECIAL_DEX[line[stage]]) sp = null;
     if (sp && sp.name !== n.super.name) n = Object.assign({}, n, { super: sp });
+    if (BASIC_DEX[line[stage]]) {
+      // mismo daño total que su golpe, repartido en un giro completo (como el estilo «Rueda»)
+      const a = n.attack, dmg = Math.round((a.dmg * (a.kind === 'melee' && a.arc < 6 ? 1.08 / 1.32 : 1)) / 10) * 10;
+      n = Object.assign({}, n, { attack: Object.assign({}, a, { kind: 'melee', range: 145, arc: Math.PI * 2, dmg, style: 'spin', name: PB.TM(BASIC_DEX[line[stage]]) }) });
+    }
     // set de movimientos elegido (kit): el clásico cambia el ataque y/o el súper por los de la v1.2
     if (kit && (kit.atk === 'clasico' || kit.sup === 'clasico')) {
       const c = classicMoves(def.id, line, stage, def.alts);

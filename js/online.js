@@ -426,7 +426,8 @@ PB.Online = (() => {
     // los 3 Pokémon con más copas (para el perfil público y el ranking por Pokémon)
     const best = Object.entries(d.copas || {}).filter(([id, c]) => c > 0 && PB.brawlerById(id)).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, c]) => ({ id, c }));
     const p = { name: myName(), nameLower: myName().toLowerCase(), tag: d.tag, copas: PB.Save.totalCopas(), fav: d.avatar || d.selected, clan: myDoc.clan || null, clanName: myDoc.clanName || '',
-      best, bestCopas: best.length ? best[0].c : 0, pc: Object.fromEntries(Object.entries(d.copas || {}).filter(([id, c]) => c > 0 && PB.brawlerById(id))), played: (d.stats && d.stats.played) || 0, wins: (d.stats && d.stats.wins) || 0, owned: Object.keys(d.owned || {}).length };
+      best, bestCopas: best.length ? best[0].c : 0, pc: Object.fromEntries(Object.entries(d.copas || {}).filter(([id, c]) => c > 0 && PB.brawlerById(id))), played: (d.stats && d.stats.played) || 0, wins: (d.stats && d.stats.wins) || 0, owned: Object.keys(d.owned || {}).length,
+      streak: (d.stats && d.stats.streak) || 0, bestStreak: (d.stats && d.stats.bestStreak) || 0, tg: myTag().tg || '', tc: myTag().tc || 0 };
     // (las copas por Pokémon se ordenan para comparar igual que lo que ya hay guardado)
     const keyOf = (o) => JSON.stringify(Object.keys(p).map((k) => (k === 'pc' ? Object.entries(o.pc || {}).sort() : o[k] === undefined ? null : o[k])));
     const key = keyOf(p);
@@ -449,7 +450,8 @@ PB.Online = (() => {
     id, name: clean(u.name, 16), tag: clean(u.tag, 8), copas: u.copas | 0,
     fav: PB.brawlerById(u.fav) ? u.fav : PB.BRAWLERS[0].id, clan: u.clan || null, clanName: clean(u.clanName, 20), me: id === uid,
     best: (Array.isArray(u.best) ? u.best : []).filter((x) => x && PB.brawlerById(x.id)).slice(0, 3).map((x) => ({ id: x.id, c: x.c | 0 })),
-    bestCopas: u.bestCopas | 0, played: u.played | 0, wins: u.wins | 0, owned: u.owned | 0,
+    bestCopas: u.bestCopas | 0, played: u.played | 0, wins: u.wins | 0, owned: u.owned | 0, streak: u.streak | 0, bestStreak: u.bestStreak | 0,
+    tg: PB.Chat.cleanTag(u.tg), tc: u.tc | 0,
   });
 
   async function usersByIds(ids) {
@@ -905,6 +907,20 @@ PB.Online = (() => {
     return { ok: true };
   }
 
+  // ajustes del clan (solo el líder): descripción, tipo y escudo
+  async function editClan({ desc, type, icon }) {
+    if (!(await start()) || !myDoc.clan) return err('Sin conexión.');
+    clanC = null;
+    const ref = fs.collection('clans').doc(myDoc.clan);
+    const s = await ref.get();
+    if (!s.exists) return err('Ese clan ya no existe.');
+    if (s.data().leader !== uid) return err('Solo el líder puede hacer esto.');
+    const t = type === 'invite' ? 'invite' : 'public';
+    await ref.update({ desc: clean(desc, 80), type: t, icon: /^\d{4}$/.test(icon) ? icon : s.data().icon || '0025' });
+    if (t !== s.data().type) sysChat(myDoc.clan, PB.T(t === 'invite' ? 'El clan ahora es solo por invitación' : 'El clan ahora es público'));
+    return { ok: true };
+  }
+
   // solicitudes para entrar (clanes solo por invitación): las ve y responde el líder
   async function clanRequests() {
     if (!(await start()) || !myDoc.clan) return [];
@@ -962,8 +978,10 @@ PB.Online = (() => {
   const DAY = 86400000;
   let gMsgs = [], gWatch = null, banned = false;
   let pMsgs = [], pWatch = null, pCode = null, pSince = 0;
+  // tag propio del jugador (si tiene): { tg, tc }
+  const myTag = () => { const t = PB.Save.get().title, tg = t && PB.Chat.cleanTag(t.t); return tg ? { tg, tc: Math.max(0, Math.min(7, t.c | 0)) } : {}; };
   const avatar = () => { const d = PB.Save.get(), b = PB.brawlerById(d.selected); return String(d.avatarDex || (b ? b.dex : '')).slice(0, 16); };
-  const chatMsg = (key, m) => ({ id: key, uid: String(m.uid || ''), name: clean(m.name, 16) || 'Entrenador', text: String(m.text || '').slice(0, 120), t: +m.t || 0, av: String(m.av || ''), au: typeof m.au === 'string' ? m.au.slice(0, 30) : '', dur: Math.max(0, Math.min(9, +m.dur || 0)), mine: m.uid === uid });
+  const chatMsg = (key, m) => ({ tg: typeof m.tg === 'string' ? m.tg.slice(0, 12) : '', tc: m.tc | 0, id: key, uid: String(m.uid || ''), name: clean(m.name, 16) || 'Entrenador', text: String(m.text || '').slice(0, 120), t: +m.t || 0, av: String(m.av || ''), au: typeof m.au === 'string' ? m.au.slice(0, 30) : '', dur: Math.max(0, Math.min(9, +m.dur || 0)), mine: m.uid === uid });
   function listen(ref, list, ev, since) {
     // (al volver a abrir el chat solo se bajan los mensajes nuevos)
     const q = since ? ref.orderByChild('t').startAt(since + 1).limitToLast(40) : ref.orderByChild('t').limitToLast(40);
@@ -1023,9 +1041,14 @@ PB.Online = (() => {
     if (!text) return err('Escribe algo.');
     const TS = fb.database.ServerValue.TIMESTAMP;
     const key = rtdb.ref('chat').push().key;
+    const msg = Object.assign({ uid, name: myName(), text, t: TS, av: avatar() }, myTag());
     try {
-      await rtdb.ref().update({ ['chat/' + key]: { uid, name: myName(), text, t: TS, av: avatar() }, ['chatLast/' + uid]: TS });
-    } catch (e) { return err('Espera un poco antes de enviar otro mensaje.'); }
+      await rtdb.ref().update({ ['chat/' + key]: msg, ['chatLast/' + uid]: TS });
+    } catch (e) {
+      // (por si las reglas del servidor aún no admiten el tag: se reintenta sin él)
+      if (!msg.tg) return err('Espera un poco antes de enviar otro mensaje.');
+      try { await rtdb.ref().update({ ['chat/' + key]: { uid, name: myName(), text, t: TS, av: avatar() }, ['chatLast/' + uid]: TS }); } catch (e2) { return err('Espera un poco antes de enviar otro mensaje.'); }
+    }
     return { ok: true };
   }
   // nota de voz: el audio va aparte (chatAudio/<id>) y el mensaje lo enlaza; se escriben a la vez
@@ -1094,7 +1117,7 @@ PB.Online = (() => {
     // (un jugador que aún no ha elegido iniciales lleva el primero de la lista)
     const d = PB.Save.get(), id = PB.brawlerById(d.selected) ? d.selected : PB.BRAWLERS[0].id;
     const sk = PB.Save.skin(id);
-    return { dev: devScore(), name: myName(), fav: id, line: PB.Save.lineOf(id), kit: PB.Save.kit(id), lvl: PB.Save.level(id), shiny: sk === 'shiny', skin: /^(alola|galar|hisui|paldea)$/.test(sk) ? sk : null, copas: PB.Save.copas(id), t: Date.now() };
+    return Object.assign({ dev: devScore(), name: myName(), fav: id, line: PB.Save.lineOf(id), kit: PB.Save.kit(id), lvl: PB.Save.level(id), shiny: sk === 'shiny', skin: /^(alola|galar|hisui|paldea)$/.test(sk) ? sk : null, copas: PB.Save.copas(id), t: Date.now() }, myTag());
   };
 
   function watchParty(code) {
@@ -1243,7 +1266,7 @@ PB.Online = (() => {
     if (uid && rtdb && st !== lastStatus) { lastStatus = st; rtdb.ref('status/' + uid).update({ name: myName(), fav: PB.Save.get().selected }).catch(() => {}); }
     if (!partyRef) return;
     const m = memberInfo();
-    const key = JSON.stringify([m.name, m.fav, m.lvl, m.shiny, m.line]);
+    const key = JSON.stringify([m.name, m.fav, m.lvl, m.shiny, m.line, m.tg, m.tc]);
     if (key === lastMember) return;
     lastMember = key;
     partyRef.child('members/' + uid).update(m);
@@ -1657,7 +1680,7 @@ PB.Online = (() => {
       if (!u) return;
       const p = m.players[u];
       const skin = /^(alola|galar|hisui|paldea)$/.test(p.skin || '') ? p.skin : null;
-      opts.humans[i] = { name: clean(p.name, 16), lvl: Math.max(1, Math.min(PB.META.maxLevel, p.lvl | 0 || 1)), shiny: !!p.shiny, skin, uid: u };
+      opts.humans[i] = { name: clean(p.name, 16), lvl: Math.max(1, Math.min(PB.META.maxLevel, p.lvl | 0 || 1)), shiny: !!p.shiny, skin, uid: u, mt: PB.masteryOf(p.copas), tg: PB.Chat.cleanTag(p.tg), tc: p.tc | 0 };
       opts.shiny[i] = !!p.shiny;
       (opts.skins = opts.skins || [])[i] = skin;
       copas += p.copas | 0;
@@ -1683,7 +1706,7 @@ PB.Online = (() => {
     party: () => party, createParty, invite, joinByCode, setReady, updateMe, kick, leaveParty,
     voteRematch, cancelRematch, rematchGo, rematchLeft,
     friends, requests, searchPlayers, addFriend, answerRequest, removeFriend,
-    findMatch, cancelMatch, joinMatch, migrate, clanAction, sendGift,
+    findMatch, cancelMatch, joinMatch, migrate, clanAction, editClan, sendGift,
     get searching() { return !!search; },
     countMatch, setPlaying, setSearching, sendFeedback, reportPlayer,
     get live() { return live; },

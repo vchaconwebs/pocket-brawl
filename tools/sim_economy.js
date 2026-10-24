@@ -2,7 +2,7 @@
 // Uso:  node tools/sim_economy.js
 // Carga los datos reales del juego (roster, precios, cofres, misiones) y simula jugadores
 // que juegan N partidas al día, ganan la mitad y gastan los Puntos Pokémon en el Pokémon más barato que les falte.
-global.window = {};
+global.window = { addEventListener() {} };
 global.PB = {};
 global.document = undefined;
 global.localStorage = undefined;
@@ -10,6 +10,9 @@ require('../js/sprite-data.js');
 require('../js/data.js');
 require('../js/roster-data.js');
 PB.VFX = { forType: () => ({ proj: 'ball' }) };
+PB.T = (s, o) => String(s).replace(/\{(\w+)\}/g, (m, k) => (o && o[k] != null ? o[k] : m));
+PB.TM = (s) => s;
+PB.TYPE_INFO = new Proxy({}, { get: () => ({ name: '' }) });
 PB.Sprites = { hasShiny: () => true };
 require('../js/roster.js');
 require('../js/save.js');

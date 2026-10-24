@@ -347,7 +347,9 @@ PB.Input = class {
       inp.my = (k.has('s') || k.has('arrowdown') ? 1 : 0) - (k.has('w') || k.has('arrowup') ? 1 : 0);
       const m = this.mouseAim(me, renderer);
       const showSuper = this.superKeyHeld && me.superCharge >= 1;
-      if (PB.Settings.get('aimGuide') || this.mouse.left || showSuper) out.aim = { isSuper: showSuper, ang: Math.atan2(m.dy, m.dx), dist: m.dist, strong: this.mouse.left || showSuper };
+      // (en un móvil o tablet nunca: ahí la guía sale solo al mover el joystick de ataque)
+      const coarse = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+      if ((PB.Settings.get('aimGuide') && !coarse) || this.mouse.left || showSuper) out.aim = { isSuper: showSuper, ang: Math.atan2(m.dy, m.dx), dist: m.dist, strong: this.mouse.left || showSuper };
       if (this.mouse.left) inp.attack = Object.assign({ held: true }, m);
     }
 

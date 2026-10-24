@@ -641,6 +641,18 @@ PB.MODES.brawl = {
   result: teamResult,
 };
 
+// ------------------------------------------------------------------ Entrenamiento (botón «Probar» de cada Pokémon)
+// Tú solo contra 3 dianas quietas que vuelven enseguida. Sin tiempo, sin premios: para ver ataques, súper y evoluciones.
+PB.MODES.practice = {
+  id: 'practice', name: 'Entrenamiento', map: 'brawl', statName: 'K.O.', practice: true,
+  desc: 'Prueba un Pokémon contra dianas quietas.',
+  rules: { matchTime: 99999, respawn: 1.2 },
+  setup(g) { g.kos = { blue: 0, red: 0 }; },
+  onKill(g, b) { if (b.team === 'red') g.kos.blue++; },
+  botPlan: fightPlan,
+  result: teamResult,
+};
+
 // ------------------------------------------------------------------ Eliminación
 // 3 contra 3 sin reaparecer: gana la ronda el equipo que debilite a los 3 rivales.
 // Al mejor de 3 rondas. Si una ronda dura más de 60 s, la gana quien tenga más Pokémon en pie.

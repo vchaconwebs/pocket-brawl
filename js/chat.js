@@ -39,6 +39,18 @@ PB.Chat = (() => {
     return /[^*\s]/.test(t) ? t : '';
   }
 
+  // ------------------------------------------------------------ tag propio (como el CREADOR, cada uno el suyo)
+  // Hasta 12 letras o números, sin palabrotas ni hacerse pasar por el equipo del juego; color de una lista fija
+  const TAG_COLORS = ['#ff5a5a', '#ff9a3a', '#ffd23a', '#5ad87a', '#3ad8d0', '#5aa8ff', '#b07aff', '#ff6ad8'];
+  const TAG_RESERVED = /(creador|esclavizador|admin|moderador|staff|oficial|owner|desarrollador|(^| )(mod|dev|gm)( |$))/i;
+  function cleanTag(t) {
+    t = String(t || '').replace(/[^\p{L}\p{N} ]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 12).toUpperCase();
+    if (t.length < 2 || TAG_RESERVED.test(t) || filter(t, 12) !== t) return '';
+    return t;
+  }
+  const tagColor = (c) => TAG_COLORS[Math.max(0, Math.min(TAG_COLORS.length - 1, c | 0))];
+  const tagHtml = (t, c) => (t ? `<span class="gc-tag own" style="background:${tagColor(c)}">${esc(t)}</span>` : '');
+
   // ------------------------------------------------------------ silenciados (solo en este navegador)
   let muted = [];
   try { muted = JSON.parse(localStorage.getItem('pb.muted') || '[]'); } catch (e) {}
@@ -183,7 +195,7 @@ PB.Chat = (() => {
         menu += '</div>';
       }
       return `<div class="gc-m${m.mine ? ' mine' : ''}${own ? ' owner' : ''}${helper ? ' helper' : ''}"><img src="${portrait(m.av)}" alt="">` +
-        `<div class="gc-b"><button class="gc-n" data-id="${esc(m.id)}">${esc(m.name)}</button>${own ? '<span class="gc-tag">CREADOR</span>' : helper ? '<span class="gc-tag helper">ESCLAVIZADOR</span>' : ''}<small>${hm(m.t)}</small>` +
+        `<div class="gc-b"><button class="gc-n" data-id="${esc(m.id)}">${esc(m.name)}</button>${own ? '<span class="gc-tag">CREADOR</span>' : helper ? '<span class="gc-tag helper">ESCLAVIZADOR</span>' : tagHtml(cleanTag(m.tg), m.tc)}<small>${hm(m.t)}</small>` +
         (m.au ? `<p><button class="gc-play" data-au="${esc(m.au)}">▶ 🎤 ${m.dur ? m.dur.toFixed(0) + ' s' : ''}</button></p>` : `<p>${esc(filter(m.text, 120) || '***')}</p>`) + `${menu}</div></div>`;
     }).join('') || `<p class="gc-empty">${PB.T(tab === 'party' ? 'Habla con los de tu grupo. Solo lo veis vosotros.' : 'Aún no hay mensajes. ¡Saluda!')}</p>`;
     const act = (sel, fn) => log.querySelectorAll(sel).forEach((b) => (b.onclick = async (e) => {
@@ -374,7 +386,7 @@ PB.Chat = (() => {
   }
 
   return {
-    filter, isMuted, setMuted, initLobby, startGlobal, openGlobal, closeGlobal, initMatch, matchStart, matchEnd, matchLine,
+    filter, cleanTag, tagColor, tagHtml, TAG_COLORS, isMuted, setMuted, initLobby, startGlobal, openGlobal, closeGlobal, initMatch, matchStart, matchEnd, matchLine,
     get typing() { return mBar; }, get matchMuted() { return mMute; }, OWNER, QUICK,
   };
 })();

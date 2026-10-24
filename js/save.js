@@ -68,6 +68,17 @@ PB.statsAt = (def, lvl) => {
 // Copas que se ganan o pierden según las copas que ya tiene ese Pokémon
 // Modos largos (unos 2 minutos): su victoria vale más para que compense jugarlos tanto como Niebla
 PB.LONG_MODES = ['gems', 'heist', 'zone', 'brawl'];
+// Maestrías: rango de cada Pokémon según sus copas. Al llegar a cada una se gana su premio (una vez)
+PB.MASTERY = [
+  { name: 'Bronce', copas: 100, color: '#d8894a', coins: 100, rainbow: 0 },
+  { name: 'Plata', copas: 250, color: '#c8d4e8', coins: 200, rainbow: 0 },
+  { name: 'Oro', copas: 500, color: '#ffd23a', coins: 300, rainbow: 10 },
+  { name: 'Diamante', copas: 800, color: '#7fe8ff', coins: 500, rainbow: 20 },
+  { name: 'Maestro', copas: 1200, color: '#ff6ad8', coins: 800, rainbow: 40 },
+];
+// 0 = sin maestría; 1..5 = Bronce..Maestro
+PB.masteryOf = (copas) => { let t = 0; for (const m of PB.MASTERY) if ((copas | 0) >= m.copas) t++; return t; };
+
 PB.copasDelta = (copas, result, rank, mode) => {
   if (rank) {
     // Niebla Tóxica (y Dúo): según el puesto (1 a 10). Ganar siempre da 8
@@ -626,6 +637,18 @@ PB.Save = (() => {
     const delta = PB.copasDelta(before, r.win ? 'win' : r.draw ? 'draw' : 'lose', r.mode === 'showdown' || r.mode === 'duo' ? r.rank || 10 : 0, r.mode);
     const k = PB.META.modeReward[r.mode] || 1;
     d.copas[id] = Math.max(0, before + delta);
+    // maestría nueva: su premio (solo la primera vez que se llega a cada una)
+    let mastery = null;
+    d.mastery = d.mastery || {};
+    const mt = PB.masteryOf(d.copas[id]);
+    if (mt > (d.mastery[id] || 0)) {
+      let coins = 0, rainbow = 0;
+      for (let t = (d.mastery[id] || 0) + 1; t <= mt; t++) { coins += PB.MASTERY[t - 1].coins; rainbow += PB.MASTERY[t - 1].rainbow; }
+      d.mastery[id] = mt;
+      d.coins += coins;
+      d.rainbow = (d.rainbow || 0) + rainbow;
+      mastery = { tier: mt, coins, rainbow };
+    }
     // fichas y cofres
     let tokens;
     if (r.mode === 'showdown' || r.mode === 'duo') tokens = [0, 50, 40, 40, 30, 30, 20, 20, 15, 10, 10][r.rank || 10] || 10;
@@ -678,7 +701,7 @@ PB.Save = (() => {
       if (!m.claimed) m.progress = Math.min(m.n, m.progress + (add[m.type] || 0));
     }
     persist();
-    return { tokens, newChests, copas: delta, copasNow: d.copas[id], coins: MR.coins, points: MR.points, rainbow: MR.rainbow || 0, bonus, bonusLeft: d.bonusLeft, passXp, passUp };
+    return { tokens, newChests, copas: delta, copasNow: d.copas[id], mastery, coins: MR.coins, points: MR.points, rainbow: MR.rainbow || 0, bonus, bonusLeft: d.bonusLeft, passXp, passUp };
   }
 
   // Abandonar una partida en red (cerrar la página o perder la conexión y no volver):
@@ -691,6 +714,7 @@ PB.Save = (() => {
     d.abandons = (d.abandons || []).filter((t) => now - t < 60 * 60 * 1000);
     d.abandons.push(now);
     d.stats.played = (d.stats.played || 0) + 1;
+    d.stats.streak = 0; // abandonar corta la racha
     persist();
   }
   // segundos que faltan para poder jugar online otra vez (0 = ya puedes)

@@ -183,7 +183,7 @@ PB.Renderer = class {
 
     // indicador de apuntado (debajo de los personajes)
     // (solo si el que se ve es tu Pokémon: espectando a otro no se dibuja tu apuntado)
-    if (view.aim && !view.aim.cancel && focus && focus === view.player && !focus.dead && game.started) this.drawAim(focus, view.aim);
+    if (view.aim && !view.aim.cancel && focus && focus === view.player && !focus.dead && game.started && !game.winner) this.drawAim(focus, view.aim);
 
     // objetos ordenados por Y
     const items = [];
@@ -2144,6 +2144,14 @@ PB.Renderer = class {
     const isMe = b === focus && b.isPlayer;
     // nombre (y un rayo si tiene el súper listo)
     this.outlined(b.name, x, y - 8, 13, b.creator ? '#ffd23a' : isMe ? '#7dff8f' : mine ? '#a9d0ff' : '#ffb0b0');
+    // medalla de maestría de ese Pokémon (rombo del color del rango) a la izquierda del nombre
+    if (b.mastery) {
+      const mx = x - ctx.measureText(b.name).width / 2 - 9, my = y - 12, col = PB.MASTERY[b.mastery - 1].color;
+      ctx.fillStyle = '#10142a';
+      ctx.beginPath(); ctx.moveTo(mx, my - 7); ctx.lineTo(mx + 6, my); ctx.lineTo(mx, my + 7); ctx.lineTo(mx - 6, my); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.moveTo(mx, my - 5); ctx.lineTo(mx + 4, my); ctx.lineTo(mx, my + 5); ctx.lineTo(mx - 4, my); ctx.closePath(); ctx.fill();
+    }
     // vida: barra pixel con una marca cada 1000
     const hpk = Math.max(0, b.hp) / b.maxHp;
     const col = isMe ? '#43e05a' : mine ? '#3d8bff' : '#ff4545';
@@ -2258,6 +2266,17 @@ PB.Renderer = class {
   }
 
   // aim = { isSuper, ang, dist, strong }
+  drawCrosshair(m, sup) {
+    const ctx = this.ctx, x = Math.round(m.x), y = Math.round(m.y), col = sup ? '#ffd23a' : '#ffffff';
+    ctx.save();
+    ctx.fillStyle = 'rgba(10,14,30,0.85)';
+    for (const [dx, dy, w, h] of [[-10, -2, 7, 4], [4, -2, 7, 4], [-2, -10, 4, 7], [-2, 4, 4, 7]]) ctx.fillRect(x + dx - 1, y + dy - 1, w + 2, h + 2);
+    ctx.fillStyle = col;
+    for (const [dx, dy, w, h] of [[-10, -1, 6, 2], [5, -1, 6, 2], [-1, -10, 2, 6], [-1, 5, 2, 6]]) ctx.fillRect(x + dx, y + dy, w, h);
+    ctx.fillRect(x - 1, y - 1, 2, 2);
+    ctx.restore();
+  }
+
   drawAim(b, aim) {
     const ctx = this.ctx;
     const a = aim.isSuper ? b.def.super : b.def.attack;
@@ -2575,6 +2594,19 @@ PB.Renderer = class {
       }
     }
 
+    // fin de la partida: cartel grande en el centro (el resultado entra de golpe y crece un poco)
+    if (this.endSplash) {
+      const sp = this.endSplash, k = Math.min(1, (performance.now() - sp.t0) / 350);
+      ctx.save();
+      ctx.fillStyle = `rgba(6,10,26,${0.55 * k})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = k;
+      this.outlined(PB.T('FIN DE LA PARTIDA'), W / 2, H / 2 - Math.min(70, H * 0.12), Math.round(Math.min(30, W / 22)), '#ffffff');
+      const big = Math.round(Math.min(96, W / 9) * (0.6 + 0.4 * k + 0.05 * Math.sin(performance.now() / 180)));
+      this.outlined(sp.text, W / 2, H / 2 + big * 0.35, big, sp.color);
+      ctx.restore();
+    }
+
     if (me) {
       if (me.dead && !me.out) {
         UI.panel(ctx, W / 2 - 130, H / 2 - 34, 260, 62, { p: 3, fill: 'rgba(14,20,48,0.88)' });
@@ -2583,6 +2615,8 @@ PB.Renderer = class {
       }
       if (view.touch) this.drawTouch(view, me, game);
       else { this.drawDesktopSuper(me, game); this.drawDesktopSuperHint(view); }
+      // en partida con ratón, el cursor de Windows se esconde y se dibuja una mirilla pequeña
+      if (view.player && !view.touch && view.inputState && !view.inputState.padOn && !me.dead && !game.winner) this.drawCrosshair(view.inputState.mouse, me.superCharge >= 1 && view.inputState.superKeyHeld);
     }
 
     // FPS
@@ -2650,6 +2684,10 @@ PB.Renderer = class {
         this.outlined(String(Math.ceil(game.countdown.t)), cx - 80, 74, 26, '#ffffff');
         this.outlined(PB.T(ours ? '¡Aguantad!' : '¡Quitádselas!'), cx + 16, 71, 16, '#ffffff');
       }
+    } else if (id === 'practice') {
+      panel(240, 44);
+      this.outlined(PB.T('ENTRENAMIENTO'), cx, 26, 15, '#ffd23a');
+      this.outlined(PB.T('K.O.: {n}', { n: game.kos.blue }), cx, 44, 13, '#ffffff');
     } else if (id === 'brawl') {
       // K.O. de cada equipo
       panel(220, 50);

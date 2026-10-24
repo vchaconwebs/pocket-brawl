@@ -270,6 +270,10 @@ PB.Lobby = (() => {
     renderModeLive();
     $('#pf-name').textContent = d.name;
     $('#pf-copas').textContent = PB.Save.totalCopas();
+    // racha de victorias seguidas (desde 2)
+    const streak = (d.stats && d.stats.streak) || 0;
+    $('#pf-streak').textContent = '🔥' + streak;
+    $('#pf-streak').classList.toggle('hidden', streak < 2);
     $('#pf-avatar').src = PB.Sprites.portraitURL(d.avatarDex || b.dex);
     // botón del cofre: la Pokéball, la barra de fichas y cuántos cofres hay para abrir
     const k = d.tokens / PB.META.tokensPerChest;
@@ -347,6 +351,11 @@ PB.Lobby = (() => {
     show('collection');
   }
 
+  // medalla de maestría (según las copas de ese Pokémon)
+  const mastBadge = (copas) => {
+    const t = PB.masteryOf(copas);
+    return t ? `<i class="mast" style="--mc:${PB.MASTERY[t - 1].color}" title="${PB.T('Maestría {m}', { m: PB.T(PB.MASTERY[t - 1].name) })}">◆</i>` : '';
+  };
   function renderCollection() {
     const d = PB.Save.get();
     const grid = $('#col-grid');
@@ -379,7 +388,7 @@ PB.Lobby = (() => {
         `<span class="nm">${b.name}</span>` +
         `<span class="tdots">${b.types.map((ty) => `<i style="background:${PB.TYPE_INFO[ty].color}"></i>`).join('')}</span>` +
         (own
-          ? `<span class="lv">Nv. ${PB.Save.level(b.id)} · <img class="cup" src="${cupIcon()}" alt="">${PB.Save.copas(b.id)}</span>`
+          ? `<span class="lv">Nv. ${PB.Save.level(b.id)} · <img class="cup" src="${cupIcon()}" alt="">${PB.Save.copas(b.id)}${mastBadge(PB.Save.copas(b.id))}</span>`
           : `<span class="lock">🔒</span><span class="cost">${money(PB.Save.unlockCost(b.id), starIcon)}</span>`) +
         `<span class="rar">${r.name}</span></button>`;
     }).join('');
@@ -468,7 +477,13 @@ PB.Lobby = (() => {
     const shots = now.shots > 1 ? ` × ${now.shots}` : '';
     const si = (n) => `<img class="sti" src="${PB.PixUI.iconURL(n, 2)}" alt="">`;
     $('#dt-stats').innerHTML =
-      (own ? `<tr><td><img class="sti" src="${cupIcon()}" alt="">Copas</td><td>${PB.Save.copas(id)}</td></tr>` : '') +
+      (own ? `<tr><td><img class="sti" src="${cupIcon()}" alt="">Copas</td><td>${PB.Save.copas(id)}${mastBadge(PB.Save.copas(id))}</td></tr>` : '') +
+      (own ? (() => {
+        // maestría: la actual y cuánto falta para la siguiente
+        const c = PB.Save.copas(id), t = PB.masteryOf(c), nx = PB.MASTERY[t];
+        const cur = t ? PB.T(PB.MASTERY[t - 1].name) : PB.T('Sin maestría');
+        return `<tr><td>${si('star')}${PB.T('Maestría')}</td><td>${cur}${nx ? ` <small>· ${PB.T('{n} copas para {m}', { n: nx.copas - c, m: PB.T(nx.name) })}</small>` : ''}</td></tr>`;
+      })() : '') +
       `<tr><td>${si('heart')}Vida</td><td>${now.hp}${plus('hp')}</td></tr>` +
       `<tr><td>${si('sword')}Daño</td><td>${now.dmg}${shots}${plus('dmg')}</td></tr>` +
       (now.superDmg ? `<tr><td>${si('star')}Súper</td><td>${now.superDmg}${b.super.dps ? '/s' : ''}${plus('superDmg')}</td></tr>` : '') +
@@ -556,6 +571,8 @@ PB.Lobby = (() => {
       e.onclick = fn;
       acts.appendChild(e);
     };
+    // probarlo en un entrenamiento (también los que aún no tienes)
+    btn(`🎮 ${PB.T('Probar')}`, 'act blue', true, () => { PB.Audio.play('ui'); PB.Practice.start(id); });
     if (own) {
       const cost = PB.Save.upgradeCost(id);
       if (cost == null) btn('Nivel máximo', 'act gray', false);
@@ -1210,6 +1227,7 @@ PB.Lobby = (() => {
     $('#pf-tag').textContent = PB.T('Código de amigo: {tag}', { tag: d.tag });
     $('#pf-avatars').classList.add('hidden');
     PB.Online.myClan().then((c) => { $('#pf-clan').textContent = c ? 'Clan: ' + c.name : 'Sin clan'; });
+    renderTitleEditor();
     const st = d.stats;
     const bestId = Object.keys(d.copas || {}).filter((id) => PB.brawlerById(id)).sort((a, b) => d.copas[b] - d.copas[a])[0];
     const bestB = bestId && d.copas[bestId] > 0 ? PB.brawlerById(bestId) : null;
@@ -1219,6 +1237,7 @@ PB.Lobby = (() => {
       ['Partidas', st.played || 0],
       ['Victorias', st.wins || 0],
       ['K.O.', st.kills || 0],
+      ['Racha actual', st.streak || 0],
       ['Mejor racha', st.bestStreak || 0],
       ['Pokémon', Object.keys(d.owned).length + '/' + PB.BRAWLERS.length],
       ['Cofres abiertos', st.chests || 0],
@@ -1227,6 +1246,33 @@ PB.Lobby = (() => {
     $('#pf-stats').innerHTML = rows.map(([k, v]) => `<div><small>${k}</small><b>${typeof v === 'number' ? v.toLocaleString('es-ES') : v}</b></div>`).join('');
     renderAccount();
     show('profile');
+  }
+
+  // tag propio: texto (hasta 12) y color; sale en el chat, en tu perfil y encima de tu nombre en partida
+  let titleCol = 0;
+  function renderTitleEditor() {
+    const t = PB.Save.get().title || { t: '', c: 0 };
+    titleCol = t.c | 0;
+    $('#pf-title').value = t.t || '';
+    const cols = () => {
+      $('#pf-title-cols').innerHTML = PB.Chat.TAG_COLORS.map((c, i) => `<button class="tcol${i === titleCol ? ' sel' : ''}" data-tc="${i}" style="background:${c}" title="${PB.T('Color')}"></button>`).join('');
+      $('#pf-title-cols').querySelectorAll('[data-tc]').forEach((b) => (b.onclick = () => { titleCol = +b.dataset.tc; cols(); prev(); }));
+    };
+    const prev = () => { $('#pf-title-prev').innerHTML = PB.Chat.tagHtml(PB.Chat.cleanTag($('#pf-title').value), titleCol); };
+    $('#pf-title').oninput = prev;
+    cols();
+    prev();
+  }
+  function saveTitle() {
+    const raw = $('#pf-title').value.trim();
+    const t = PB.Chat.cleanTag(raw);
+    if (raw && !t) return modal(PB.T('Ese tag no vale: de 2 a 12 letras o números, sin palabrotas ni CREADOR, ADMIN o parecidos.'));
+    PB.Save.get().title = { t, c: titleCol };
+    PB.Save.persist();
+    PB.Online.updateMe();
+    PB.Audio.play('ready');
+    toast(t ? PB.T('Tag puesto') : PB.T('Tag quitado'));
+    renderTitleEditor();
   }
 
   // foto de perfil: cualquier fase de los Pokémon que tienes
@@ -1410,6 +1456,35 @@ PB.Lobby = (() => {
     show('clan');
   }
 
+  // Ajustes del clan (solo el líder): descripción, público o por invitación, y escudo
+  const CLAN_ICONS = ['0025', '0004', '0007', '0001', '0074', '0092', '0143', '0100'];
+  function showClanSettings(c) {
+    $('#cl-title').textContent = PB.T('Ajustes del clan');
+    const icons = CLAN_ICONS.includes(c.icon) ? CLAN_ICONS : [c.icon].concat(CLAN_ICONS);
+    $('#cl-body').innerHTML =
+      `<div class="form">` +
+      `<label>${PB.T('Descripción')}<input id="ce-desc" maxlength="80" placeholder="${PB.T('¿Cómo es tu clan?')}"></label>` +
+      `<label>${PB.T('Tipo')}<select id="ce-type"><option value="public">🌐 ${PB.T('Público (cualquiera puede entrar)')}</option><option value="invite">🔒 ${PB.T('Solo invitación')}</option></select></label>` +
+      `<label>${PB.T('Escudo')}<div class="icons" id="ce-icons">${icons.map((d) => `<button data-ic="${d}" class="${d === c.icon ? 'sel' : ''}"><img src="${PB.Sprites.portraitURL(d)}" alt=""></button>`).join('')}</div></label>` +
+      `<div class="row left"><button class="act gray with-arrow" id="ce-back">${PB.T('Volver')}</button><button class="act gold" id="ce-ok">${PB.T('Guardar')}</button></div></div>`;
+    $('#ce-desc').value = c.desc || '';
+    $('#ce-type').value = c.type;
+    let icon = c.icon;
+    $('#ce-icons').querySelectorAll('button').forEach((b) => (b.onclick = () => {
+      icon = b.dataset.ic;
+      $('#ce-icons').querySelectorAll('button').forEach((x) => x.classList.toggle('sel', x === b));
+    }));
+    $('#ce-back').onclick = showClan;
+    $('#ce-ok').onclick = async () => {
+      const r = await PB.Online.editClan({ desc: $('#ce-desc').value, type: $('#ce-type').value, icon });
+      if (r.error) return modal(r.error);
+      PB.Audio.play('ready');
+      toast(PB.T('Ajustes guardados'));
+      showClan();
+    };
+    show('clan');
+  }
+
   function showCreateClan() {
     $('#cl-title').textContent = 'Crear clan';
     const icons = ['0025', '0004', '0007', '0001', '0074', '0092', '0143', '0100'];
@@ -1445,7 +1520,7 @@ PB.Lobby = (() => {
       : `<button class="mini ok" data-ca="promote" data-cid="${m.id}" title="${PB.T('Ascender a colíder')}">⬆</button>`) +
       `<button class="mini no" data-ca="kick" data-cid="${m.id}" title="${PB.T('Expulsar')}">✕</button>`;
     $('#cl-body').innerHTML =
-      `<div class="clan-head"><img class="av avbig" src="${clanIcon(c)}" alt=""><div><p>${c.desc || ''}</p><small>${c.count}/${PB.META.clanMax} miembros · ${c.type === 'invite' ? '🔒 Solo invitación' : '🌐 Público'} · <img class="cup" src="${cupIcon()}" alt="">${c.copas.toLocaleString('es-ES')}</small></div><button class="act gray" id="cl-leave">Abandonar</button></div>` +
+      `<div class="clan-head"><img class="av avbig" src="${clanIcon(c)}" alt=""><div><p>${c.desc || ''}</p><small>${c.count}/${PB.META.clanMax} miembros · ${c.type === 'invite' ? '🔒 Solo invitación' : '🌐 Público'} · <img class="cup" src="${cupIcon()}" alt="">${c.copas.toLocaleString('es-ES')}</small></div>${iLead ? `<button class="act blue" id="cl-edit">⚙ ${PB.T('Ajustes')}</button>` : ''}<button class="act gray" id="cl-leave">Abandonar</button></div>` +
       `<div class="clan-grid"><div class="plist">${c.members.map((m, i) => prow({ ...m, pos: i + 1, sub: m.role + (m.me ? '' : m.online ? ' · <span class="on">●</span>' : ' · <span class="off">●</span>') }, iLead && !m.me ? clanBtns(m) : '')).join('')}</div>` +
       `<div class="chat"><div id="chat-log"></div><div class="chat-in"><input id="chat-q" maxlength="140" placeholder="Escribe al clan…"><button class="act blue" id="chat-send">Enviar</button></div></div></div>` +
       '<div id="cl-reqs"></div>';
@@ -1471,6 +1546,7 @@ PB.Lobby = (() => {
         box.querySelectorAll('[data-cn]').forEach((e) => (e.onclick = async () => { await PB.Online.answerClanRequest(e.dataset.cn, false); showClan(); }));
       });
     }
+    if ($('#cl-edit')) $('#cl-edit').onclick = () => showClanSettings(c);
     $('#cl-leave').onclick = async () => {
       if (!(await modal('¿Seguro que quieres abandonar el clan?', true))) return;
       await PB.Online.leaveClan();
@@ -1509,15 +1585,15 @@ PB.Lobby = (() => {
     if (!u) return toast(PB.T('Este jugador juega como invitado y no tiene perfil público.'));
     const fav = PB.brawlerById(u.fav) || PB.BRAWLERS[0];
     $('#pv-av').src = lastForm(fav);
-    $('#pv-name').textContent = u.name;
+    $('#pv-name').innerHTML = esc(u.name) + ' ' + PB.Chat.tagHtml(u.tg, u.tc);
     $('#pv-sub').innerHTML = esc(u.tag) + ' · ' + (u.clanName ? esc(u.clanName) : PB.T('Sin clan')) + ' · ' + (u.online ? '<span class="on">● ' + PB.T('En línea') + '</span>' : '<span class="off">● ' + PB.T('Desconectado') + '</span>');
     // perfiles de antes de la v1.5: aún no tienen estas estadísticas (se completan cuando vuelve a entrar)
     const old = !u.played && !u.best.length;
-    const st = [['Copas totales', u.copas], ['Partidas', old ? null : u.played], ['Victorias', old ? null : u.wins], ['Pokémon', old ? null : u.owned]];
+    const st = [['Copas totales', u.copas], ['Partidas', old ? null : u.played], ['Victorias', old ? null : u.wins], ['Pokémon', old ? null : u.owned], ['Racha actual', u.streak], ['Mejor racha', u.bestStreak]];
     $('#pv-stats').innerHTML = st.map(([k, v]) => `<div><small>${PB.T(k)}</small><b>${v == null ? '—' : (v || 0).toLocaleString('es-ES')}</b></div>`).join('');
     $('#pv-best').innerHTML = u.best.map((x, i) => {
       const b = PB.brawlerById(x.id);
-      return `<div class="pv-mon${i === 0 ? ' top' : ''}"><img src="${portrait(b)}" alt=""><b>${esc(b.name)}</b><span><img class="cup" src="${cupIcon()}" alt="">${x.c.toLocaleString('es-ES')}</span></div>`;
+      return `<div class="pv-mon${i === 0 ? ' top' : ''}"><img src="${portrait(b)}" alt=""><b>${esc(b.name)}</b><span><img class="cup" src="${cupIcon()}" alt="">${x.c.toLocaleString('es-ES')}${mastBadge(x.c)}</span></div>`;
     }).join('') || `<p class="empty">${PB.T(old ? 'Aún no ha entrado con la última versión: sus estadísticas saldrán cuando vuelva a jugar.' : 'Aún no tiene copas.')}</p>`;
     $('#pv-acts').innerHTML = (u.friend ? '' : `<button class="act blue" id="pv-add">➕ ${PB.T('Añadir amigo')}</button>`) + `<button class="act gold" id="pv-inv">🎮 ${PB.T('Invitar a jugar')}</button>` +
       `<button class="act red" id="pv-rep">🚩 ${PB.T('Reportar')}</button>`;
@@ -2370,6 +2446,7 @@ PB.Lobby = (() => {
     }
     $('#fr-go').onclick = searchFriends;
     $('#fr-q').onkeydown = (e) => { if (e.key === 'Enter') searchFriends(); };
+    $('#pf-title-save').onclick = saveTitle;
     $('#pf-save').onclick = async () => {
       const name = $('#pf-input').value.trim();
       if (name === PB.Save.get().name) return;
@@ -2413,5 +2490,5 @@ PB.Lobby = (() => {
     window.addEventListener('resize', () => { if (current === 'chestopen') resizeFx(); });
   }
 
-  return { showPlayer, report, init, show, tick, openSettings, toast, refresh: refreshLobby, playPressed, get current() { return current; } };
+  return { showPlayer, showDetail, report, init, show, tick, openSettings, toast, refresh: refreshLobby, playPressed, get current() { return current; } };
 })();

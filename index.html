@@ -36,7 +36,7 @@
    "offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
   </script>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=151">
+  <link rel="stylesheet" href="css/style.css?v=152">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -83,7 +83,7 @@
       <header class="lb-top">
         <button class="profile-chip" id="btn-profile">
           <img id="pf-avatar" alt="">
-          <span><b id="pf-name"></b><small><img id="ico-cup" alt=""><span id="pf-copas">0</span></small></span>
+          <span><b id="pf-name"></b><small><img id="ico-cup" alt=""><span id="pf-copas">0</span><span class="pf-streak hidden" id="pf-streak" title="Racha de victorias"></span></small></span>
         </button>
         <div class="lb-title">Poké<span>Versus</span></div>
         <div class="lb-top-icons" id="lb-top-icons"></div>
@@ -367,6 +367,7 @@
           <div class="pf-name-row"><input id="pf-input" maxlength="16"><button class="act blue" id="pf-save">Guardar</button></div>
           <small class="pf-tag-row"><span id="pf-tag"></span><button class="mini" id="pf-copy">Copiar</button></small>
           <p id="pf-clan"></p>
+          <div class="pf-title-row"><input id="pf-title" maxlength="12" placeholder="Tu tag (ej. PRO)"><span id="pf-title-cols"></span><button class="act blue" id="pf-title-save">Poner</button><span id="pf-title-prev"></span></div>
         </div>
       </div>
       <div class="pf-avatars hidden" id="pf-avatars"><b>Elige tu foto</b><div id="pf-av-grid"></div></div>
@@ -526,29 +527,29 @@
   <script src="js/news.js?v=142"></script>
   <script src="js/roster-data.js?v=143"></script>
   <script src="js/forms-data.js?v=142"></script>
-  <script src="js/i18n-data.js?v=155"></script>
+  <script src="js/i18n-data.js?v=156"></script>
   <script src="js/i18n-names.js?v=142"></script>
   <script src="js/i18n.js?v=142"></script>
   <script src="js/sprites.js?v=145"></script>
   <script src="js/vfx.js?v=142"></script>
-  <script src="js/roster.js?v=149"></script>
+  <script src="js/roster.js?v=150"></script>
   <script src="js/pokeball.js?v=142"></script>
   <script src="js/tiles.js?v=142"></script>
   <script src="js/world.js?v=142"></script>
   <script src="js/game.js?v=147"></script>
   <script src="js/net.js?v=143"></script>
-  <script src="js/modes.js?v=143"></script>
+  <script src="js/modes.js?v=144"></script>
   <script src="js/ai.js?v=142"></script>
   <script src="js/audio.js?v=142"></script>
-  <script src="js/render.js?v=147"></script>
-  <script src="js/input.js?v=143"></script>
+  <script src="js/render.js?v=148"></script>
+  <script src="js/input.js?v=144"></script>
   <script src="js/settings.js?v=142"></script>
   <script src="js/pixui.js?v=142"></script>
-  <script src="js/save.js?v=148"></script>
-  <script src="js/online.js?v=155"></script>
-  <script src="js/chat.js?v=143"></script>
-  <script src="js/lobby.js?v=151"></script>
-  <script src="js/main.js?v=155"></script>
+  <script src="js/save.js?v=149"></script>
+  <script src="js/online.js?v=156"></script>
+  <script src="js/chat.js?v=144"></script>
+  <script src="js/lobby.js?v=152"></script>
+  <script src="js/main.js?v=156"></script>
   <script>
     // Aviso temporal: el servidor gratis se ha llenado hoy (vuelve a las 9:00 en España). Sale una vez por visita.
     (() => {

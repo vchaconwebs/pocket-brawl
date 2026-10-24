@@ -97,6 +97,7 @@
     opts = opts || plan(playerId);
     PB.Sprites.ensure(spritesFor(opts, playerId));
     game = new PB.Game(opts);
+    renderer.endSplash = null;
     if (opts.humans) return setupNetGame(opts, myIdx);
     if (game.player) {
       game.player.shiny = PB.Save.skin(playerId) === 'shiny';
@@ -112,6 +113,7 @@
       b.isBot = !b.isPlayer && !friend; // los que rellenan la partida
       b.name = b.trainer; // encima de cada Pokémon sale el nombre del jugador
     });
+    if (game.player && playerId) game.player.mastery = PB.masteryOf(PB.Save.copas(playerId));
     // niveles: el jugador usa el suyo; los bots, uno parecido para que sea justo
     const myLvl = playerId ? PB.Save.level(playerId) : 1;
     for (const b of game.brawlers) {
@@ -149,6 +151,7 @@
       b.skin = h && h.skin ? h.skin : null;
       b.types = game.typesFor(b);
       b.creator = !!(h && h.uid === PB.Chat.OWNER); // el creador del juego sale en dorado
+      b.mastery = h ? Math.max(0, Math.min(PB.MASTERY.length, h.mt | 0)) : 0;
       const lvl = h ? h.lvl || 1 : opts.botLvls ? opts.botLvls[i] : Math.max(1, Math.min(PB.META.maxLevel, avg + Math.floor(Math.random() * 3) - 1));
       b.lvl = lvl;
       b.lvlMul = PB.levelMul(lvl);
@@ -509,6 +512,7 @@
   const SONG_OF = { gems: 'battle', heist: 'battle', showdown: 'showdown', duo: 'showdown', ball: 'arena', zone: 'arena', brawl: 'battle', knockout: 'battle' };
 
   function toMenu() {
+    if (practice) endPractice();
     // salir a mitad de una partida en red cuenta como abandono (derrota)
     if (net && mode === 'play' && game && !game.winner && !(game.player && game.player.out) && (net.client || net.host)) {
       try { PB.Save.applyAbandon(JSON.parse(localStorage.getItem('pb.netMatch'))); } catch (e) {}
@@ -532,6 +536,85 @@
     if (mode === 'end') toMenu(); else PB.Lobby.show('lobby');
   }
 
+  // ------------------------------------------------------------ probar un Pokémon (entrenamiento)
+  // Desde su ficha, aunque no lo tengas: tú contra 3 dianas quietas, con botones para evolucionar,
+  // llenar la súper o la mega y cambiar de set. No da premios ni cuenta para nada.
+  let practice = null;
+  const pbar = document.createElement('div');
+  pbar.id = 'practice-bar';
+  pbar.className = 'practice-bar hidden';
+  document.body.appendChild(pbar);
+  function practiceBar() {
+    pbar.innerHTML = [['evo', '🔼 ' + PB.T('Evolucionar')], ['sup', '⚡ ' + PB.T('Súper llena')], ['mega', '💗 ' + PB.T('Mega')], ['kit', '🔄 ' + PB.T('Cambiar set')], ['exit', '✖ ' + PB.T('Salir')]]
+      .map(([k, t]) => `<button class="act ${k === 'exit' ? 'red' : 'blue'}" data-pr="${k}">${t}</button>`).join('');
+    pbar.querySelectorAll('[data-pr]').forEach((b) => (b.onclick = (e) => { e.stopPropagation(); practiceAction(b.dataset.pr); b.blur(); }));
+  }
+  function practiceAction(k) {
+    const me = game && game.player;
+    if (!practice || !me) return;
+    PB.Audio.play('ui');
+    if (k === 'exit') { const id = practice.id; endPractice(); toMenu(); PB.Lobby.showDetail(id); return; }
+    if (me.dead) return;
+    if (k === 'sup') { me.superCharge = 1; return; }
+    if (k === 'mega') {
+      if (!game.canMega(me)) { game.text(me.x, me.y - 110, PB.T('Solo en su última fase'), '#ffb0f0', 15); return; }
+      me.megaCharge = 1;
+      return;
+    }
+    if (k === 'evo') {
+      // en la última fase vuelve a empezar desde la primera
+      if (me.stage >= PB.evoSteps(me.def).length) return startPractice(practice.id, practice.kit);
+      me.xp = PB.evoSteps(me.def)[me.stage];
+      game.evolve(me);
+      return;
+    }
+    if (k === 'kit') {
+      // ataque y súper: nuevo / clásico (y sus mezclas, si ese Pokémon tiene las dos opciones)
+      const ch = me.def.kitChoice || PB.brawlerById(me.def.id).kitChoice || {};
+      const all = [{ atk: 'nuevo', sup: 'nuevo' }, { atk: 'clasico', sup: 'nuevo' }, { atk: 'nuevo', sup: 'clasico' }, { atk: 'clasico', sup: 'clasico' }]
+        .filter((x) => (ch.atk || x.atk === 'nuevo') && (ch.sup || x.sup === 'nuevo'));
+      const i = all.findIndex((x) => x.atk === (me.kit || {}).atk && x.sup === (me.kit || {}).sup);
+      me.kit = all[(i + 1) % all.length];
+      practice.kit = me.kit;
+      me.def = PB.retype(PB.brawlerById(me.def.id), me.line, me.stage, me.kit);
+      me.superCharge = Math.max(me.superCharge, 0.5);
+      game.text(me.x, me.y - 120, me.def.attack.name + ' · ' + me.def.super.name, '#ffffff', 15);
+    }
+  }
+  function endPractice() {
+    practice = null;
+    pbar.classList.add('hidden');
+  }
+  async function startPractice(id, kit) {
+    if (starting || !PB.brawlerById(id)) return;
+    starting = true;
+    goLandscape();
+    PB.Audio.init();
+    PB.Settings.apply();
+    const ids = PB.BRAWLERS.map((b) => b.id).filter((x) => x !== id);
+    const red = shuffle(ids).slice(0, 3);
+    const k = kit || PB.Save.kit(id);
+    const opts = { mode: 'practice', playerInBlue: true, noCountdown: true, mapIdx: 0, blue: [id], red, kits: [k].concat(red.map((r) => PB.randomKit(r))), lines: [PB.Save.lineOf(id)].concat(red.map((r) => PB.brawlerById(r).line)) };
+    $('#loading h1').textContent = PB.T('Preparando a los Pokémon…');
+    showScreen('loading');
+    await Promise.race([PB.Sprites.ensure(spritesFor(opts, id)), new Promise((r) => setTimeout(r, 12000))]);
+    starting = false;
+    endNet();
+    newGame(id, opts);
+    bots = []; // las dianas no se mueven ni atacan
+    practice = { id, kit: k };
+    PB.Audio.music('battle');
+    mode = 'play';
+    paused = false;
+    input.enabled = true;
+    endTimer = 0;
+    hideScreens();
+    practiceBar();
+    pbar.classList.remove('hidden');
+    $('#btn-pause').classList.add('hidden');
+  }
+  PB.Practice = { start: (id) => startPractice(id), get on() { return !!practice; } };
+
   // ------------------------------------------------------------ pausa
   let paused = false;
   // El menú de pausa no para la partida (tampoco contra bots: si se parasen todos, se notaría que son bots)
@@ -552,6 +635,7 @@
   $('#pz-quit').onclick = toMenu;
 
   function showEnd() {
+    renderer.endSplash = null;
     try { localStorage.removeItem('pb.netMatch'); } catch (e) {}
     PB.Online.setPlaying(false);
     PB.Audio.music(null);
@@ -604,6 +688,8 @@
     const dc = reward.copas;
     $('#end-rewards').innerHTML =
       `<div class="copas-change ${dc > 0 ? 'up' : dc < 0 ? 'down' : ''}"><img src="${PB.Icons.cup()}" alt=""><b>${dc > 0 ? '+' : ''}${dc}</b><small>${me.def.name}: ${reward.copasNow} copas</small></div>` +
+      (reward.mastery ? `<div class="pill mastery-up" style="--mc:${PB.MASTERY[reward.mastery.tier - 1].color}"><i class="mast">◆</i><b>${PB.T('¡Maestría {m}!', { m: PB.T(PB.MASTERY[reward.mastery.tier - 1].name) })}</b>` +
+        `<img src="${PB.Icons.coin()}" alt=""><b>+${reward.mastery.coins}</b>` + (reward.mastery.rainbow ? `<img src="${PB.Icons.rainbow()}" alt=""><b>+${reward.mastery.rainbow}</b>` : '') + '</div>' : '') +
       `<div class="pill pay"><img src="${PB.Icons.coin()}" alt=""><b>+${reward.coins}</b><img src="${PB.Icons.star()}" alt=""><b>+${reward.points}</b>` +
       (reward.rainbow ? `<img src="${PB.Icons.rainbow()}" alt=""><b>+${reward.rainbow}</b>` : '') + `</div>` +
       `<div class="tokens"><img src="${PB.Icons.ball('poke', 2)}" alt=""><div class="tok-info"><small>${PB.T('+{n} fichas', { n: reward.tokens })}${reward.bonus ? ' ' + PB.T('(¡dobles!)') : ''} · ${PB.T('+{n} EXP de pase', { n: reward.passXp })}${reward.passUp ? ' ' + PB.T('¡Sube de nivel!') : ''}</small><span class="bar"><i style="width:${pct}%"></i></span></div><b>${d.tokens}/${PB.META.tokensPerChest}</b></div>` +
@@ -947,13 +1033,14 @@
           break;
         case 'zoneTaken': if (ev.team === myTeam) PB.Audio.play('ready'); break;
         case 'end': {
-          endTimer = game.mode.ffa && game.winner === 'out' ? 1.6 : 2.4;
-          // cartel grande: así se nota que ha acabado (antes la pantalla se quedaba quieta y parecía un tirón)
+          endTimer = 2.8;
+          // «FIN DE LA PARTIDA» y el resultado en grande en mitad de la pantalla; luego sale el menú de siempre
+          // (antes la pantalla se quedaba quieta y parecía un tirón)
           if (!me) break;
           const ffa = game.mode.ffa, draw = game.winner === 'draw';
           const win = ffa ? game.winner === me.team || me.rank === 1 : game.winner === me.team;
           const txt = draw ? '¡Empate!' : win ? '¡Victoria!' : ffa && me.rank ? PB.T('Puesto {n}', { n: me.rank }) : '¡Derrota!';
-          renderer.announce(txt, draw ? '#ffffff' : win ? '#ffe066' : '#ff8a7a', '', endTimer + 0.5);
+          renderer.endSplash = { text: PB.T(txt), color: draw ? '#ffffff' : win ? '#ffe066' : '#ff8a7a', t0: performance.now() };
           PB.Audio.play(win ? 'ready' : 'tick');
           break;
         }
@@ -1046,7 +1133,10 @@
     } else heartT = 0;
 
     // en red (Niebla / Dúo): cuando ya tengo puesto (en el dúo, al caer la pareja entera) salen los resultados
-    if (mode === 'play' && game.online && game.mode.ffa && me && me.out && me.rank && !game.winner && endTimer <= 0) endTimer = 2.6;
+    if (mode === 'play' && game.online && game.mode.ffa && me && me.out && me.rank && !game.winner && endTimer <= 0) {
+      endTimer = 2.8;
+      renderer.endSplash = { text: PB.T('Puesto {n}', { n: me.rank }), color: me.rank <= 3 ? '#ffe066' : '#ff8a7a', t0: performance.now() };
+    }
     if (endTimer > 0) {
       endTimer -= dt;
       if (endTimer <= 0 && mode === 'play') showEnd();
@@ -1064,6 +1154,9 @@
       focus = null;
       if (me.out) focus = game.brawlers.find((b) => b !== me && b.team === me.team && !b.dead) || null;
     }
+    // el cursor del ratón solo se esconde jugando (en los menús y en pausa se ve)
+    const hideCursor = mode === 'play' && !paused && !input.touch && !input.padOn && !mustRotate();
+    if (hideCursor !== document.body.classList.contains('in-match')) document.body.classList.toggle('in-match', hideCursor);
     renderer.draw(game, {
       flip: !!(me && mode !== 'menu' && !game.mode.ffa && me.team === 'red'),
       focus,

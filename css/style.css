@@ -2128,3 +2128,17 @@ body:has(#end:not(.hidden)) #btn-mchat { top: auto; bottom: calc(10px + var(--sa
 .srv-text p { margin: 0 0 10px; font-size: 16px; line-height: 1.35; color: #e6ecff; }
 .srv-text b { color: #ffe066; font-weight: 400; }
 .srv-btns { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+
+/* racha de victorias junto a las copas */
+.pf-streak { margin-left: 6px; color: #ffb347; font-weight: bold; }
+body.in-match #game { cursor: none; }
+.mast { font-style: normal; color: var(--mc); margin-left: 4px; text-shadow: 0 0 2px #000, 0 0 6px var(--mc); }
+.mastery-up { border-color: var(--mc) !important; box-shadow: 0 0 14px var(--mc); }
+.pf-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
+.pf-title-row input { width: 130px; }
+#pf-title-cols { display: inline-flex; gap: 4px; }
+.tcol { width: 20px; height: 20px; border-radius: 5px; border: 2px solid rgba(0, 0, 0, 0.5); padding: 0; }
+.tcol.sel { border-color: #fff; box-shadow: 0 0 0 2px #10142a; }
+.gc-tag.own { color: #10142a; }
+.practice-bar { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 25; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: calc(100vw - 24px); }
+.practice-bar .act { font-size: 12px; padding: 2px 8px; min-height: 0; }

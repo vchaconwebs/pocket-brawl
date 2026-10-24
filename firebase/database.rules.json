@@ -188,6 +188,12 @@
         "au": {
           ".validate": "newData.isString() && newData.val().length <= 30 && newData.val() === $id"
         },
+        "tg": {
+          ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 12"
+        },
+        "tc": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 7"
+        },
         "dur": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9"
         }
