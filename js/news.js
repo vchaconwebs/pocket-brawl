@@ -1,9 +1,53 @@
 // Versión del juego y notas de parche. Al publicar una actualización con novedades:
 // sube PB.VERSION y añade su nota ARRIBA del todo en PB.PATCH_NOTES (la primera es la que se enseña).
 // Cada jugador la ve una sola vez al entrar a la lobby (se guarda en localStorage 'pb.seenVersion').
-PB.VERSION = '1.7';
+PB.VERSION = '1.8';
 
 PB.PATCH_NOTES = [
+  {
+    v: '1.8',
+    date: '24/10/2026',
+    es: {
+      title: '¡Actualización 1.8!',
+      items: [
+        ['🏅', '¡MAESTRÍAS! Cada Pokémon sube de rango con sus copas: Bronce (100), Plata (250), Oro (500), Diamante (800) y Maestro (1200). Cada rango da monedas (y desde Oro, Monedas Arcoíris), y su medalla sale en tu colección, en tu perfil y junto a tu nombre en partida.'],
+        ['🎮', 'Botón PROBAR en la ficha de cada Pokémon (también los que no tienes): un campo de entrenamiento con maniquíes para ver sus ataques, su súper, sus evoluciones y su mega antes de comprarlo.'],
+        ['🏷️', 'Tag propio: ponte un tag de hasta 12 letras y elige su color en tu Perfil. Sale en el chat y en tu perfil.'],
+        ['🔥', 'Rachas: tu racha de victorias sale junto a tus copas, y la actual y la mejor en tu perfil y en el de los demás.'],
+        ['💰', 'Comprar Pokémon con Puntos Pokémon ahora es 5 veces más caro (un legendario cuesta 4000). La forma principal de conseguirlos son las Poké Balls y la Zona Safari.'],
+        ['✨', '¡Shinys en las Poké Balls! Muy rara vez, al abrir una Poké Ball te puede salir la skin shiny de un Pokémon que tienes.'],
+        ['👥', 'Niebla Tóxica Dúo: los Caramelos que coge uno cuentan para los dos, y si cae tu pareja vuelve a los 12 s a tu lado (sin Caramelos) mientras tú sigas en pie.'],
+        ['🤡', 'Nuevo Pokémon: Mime Jr. → Mr. Mime, con su súper Reflejo (un espejo que devuelve los disparos) y su skin de Galar.'],
+        ['🐾', 'Weavile ahora ataca de cerca con Garra Umbría (tres zarpazos) o se hace invisible con Finta, y Hitmontop golpea a todo su alrededor con Patada Giro.'],
+        ['⚖️', 'Equilibrio: Deoxys, Zapdos, Rayquaza, Zeraora, Snivy y Hoopa son algo más débiles.'],
+        ['🏁', 'Final de partida: sale FIN DE LA PARTIDA y el resultado en grande, con confeti para los ganadores, antes del menú de resultados.'],
+        ['🛡️', 'Clanes: el líder puede cambiar la descripción, el escudo y si el clan es público o solo por invitación.'],
+        ['🖱️', 'En PC el ratón se esconde en partida y ves una mirilla; con mando o en el móvil, la guía de apuntado solo sale cuando apuntas.'],
+        ['💎', 'Los shinys dejan escapar algún destello aunque estén escondidos en la hierba alta, y su estela brilla más.'],
+        ['🛠️', 'Arreglos: ya no se queda colgado en «Partida encontrada» (verás una cuenta atrás y, si no conecta, juegas con bots); la Poké Ball de la lobby se ve siempre; en el móvil el botón MEGA ya no salta al pulsar la súper; los golpes cuerpo a cuerpo ya no atraviesan rocas ni árboles; los láseres rompen cajas (Frigibax); las trampas de Roggenrola salen siempre las 3; la pelota de Voltorbol va más suave; tu progreso se guarda al cerrar el juego; y el servidor gasta muchísimo menos, para que haya menos caídas.'],
+      ],
+    },
+    en: {
+      title: 'Update 1.8!',
+      items: [
+        ['🏅', 'MASTERIES! Each Pokémon ranks up with its trophies: Bronze (100), Silver (250), Gold (500), Diamond (800) and Master (1200). Each rank gives coins (and from Gold, Rainbow Coins), and its medal shows in your collection, your profile and next to your name in matches.'],
+        ['🎮', 'TRY button on every Pokémon page (even the ones you don’t own): a training ground with dummies to see its attacks, super, evolutions and mega before you buy it.'],
+        ['🏷️', 'Your own tag: set a tag of up to 12 letters and pick its colour in your Profile. It shows in chat and on your profile.'],
+        ['🔥', 'Streaks: your win streak shows next to your trophies, and the current and best one on your profile and other players’ profiles.'],
+        ['💰', 'Buying Pokémon with Pokémon Points is now 5 times more expensive (a legendary costs 4000). The main way to get them is Poké Balls and the Safari Zone.'],
+        ['✨', 'Shinies in Poké Balls! Very rarely, opening a Poké Ball can give you the shiny skin of a Pokémon you own.'],
+        ['👥', 'Toxic Fog Duo: Rare Candies picked up by one of you count for both, and if your partner falls they come back at your side after 12 s (with no candies) as long as you are still standing.'],
+        ['🤡', 'New Pokémon: Mime Jr. → Mr. Mime, with its Reflect super (a mirror that bounces shots back) and its Galarian skin.'],
+        ['🐾', 'Weavile now fights up close with Night Slash claws (three swipes) or turns invisible with Feint, and Hitmontop hits everything around it with Rolling Kick.'],
+        ['⚖️', 'Balance: Deoxys, Zapdos, Rayquaza, Zeraora, Snivy and Hoopa are a bit weaker.'],
+        ['🏁', 'End of match: GAME OVER and the result appear big on screen, with confetti for the winners, before the results menu.'],
+        ['🛡️', 'Clans: the leader can change the description, the emblem and whether the clan is public or invite only.'],
+        ['🖱️', 'On PC the mouse cursor hides during matches and you see a crosshair; with a controller or on mobile, the aim guide only shows while you aim.'],
+        ['💎', 'Shinies let out a sparkle even when hiding in tall grass, and their trail shines brighter.'],
+        ['🛠️', 'Fixes: no more getting stuck on “Match found” (you’ll see a countdown and play with bots if it can’t connect); the lobby Poké Ball always shows; on mobile the MEGA button no longer triggers when you press the super; melee hits no longer go through rocks and trees; lasers break crates (Frigibax); Roggenrola always drops all 3 traps; the Voltorb Ball ball moves smoother; your progress saves when you close the game; and the server uses far less, so there should be fewer outages.'],
+      ],
+    },
+  },
   {
     v: '1.7',
     date: '23/10/2026',

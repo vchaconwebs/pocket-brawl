@@ -591,17 +591,34 @@
     goLandscape();
     PB.Audio.init();
     PB.Settings.apply();
-    const ids = PB.BRAWLERS.map((b) => b.id).filter((x) => x !== id);
-    const red = shuffle(ids).slice(0, 3);
+    // maniquíes: tres Wobbuffet (el saco de boxeo de los Pokémon)
+    const DUMMY = PB.brawlerById('wynaut') ? 'wynaut' : PB.BRAWLERS[0].id;
+    const red = [DUMMY, DUMMY, DUMMY];
     const k = kit || PB.Save.kit(id);
-    const opts = { mode: 'practice', playerInBlue: true, noCountdown: true, mapIdx: 0, blue: [id], red, kits: [k].concat(red.map((r) => PB.randomKit(r))), lines: [PB.Save.lineOf(id)].concat(red.map((r) => PB.brawlerById(r).line)) };
+    const opts = { mode: 'practice', playerInBlue: true, noCountdown: true, mapIdx: 0, blue: [id], red, kits: [k].concat(red.map(() => PB.KIT_DEFAULT)), lines: [PB.Save.lineOf(id)].concat(red.map((r) => PB.brawlerById(r).line)) };
     $('#loading h1').textContent = PB.T('Preparando a los Pokémon…');
     showScreen('loading');
     await Promise.race([PB.Sprites.ensure(spritesFor(opts, id)), new Promise((r) => setTimeout(r, 12000))]);
     starting = false;
     endNet();
     newGame(id, opts);
-    bots = []; // las dianas no se mueven ni atacan
+    bots = []; // los maniquíes no se mueven ni atacan
+    // en fila delante de ti, ya evolucionados (Wobbuffet) y con mucha vida; se llaman «Maniquí»
+    const T = PB.TILE;
+    game.brawlers.filter((b) => b.team === 'red').forEach((b, i) => {
+      const last = b.line.length - 1;
+      b.stage = last;
+      b.dex = b.line[last];
+      b.def = PB.retype(PB.brawlerById(b.def.id), b.line, last, b.kit);
+      b.types = game.typesFor(b);
+      b.xp = 1e9;
+      b.maxHp = b.hp = 12000;
+      b.home = { x: (3 + i * 4) * T + T / 2, y: 2 * T + T / 2 };
+      b.x = b.home.x;
+      b.y = b.home.y;
+      b.facing = Math.PI / 2;
+      b.name = b.trainer = PB.T('Maniquí');
+    });
     practice = { id, kit: k };
     PB.Audio.music('battle');
     mode = 'play';

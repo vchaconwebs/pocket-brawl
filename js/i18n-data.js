@@ -886,4 +886,6 @@ PB.I18N = {
   "ENTRENAMIENTO": ["TRAINING", "TREINO", "ENTRAÎNEMENT", "ALLENAMENTO", "TRAINING"],
   "K.O.: {n}": ["K.O.s: {n}", "K.O.: {n}", "K.O. : {n}", "K.O.: {n}", "K.O.: {n}"],
   'FIN DE LA PARTIDA': ['GAME OVER', 'FIM DA PARTIDA', 'FIN DE LA PARTIE', 'FINE DELLA PARTITA', 'SPIELENDE'],
+  'Maniquí': ['Dummy', 'Boneco', 'Mannequin', 'Manichino', 'Puppe'],
+  'Daño: {n}': ['Damage: {n}', 'Dano: {n}', 'Dégâts : {n}', 'Danni: {n}', 'Schaden: {n}'],
 };

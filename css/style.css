@@ -2140,5 +2140,5 @@ body.in-match #game { cursor: none; }
 .tcol { width: 20px; height: 20px; border-radius: 5px; border: 2px solid rgba(0, 0, 0, 0.5); padding: 0; }
 .tcol.sel { border-color: #fff; box-shadow: 0 0 0 2px #10142a; }
 .gc-tag.own { color: #10142a; }
-.practice-bar { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 25; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: calc(100vw - 24px); }
+.practice-bar { position: fixed; top: 64px; left: calc(10px + var(--sal, 0px)); z-index: 25; display: flex; flex-direction: column; align-items: stretch; gap: 5px; }
 .practice-bar .act { font-size: 12px; padding: 2px 8px; min-height: 0; }

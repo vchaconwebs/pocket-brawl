@@ -644,11 +644,22 @@ PB.MODES.brawl = {
 // ------------------------------------------------------------------ Entrenamiento (botón «Probar» de cada Pokémon)
 // Tú solo contra 3 dianas quietas que vuelven enseguida. Sin tiempo, sin premios: para ver ataques, súper y evoluciones.
 PB.MODES.practice = {
-  id: 'practice', name: 'Entrenamiento', map: 'brawl', statName: 'K.O.', practice: true,
-  desc: 'Prueba un Pokémon contra dianas quietas.',
+  id: 'practice', name: 'Entrenamiento', map: 'practice', statName: 'K.O.', practice: true,
+  desc: 'Prueba un Pokémon contra maniquíes.',
   rules: { matchTime: 99999, respawn: 1.2 },
   setup(g) { g.kos = { blue: 0, red: 0 }; },
   onKill(g, b) { if (b.team === 'red') g.kos.blue++; },
+  // los maniquíes vuelven a su sitio y, si llevan un rato sin recibir golpes, recuperan toda la vida
+  update(g) {
+    for (const b of g.brawlers) {
+      if (b.team !== 'red' || b.dead || !b.home) continue;
+      if (g.time - b.lastCombat > 2.5) {
+        b.hp = b.maxHp;
+        if (Math.hypot(b.x - b.home.x, b.y - b.home.y) > 4) { b.x += (b.home.x - b.x) * 0.1; b.y += (b.home.y - b.y) * 0.1; }
+      }
+    }
+  },
+  respawnAt(g, b) { return b.home || null; },
   botPlan: fightPlan,
   result: teamResult,
 };

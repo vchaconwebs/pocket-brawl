@@ -313,6 +313,17 @@ PB.MAPS = {
     ] },
   ],
   // Duelo de Equipos: abiertos, para pelear a media distancia
+  // campo de entrenamiento (botón «Probar»): pequeño, con rocas, hierba alta y barriles para probarlo todo
+  practice: [
+    { name: 'Entrenamiento', top: [
+      'TTT.........TTT',
+      'T......R......T',
+      '...............',
+      '..#...bbb...#..',
+      '..#...bbb...#..',
+      '..W.........W..',
+    ] },
+  ],
   brawl: [
     { name: 'Coliseo', top: [ // abierto, con coberturas a media distancia
       'TTTbb...........bbTTT',

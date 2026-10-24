@@ -2687,7 +2687,8 @@ PB.Renderer = class {
     } else if (id === 'practice') {
       panel(240, 44);
       this.outlined(PB.T('ENTRENAMIENTO'), cx, 26, 15, '#ffd23a');
-      this.outlined(PB.T('K.O.: {n}', { n: game.kos.blue }), cx, 44, 13, '#ffffff');
+      const me2 = game.player;
+      this.outlined(PB.T('K.O.: {n}', { n: game.kos.blue }) + '  ·  ' + PB.T('Daño: {n}', { n: Math.round((me2 && me2.dmgDone) || 0).toLocaleString('es-ES') }), cx, 44, 13, '#ffffff');
     } else if (id === 'brawl') {
       // K.O. de cada equipo
       panel(220, 50);
