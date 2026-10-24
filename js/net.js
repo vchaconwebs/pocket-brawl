@@ -156,6 +156,12 @@ PB.Net = (() => {
       if (s.fx) for (const f of s.fx) { const o = unpack(f, g); o._s = 1; g.fx.push(o); }
       if (s.px) for (const [x, y, vx, vy, color, life, size, grow, z, vz] of s.px) g.fx.push({ kind: 'px', x, y, vx, vy, z, vz, color, t: 0, life, size, grow, drag: vz ? 1 : 0.9, _s: 1 });
       if (s.ev) for (const e of s.ev) this.events.push(unpack(e, g));
+      // Voltorb (Voltorbol): la foto dice dónde está de verdad; se sigue viendo donde iba y se acerca poco a poco
+      if (s.g && s.g.voltorb && g.voltorb && this.vRend) {
+        const v = g.voltorb;
+        this.vT = { x: v.x, y: v.y };
+        if (Math.hypot(v.x - this.vRend.x, v.y - this.vRend.y) < 160) { v.x = this.vRend.x; v.y = this.vRend.y; }
+      }
       // controles que el anfitrión ya ha aplicado
       if (s.ack !== undefined) this.pending = this.pending.filter((p) => p.seq > s.ack);
     }
@@ -209,12 +215,45 @@ PB.Net = (() => {
         }
         g.trail(p, dt);
       }
+      this.stepVoltorb(dt);
       for (const z of g.zones) {
         z.t -= dt;
         if (z.vx || z.vy) { z.x += z.vx * dt; z.y += z.vy * dt; } // torbellino
       }
       g.events.push(...this.events);
       this.events = [];
+    }
+
+    // El Voltorb rueda igual que en el anfitrión (bote, rebotes en los muros y frenado) entre foto y foto;
+    // antes se movía a saltos y se quedaba parado hasta la siguiente foto
+    stepVoltorb(dt) {
+      const g = this.game, v = g.voltorb;
+      if (!v) return;
+      if (v.carrier) {
+        const c = v.carrier;
+        v.x = c.x + Math.cos(c.facing) * 26;
+        v.y = c.y + Math.sin(c.facing) * 18 + 4;
+        v.z = 0;
+      } else {
+        const W = g.world;
+        v.vz = (v.vz || 0) - 1500 * dt;
+        v.z = (v.z || 0) + v.vz * dt;
+        if (v.z <= 0) { v.z = 0; v.vz = Math.abs(v.vz) > 150 ? -v.vz * 0.45 : 0; }
+        const nx = v.x + v.vx * dt;
+        if (W.circleSolid(nx, v.y, 12)) v.vx = -v.vx * 0.7; else v.x = nx;
+        const ny = v.y + v.vy * dt;
+        if (W.circleSolid(v.x, ny, 12)) v.vy = -v.vy * 0.7; else v.y = ny;
+        const f = Math.exp((v.z > 0 ? -0.8 : -2.2) * dt);
+        v.vx *= f; v.vy *= f;
+        // y se acerca a donde dice el anfitrión (que también sigue rodando)
+        if (this.vT) {
+          this.vT.x += v.vx * dt; this.vT.y += v.vy * dt;
+          const k = 1 - Math.exp(-8 * dt);
+          v.x += (this.vT.x - v.x) * k; v.y += (this.vT.y - v.y) * k;
+        }
+        v.spin = (v.spin || 0) + (Math.hypot(v.vx, v.vy) / 20) * dt;
+      }
+      this.vRend = { x: v.x, y: v.y };
     }
 
     // controles para el anfitrión: el movimiento siempre; ataque y súper solo cuando se pulsan

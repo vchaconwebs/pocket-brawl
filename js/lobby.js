@@ -1678,6 +1678,8 @@ PB.Lobby = (() => {
       let best = -1;
       for (const id of chest.res.pokemon) { const b = PB.brawlerById(id); if (b) best = Math.max(best, RARITY_RANK[b.rarity] || 0); }
       chest.steps = best >= 0 ? RARITY_STEPS.slice(0, best + 1) : chest.res.skin ? [{ col: [60, 220, 210], label: '¡Hay una skin!' }] : [];
+      // shiny: un escalón dorado más al final (es lo más raro que puede salir)
+      if (chest.res.shiny) chest.steps = chest.steps.concat([{ col: [255, 215, 60], label: '¡¡SHINY!!' }]);
       if (chest.steps.length) { chest.state = 'charge'; chest.step = -1; chestStep(); }
       else startShake();
     } else if (chest.state === 'charge') {
@@ -1732,6 +1734,10 @@ PB.Lobby = (() => {
       const b = PB.brawlerById(res.skin.id), REG = { alola: 'Alola', galar: 'Galar', hisui: 'Hisui', paldea: 'Paldea' };
       const fdex = [].concat(...(b.alts || [b.line])).map((dx) => PB.skinDex(dx, res.skin.region)).find((k) => PB.FORMS && PB.FORMS[k]);
       items.push({ icon: fdex ? PB.Sprites.portraitURL(fdex) : portrait(b), title: '¡Skin de ' + REG[res.skin.region] + '!', sub: b.name, cls: 'new', pokemon: true });
+    }
+    if (res.shiny) {
+      const b = PB.brawlerById(res.shiny);
+      items.push({ icon: portrait(b), title: '¡' + b.name + ' shiny!', sub: PB.T('Skin shiny · ya la llevas puesta'), cls: 'new shiny', pokemon: true });
     }
     chest.items = items;
     chest.cur = -1;

@@ -431,13 +431,17 @@ PB.Game = class {
       if (Math.hypot(g.x - b.x, g.y - b.y) < b.r + 18) {
         g.taken = true;
         if (g.kind === 'candy') {
-          // Caramelo Raro: +10 % de vida y daño
-          b.power++;
-          b.stat++;
+          // Caramelo Raro: +10 % de vida y daño. En Dúo cuenta para los dos de la pareja (si el otro está en pie)
+          const who = this.mode.duo ? this.brawlers.filter((o) => o.team === b.team && (o === b || !o.dead)) : [b];
+          for (const o of who) {
+            o.power++;
+            o.stat++;
+            const extra = o.def.hp * 0.1;
+            o.maxHp += extra;
+            o.hp = Math.min(o.maxHp, o.hp + extra + 400);
+            if (o !== b) this.text(o.x, o.y - 96, '+1', '#9ad4ff', 15);
+          }
           this.gainXp(b, 8);
-          const extra = b.def.hp * 0.1;
-          b.maxHp += extra;
-          b.hp = Math.min(b.maxHp, b.hp + extra + 400);
           this.events.push({ type: 'candy', b });
           this.ring(g.x, g.y - 10, 6, 40, '#9ad4ff', 0.3, 4);
           for (let i = 0; i < 8; i++) this.px(g.x, g.y - 10, i % 2 ? '#5a86ea' : '#e8f6ff', { speed: 140, vy: -40, life: 0.45, size: 4 });
@@ -1740,16 +1744,27 @@ PB.Game = class {
   // mul: solo en el láser del ataque básico (el súper no lleva): carga el súper y empuja menos
   beamHit(b, s, type, ang, mul) {
     const basic = mul !== undefined, dmg = s.dmg * (mul || 1);
-    const x1 = b.x, y1 = b.y - 18, x2 = x1 + Math.cos(ang) * s.range, y2 = y1 + Math.sin(ang) * s.range;
+    const x1 = b.x, y1 = b.y - 18;
+    let x2 = x1 + Math.cos(ang) * s.range, y2 = y1 + Math.sin(ang) * s.range;
+    // cajas en la línea: el láser del ataque básico se para en el primer muro o caja (y la daña);
+    // el rayo del súper sigue de largo y daña todas las cajas que pilla
+    const T = PB.TILE, steps = Math.ceil(s.range / 14), hitC = new Set();
+    for (let i = 1; i <= steps; i++) {
+      const x = x1 + (x2 - x1) * (i / steps), y = b.y + (y2 - y1) * (i / steps), c = Math.floor(x / T), r = Math.floor(y / T);
+      if (!this.world.blocksShotAt(c, r)) continue;
+      if (this.world.tile(c, r) === 'C' && !hitC.has(c + ',' + r)) { hitC.add(c + ',' + r); this.damageCrate(c, r, dmg, b, true); }
+      if (basic) { x2 = x; y2 = y1 + (y2 - y1) * (i / steps); break; }
+    }
+    const len = Math.hypot(x2 - x1, y2 - y1) || 1;
     for (const e of this.brawlers) {
       if (e.dead || e.team === b.team) continue;
-      const t = Math.max(0, Math.min(1, ((e.x - x1) * (x2 - x1) + (e.y - 10 - y1) * (y2 - y1)) / (s.range * s.range)));
+      const t = Math.max(0, Math.min(1, ((e.x - x1) * (x2 - x1) + (e.y - 10 - y1) * (y2 - y1)) / (len * len)));
       const d = Math.hypot(e.x - (x1 + (x2 - x1) * t), e.y - 10 - (y1 + (y2 - y1) * t));
       if (d < s.width / 2 + e.r) this.damage(e, dmg, b, type, { knockback: basic ? 60 : 240, kx: x2 - x1, ky: y2 - y1, big: !basic, charge: basic });
     }
     for (const st of this.structures) {
       if (st.hp <= 0 || st.team === b.team) continue;
-      const t = Math.max(0, Math.min(1, ((st.x - x1) * (x2 - x1) + (st.y - y1) * (y2 - y1)) / (s.range * s.range)));
+      const t = Math.max(0, Math.min(1, ((st.x - x1) * (x2 - x1) + (st.y - y1) * (y2 - y1)) / (len * len)));
       if (Math.hypot(st.x - (x1 + (x2 - x1) * t), st.y - (y1 + (y2 - y1) * t)) < s.width / 2 + st.r) this.damageStructure(st, dmg, b, basic, st.x, st.y - 30);
     }
     this.fx.push({ kind: 'beam', x1, y1, x2, y2, w: s.width, t: 0, life: basic ? 0.22 : 0.4, type });
@@ -2009,7 +2024,7 @@ PB.Game = class {
 
   respawn(b) {
     const list = this.world.spawns[b.team] || this.world.spawns.free;
-    const sp = list[Math.floor(Math.random() * list.length)];
+    const sp = (this.mode.respawnAt && this.mode.respawnAt(this, b)) || list[Math.floor(Math.random() * list.length)];
     Object.assign(b, {
       x: sp.x, y: sp.y, dead: false, hp: b.maxHp, ammo: this.rules.maxAmmo, shieldT: this.rules.spawnShield,
       kx: 0, ky: 0, stunT: 0, action: null, powerNext: false,

@@ -456,6 +456,8 @@ button { font: inherit; cursor: pointer; }
 .reward span { font-size: 12px; color: #cfdcff; }
 .reward.new { border-color: #ffcf2e; box-shadow: 0 0 20px rgba(255, 210, 60, 0.6); }
 .reward.new img { width: 64px; height: 64px; border-radius: 10px; }
+.reward.shiny { border-color: #fff3a0; box-shadow: 0 0 26px rgba(255, 230, 90, 0.9), 0 0 50px rgba(255, 120, 220, 0.45); }
+.reward.shiny img { filter: drop-shadow(0 0 6px #ffe066) saturate(1.4); }
 #chest-hint { color: #cfdcff; font-size: 15px; animation: blink 1.2s infinite; }
 @keyframes blink { 50% { opacity: 0.4; } }
 

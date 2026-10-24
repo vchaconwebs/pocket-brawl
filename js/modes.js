@@ -563,7 +563,8 @@ function fightPlan(bot, info) {
 // Como Niebla Tóxica, pero por parejas: 5 equipos de 2. Gana la última pareja en pie.
 PB.MODES.duo = Object.assign({}, PB.MODES.showdown, {
   id: 'duo', name: 'Niebla Tóxica Dúo', duo: true, places: 5,
-  desc: 'Por parejas: 5 equipos de 2. Rompe cajas para hacerte más fuerte mientras la niebla cierra el mapa. Gana la última pareja en pie.',
+  desc: 'Por parejas: 5 equipos de 2. Rompe cajas: los Caramelos que coge uno cuentan para los dos. Si cae tu pareja, vuelve a los 12 s (sin Caramelos) mientras tú sigas en pie. Gana la última pareja en pie.',
+  revive: 12, // segundos hasta que vuelve el que cae, si su pareja sigue viva
   update(g, dt) {
     gasUpdate(g, dt);
     if (g.winner) return;
@@ -574,15 +575,34 @@ PB.MODES.duo = Object.assign({}, PB.MODES.showdown, {
     }
   },
   onKill(g, b) {
-    b.out = true;
-    g.dropCandy(b.x, b.y, Math.max(1, b.power));
-    // si cae la pareja entera, ese equipo queda en el puesto que toque
     const mates = g.brawlers.filter((o) => o.team === b.team);
-    if (mates.every((o) => o.dead)) {
-      const left = new Set(g.brawlers.filter((o) => !o.dead).map((o) => o.team)).size;
-      for (const o of mates) o.rank = left + 1;
-      if (mates.some((o) => o.isPlayer) && !g.winner && !g.online) g.end('out');
+    // si su pareja sigue en pie, vuelve al rato a su lado, pero sin Caramelos (los suyos caen al suelo).
+    // Los Caramelos que coja cualquiera de los dos después cuentan para los dos (game.js)
+    if (mates.some((o) => o !== b && !o.dead)) {
+      const lost = b.power || 0;
+      if (lost) g.dropCandy(b.x, b.y, lost);
+      b.maxHp -= lost * b.def.hp * 0.1; // (cada Caramelo daba +10 % de vida)
+      b.power = 0;
+      b.stat = 0;
+      b.respawnT = this.revive;
+      return;
     }
+    // cae la pareja entera: ese equipo queda fuera, en el puesto que toque
+    g.dropCandy(b.x, b.y, Math.max(1, b.power));
+    for (const o of mates) o.out = true;
+    const left = new Set(g.brawlers.filter((o) => !o.dead).map((o) => o.team)).size;
+    for (const o of mates) o.rank = left + 1;
+    if (mates.some((o) => o.isPlayer) && !g.winner && !g.online) g.end('out');
+  },
+  // el que vuelve sale junto a su pareja
+  respawnAt(g, b) {
+    const mate = g.brawlers.find((o) => o !== b && o.team === b.team && !o.dead);
+    if (!mate) return null;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2, x = mate.x + Math.cos(a) * 70, y = mate.y + Math.sin(a) * 70;
+      if (g.world.walkable(mate.x, mate.y, x, y, 18)) return { x, y };
+    }
+    return { x: mate.x, y: mate.y };
   },
   botPlan(bot, info) {
     const g = bot.g, b = bot.b;

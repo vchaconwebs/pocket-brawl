@@ -193,8 +193,10 @@ PB.Renderer = class {
       else if (tt === 'X' && PB.Tiles.H(c, r, 9) < 0.85) items.push({ k: 'wall', y: r * T + T, c, r, tt: 'B' });
     }
     for (const b of game.brawlers) {
-      if (b.dead || !game.visibleTo(b, team)) continue;
-      items.push({ k: 'b', y: b.y, b });
+      if (b.dead) continue;
+      if (game.visibleTo(b, team)) items.push({ k: 'b', y: b.y, b });
+      // un shiny escondido en un arbusto deja escapar algún destello: no se le ve, pero se intuye por dónde va
+      else if (b.shiny && !b.phase && !(b.stealthT > 0) && game.inBush(b)) items.push({ k: 'shinyHint', y: b.y, b });
     }
     for (const g of game.balls) if (inView(g.x, g.y, 40)) items.push({ k: 'ball', y: g.y, g });
     for (const st of game.structures) items.push({ k: 'struct', y: st.y, st });
@@ -213,6 +215,7 @@ PB.Renderer = class {
       if (it.k === 'wall') this.up(it.c * T + T / 2, it.r * T + T / 2, () => this.drawWall(it.c, it.r, it.tt));
       else if (it.k === 'ball') this.up(it.g.x, it.g.y, () => this.drawBall(it.g));
       else if (it.k === 'b') this.upFacing(it.b, () => this.drawBrawler(it.b, game, team));
+      else if (it.k === 'shinyHint') this.upFacing(it.b, () => this.shinyTrail(it.b, game.clock, true));
       else if (it.k === 'faint') this.upFacing(it.f, () => this.drawFaint(it.f));
       else if (it.k === 'release') this.up(it.f.x, it.f.y, () => this.drawRelease(it.f));
       else if (it.k === 'ghost') this.upFacing(it.f, () => this.drawGhost(it.f));
@@ -1988,8 +1991,9 @@ PB.Renderer = class {
     }
   }
 
-  // Skin shiny: estela de estrellitas doradas y blancas al moverse (y algún destello suelto quieto)
-  shinyTrail(b, t) {
+  // Skin shiny: estela de estrellitas doradas y blancas al moverse (y algún destello suelto quieto) que titilan
+  // y de vez en cuando sueltan un brillo de color. hint: escondido en un arbusto (solo unos pocos destellos flojos)
+  shinyTrail(b, t, hint) {
     const ctx = this.ctx;
     // estrella de 4 puntas en pixel art, con borde oscuro para que se vea también en la nieve
     const star = (x, y, s, col, a) => {
@@ -2006,15 +2010,24 @@ PB.Renderer = class {
     };
     const prev = ctx.globalAlpha;
     const back = b.facing + Math.PI;
-    const n = b.moving ? 7 : 2;
+    const n = hint ? (b.moving ? 3 : 1) : b.moving ? 9 : 3;
+    const COL = ['#ffd23a', '#fff6a8', '#ffd23a', '#fff6a8', '#ff9ae8', '#9af0ff'];
     for (let i = 0; i < n; i++) {
       const ph = (t * (b.moving ? 1.8 : 0.6) + i / n + b.idx * 0.17) % 1;
       const wob = Math.sin(i * 12.9 + b.idx) * 14;
-      const d = b.moving ? 10 + ph * 46 : 18;
+      const d = b.moving ? 10 + ph * 50 : 18;
       const x = b.x + Math.cos(back) * d - Math.sin(back) * wob;
       const y = b.y - 18 + Math.sin(back) * d * 0.6 + Math.cos(back) * wob * 0.5 - (b.moving ? 0 : ph * 26);
-      const a = (1 - ph) * (b.moving ? 0.95 : 0.8 * Math.max(0, Math.sin(ph * Math.PI)));
-      star(x, y, i % 3 === 0 ? 4 : 3, i % 2 ? '#ffd23a' : '#fff6a8', a);
+      const a = (1 - ph) * (b.moving ? 0.95 : 0.8 * Math.max(0, Math.sin(ph * Math.PI))) * (hint ? 0.5 : 1);
+      // titilan: el tamaño late un poco y cada estrella tiene su ritmo
+      const tw = Math.sin(t * 11 + i * 2.3 + b.idx) > 0.35 ? 1 : 0;
+      star(x, y, (i % 3 === 0 ? 4 : 3) + tw, COL[(i + Math.floor(t * 2)) % COL.length], a);
+    }
+    // de vez en cuando, un destello grande sobre el Pokémon (como en los juegos)
+    const fl = (t * 0.7 + b.idx * 0.31) % 1;
+    if (!hint && fl < 0.12) {
+      const k = Math.sin((fl / 0.12) * Math.PI);
+      star(b.x + 14, b.y - 46, 3 + Math.round(k * 4), '#ffffff', 0.9 * k);
     }
     ctx.globalAlpha = prev;
   }

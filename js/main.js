@@ -946,7 +946,17 @@
           renderer.announce(PB.T('¡Gol! {a} - {b}', { a: game.score[myTeam], b: game.score[otherOf(myTeam)] }), tc(ev.team), '', 1.6);
           break;
         case 'zoneTaken': if (ev.team === myTeam) PB.Audio.play('ready'); break;
-        case 'end': endTimer = game.mode.ffa && game.winner === 'out' ? 1.2 : 1.8; break;
+        case 'end': {
+          endTimer = game.mode.ffa && game.winner === 'out' ? 1.6 : 2.4;
+          // cartel grande: así se nota que ha acabado (antes la pantalla se quedaba quieta y parecía un tirón)
+          if (!me) break;
+          const ffa = game.mode.ffa, draw = game.winner === 'draw';
+          const win = ffa ? game.winner === me.team || me.rank === 1 : game.winner === me.team;
+          const txt = draw ? '¡Empate!' : win ? '¡Victoria!' : ffa && me.rank ? PB.T('Puesto {n}', { n: me.rank }) : '¡Derrota!';
+          renderer.announce(txt, draw ? '#ffffff' : win ? '#ffe066' : '#ff8a7a', '', endTimer + 0.5);
+          PB.Audio.play(win ? 'ready' : 'tick');
+          break;
+        }
       }
     }
     game.events.length = 0;
@@ -975,6 +985,20 @@
       if (game.player) inputs[game.player.idx] = s ? move(myInput) : myInput || {};
       for (const idx in remote) inputs[idx] = s ? move(remote[idx]) : remote[idx];
       game.update(sdt, inputs);
+    }
+  }
+  // confeti de colores sobre los ganadores mientras sale el cartel del final
+  let confT = 0;
+  const CONF = ['#ffe066', '#ff6ad8', '#5ad8ff', '#7dff8a', '#ffffff', '#ff9a3a'];
+  function celebrate(dt) {
+    confT -= dt;
+    if (confT > 0) return;
+    confT = 0.06;
+    for (const b of game.brawlers) {
+      if (b.dead || b.team !== game.winner) continue;
+      game.px(b.x + (Math.random() - 0.5) * 50, b.y - 30, CONF[Math.floor(Math.random() * CONF.length)], { vx: (Math.random() - 0.5) * 160, vy: -160 - Math.random() * 120, life: 0.9, size: 5 });
+      const f = game.fx[game.fx.length - 1];
+      if (f && f.kind === 'px') f._s = 1; // (cada uno pone el suyo: no se manda por la red)
     }
   }
   function frame(now, bg) {
@@ -1010,7 +1034,10 @@
       simulate(raw, me && input.enabled ? read.input : {});
       if (net && net.host) netStep(raw, read);
       handleEvents();
+      // partida acabada: el combate se para, pero la pantalla no (efectos, animaciones y fiesta del que gana)
+      if (game.winner && mode === 'play') { game.clock += dt; game.updateFx(dt); for (const b of game.brawlers) if (!b.dead) b.animT += dt; }
     }
+    if (game.winner && mode === 'play') celebrate(dt);
 
     // con poca vida se oye el latido
     if (mode === 'play' && me && !me.dead && !game.winner && me.hp < me.maxHp * 0.3) {

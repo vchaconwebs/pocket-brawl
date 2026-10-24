@@ -136,7 +136,7 @@
   // Súper del set "Clásico" de los Pokémon con súper propio. Con dos tipos, es del tipo que NO usa el súper
   // nuevo (cada set, un tipo), con un movimiento que ese Pokémon aprende en los juegos: [forma, nombre, tipo]
   // súper nuevos puestos a mano (el resto los elige pickSuper): [forma, nombre, tipo]
-  const SUPER_NEW = { scyther: ['dash', 'Tijera X', 'bug'], ditto: ['transform', 'Transformación', 'normal'], munchlax: ['leap', 'Golpe Cuerpo', 'normal'] };
+  const SUPER_NEW = { scyther: ['dash', 'Tijera X', 'bug'], ditto: ['transform', 'Transformación', 'normal'], munchlax: ['leap', 'Golpe Cuerpo', 'normal'], mimejr: ['reflect', 'Reflejo', 'psychic'] };
   const SIGNATURE = {
     ditto: ['transform', 'Transformación', 'normal'],
     munchlax: ['slam', 'Golpe Cuerpo', 'normal'],
@@ -441,6 +441,24 @@
   for (const r of Object.values(RARITY)) r.name = PB.T(r.name);
   const STARTERS = new Set([].concat(PB.STARTER_DEX.grass, PB.STARTER_DEX.fire, PB.STARTER_DEX.water));
 
+  // Ajustes de equilibrio a mano (set nuevo). kind: solo si el movimiento es de esa forma; dmg: multiplica el daño
+  const TUNE = {
+    deoxys: { atk: { kind: 'spread', range: 280, dmg: 0.92 } }, // Psicocorte llegaba demasiado lejos
+    zapdos: { sup: { kind: 'storm', radius: 320 } },
+    zeraora: { atk: { kind: 'melee', dmg: 0.88 }, sup: { kind: 'storm', count: 6 } },
+    rayquaza: { sup: { kind: 'comet', range: 330 } },
+    snivy: { atk: { dmg: 0.9 }, sup: { kind: 'orbit', dmg: 0.85 } },
+    hoopa: { atk: { dmg: 0.9 }, sup: { kind: 'phantom', range: 380, dmg: 0.87 } },
+  };
+  function tune(id, which, mv) {
+    const t = TUNE[id] && TUNE[id][which];
+    if (!t || (t.kind && t.kind !== mv.kind)) return mv;
+    const o = Object.assign({}, mv);
+    for (const k in t) if (k !== 'kind' && k !== 'dmg') o[k] = t[k];
+    if (t.dmg && o.dmg) o.dmg = Math.round((o.dmg * t.dmg) / 10) * 10;
+    return o;
+  }
+
   // typesOverride: para cuando un Pokémon con ramas evoluciona y cambia de tipo (Eevee -> Flareon)
   // classic: el set de movimientos de la v1.2 (sin súper de legendarios ni especiales, ataques de CLASSIC_STYLE_OF)
   function build(fam, typesOverride, classic) {
@@ -465,7 +483,7 @@
     const classicSup = () => (KIT[supType] || KIT.normal).sup[roleId === 'assassin' || roleId === 'thrower' || roleId === 'tank' ? 1 : 0];
     const sNew = !classic && !typesOverride && SUPER_NEW[fam.id];
     const sigC = typesOverride ? null : SIGNATURE[fam.id]; // súper del set clásico, si es propio (para no repetirlo en el nuevo)
-    const [supKind, supName, supTweak] = sig ? [sig[0], sig[1], leg ? Object.assign({ legend: true }, sig[3]) : null] : sNew ? sNew : classic ? classicSup() : pickSuper(supType, fam.id, sigC ? sigC[1] : supType === classicSupType ? classicSup()[1] : null);
+    const [supKind, supName, supTweak] = sig ? [sig[0], sig[1], leg ? Object.assign({ legend: true }, sig[3]) : null] : sNew ? sNew.slice(0, 2) : classic ? classicSup() : pickSuper(supType, fam.id, sigC ? sigC[1] : supType === classicSupType ? classicSup()[1] : null);
     const supLook = { shape: PB.VFX.forType(supType).proj, trail: TRAIL[supType] || 'spark' };
     // pequeñas diferencias según sus stats (±10 %), compensadas para que nadie sea mejor en todo
     const zBulk = clamp(((fin.hp - 105) / 8 + (fin.df + fin.sd - 158) / 35) / 2, -1.5, 1.5);
@@ -493,8 +511,8 @@
       hp: Math.round((R.hp * hpMul * closeHp) / 50) * 50,
       speed: Math.round(R.speed + zSpd * 5 + closeSpd),
       reload: R.reload, superHits: R.superHits - (close === 2 ? 1 : 0),
-      attack: Object.assign({ name: PB.TM(basicName), style: st ? st[0] : roleId, type: basicType }, atk, { dmg: Math.round((atk.dmg * dmgMul) / 10) * 10, look: Object.assign({ scale: as }, look, ashape ? { shape: ashape } : {}) }),
-      super: Object.assign({ name: PB.TM(supName), type: supType }, sup, sup.dmg ? { dmg: Math.round((sup.dmg * dmgMul) / 10) * 10 } : {}, sup.dps ? { dps: Math.round(sup.dps * dmgMul) } : {}, { look: Object.assign({ scale: ss || 1.4 }, supLook), desc: PB.T(sd) }),
+      attack: (classic ? (x) => x : (x) => tune(fam.id, 'atk', x))(Object.assign({ name: PB.TM(basicName), style: st ? st[0] : roleId, type: basicType }, atk, { dmg: Math.round((atk.dmg * dmgMul) / 10) * 10, look: Object.assign({ scale: as }, look, ashape ? { shape: ashape } : {}) })),
+      super: (classic ? (x) => x : (x) => tune(fam.id, 'sup', x))(Object.assign({ name: PB.TM(supName), type: supType }, sup, sup.dmg ? { dmg: Math.round((sup.dmg * dmgMul) / 10) * 10 } : {}, sup.dps ? { dps: Math.round(sup.dps * dmgMul) } : {}, { look: Object.assign({ scale: ss || 1.4 }, supLook), desc: PB.T(sd) })),
       descBase: PB.T(TRAIT[roleId]) + ' ' + PB.T(ATK_DESC[st ? st[0] : roleId]), // sin el súper (la ficha lo explica aparte)
       desc: PB.T(TRAIT[roleId]) + ' ' + PB.T(ATK_DESC[st ? st[0] : roleId]) + ' ' + PB.T('Súper: {name} ({type}), {what}.', { name: PB.TM(supName), type: PB.T(PB.TYPE_INFO[supType].name), what: PB.T(sd) }),
       alts: fam.alts || null,

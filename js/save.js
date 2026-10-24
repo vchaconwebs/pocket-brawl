@@ -42,6 +42,8 @@ PB.META = {
   regionSkinCost: 40,
   // probabilidad de que un cofre traiga una skin regional (menos que un Pokémon nuevo; solo de los que ya tienes)
   regionSkinChance: { poke: 0.04, great: 0.08, ultra: 0.15 },
+  // skin shiny en los cofres: muy rara (de un Pokémon que ya tienes, o del que acaba de salir)
+  shinyChance: { poke: 0.005, great: 0.012, ultra: 0.03 },
   clanMax: 30,
 };
 
@@ -502,6 +504,15 @@ PB.Save = (() => {
         res.skin = opts[Math.floor(Math.random() * opts.length)];
         d.regions = d.regions || {};
         (d.regions[res.skin.id] = d.regions[res.skin.id] || []).push(res.skin.region);
+      }
+    }
+    // skin shiny (muy rara): se queda puesta
+    if (Math.random() < (PB.META.shinyChance[kind] || 0)) {
+      const opts = Object.keys(d.owned).concat(res.pokemon).filter((id) => !hasShiny(id) && shinyAvailable(id));
+      if (opts.length) {
+        res.shiny = opts[Math.floor(Math.random() * opts.length)];
+        d.shinies[res.shiny] = true;
+        d.skins[res.shiny] = 'shiny';
       }
     }
     // Monedas Arcoíris: muchas veces en Super Ball y siempre en Ultra Ball
