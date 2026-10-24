@@ -438,7 +438,7 @@ PB.Online = (() => {
   let friendsCache = null, friendsT = 0;
   async function friends(force) {
     if (!(await start()) || isGuest()) return [];
-    if (!force && friendsCache && Date.now() - friendsT < 20000) return friendsCache;
+    if (!force && friendsCache && Date.now() - friendsT < 120000) return friendsCache;
     await processAccepted().catch(() => {});
     const ids = (myDoc.friends || []).slice(0, 100);
     const list = await usersByIds(ids);
@@ -448,8 +448,16 @@ PB.Online = (() => {
     return friendsCache;
   }
 
-  async function requests() {
+  // (la lobby lo pide cada vez que se actualiza: se guarda 3 minutos para no gastar lecturas)
+  let reqCache = null, reqT = 0;
+  async function requests(force) {
     if (!(await start()) || isGuest()) return [];
+    if (!force && reqCache && Date.now() - reqT < 180000) return reqCache;
+    reqT = Date.now();
+    reqCache = await requestsNow().catch(() => reqCache || []);
+    return reqCache;
+  }
+  async function requestsNow() {
     const q = await fs.collection('friendReqs').where('to', '==', uid).where('status', '==', 'pending').limit(30).get();
     const out = [];
     q.forEach((s) => { const d = s.data(); out.push({ id: d.from, name: clean(d.fromName, 16), copas: d.fromCopas | 0, fav: PB.brawlerById(d.fromFav) ? d.fromFav : PB.BRAWLERS[0].id }); });
@@ -516,13 +524,16 @@ PB.Online = (() => {
     return { ok: true };
   }
 
-  // ------------------------------------------------------------ ranking (se guarda 5 minutos)
+  // ------------------------------------------------------------ ranking (se guarda 10 minutos, también al recargar:
+  // cada vez que se pide son 50 lecturas y el plan gratis tiene un límite al día)
   const rankCache = {};
   async function cached(key, fn) {
-    const c = rankCache[key];
-    if (c && Date.now() - c.t < 30000) return c.v;
+    let c = rankCache[key];
+    if (!c) try { c = JSON.parse(localStorage.getItem('pb.rank.' + key) || 'null'); } catch (e) { c = null; }
+    if (c && Date.now() - c.t < 600000) return c.v;
     const v = await fn();
     rankCache[key] = { t: Date.now(), v };
+    try { localStorage.setItem('pb.rank.' + key, JSON.stringify(rankCache[key])); } catch (e) {}
     return v;
   }
   async function topPlayers() {

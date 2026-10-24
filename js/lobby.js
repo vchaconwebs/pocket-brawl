@@ -1328,7 +1328,7 @@ PB.Lobby = (() => {
     setTab('#fr-tabs', frTab);
     $('#fr-search').classList.toggle('hidden', frTab !== 'search');
     const box = $('#fr-list');
-    const reqs = await PB.Online.requests();
+    const reqs = await PB.Online.requests(true);
     $('#fr-req-n').textContent = reqs.length ? '(' + reqs.length + ')' : '';
     if (frTab === 'list') {
       const list = await PB.Online.friends();
