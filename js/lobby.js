@@ -266,7 +266,7 @@ PB.Lobby = (() => {
     // medalla de maestría del Pokémon elegido
     const mt = PB.masteryOf(PB.Save.copas(b.id));
     $('#hero-mast').classList.toggle('hidden', !mt);
-    $('#hero-mast').innerHTML = mt ? mastImg(mt, 'mast-ic', 3) + `<em style="color:${PB.MASTERY[mt - 1].color}">${mastName(mt)}</em>` : '';
+    $('#hero-mast').innerHTML = mt ? mastImg(mt, 'mast-ic', 3) : ''; // solo la medalla (el nombre sale al pasar por encima)
     $('#hero-mast').style.setProperty('--mc', mt ? PB.MASTERY[mt - 1].color : '');
     const M = PB.MODES[api.getMode()];
     const rnd = api.isRandom && api.isRandom();
