@@ -551,6 +551,11 @@
   $('#poll-open').onclick = async () => {
     if (!confirm('¿Abrir una encuesta de modos de 1 hora? Les saldrá a todos los que entren.')) return;
     const p = { id: Date.now().toString(36), ends: Date.now() + 3600000, max: 4, modes: POLL_MODES };
+    // los votos de encuestas anteriores ya no sirven: fuera
+    try {
+      const old = (await (await fetch(DB + '/pollVotes.json?shallow=true&' + authQ().slice(1), { cache: 'no-store' })).json()) || {};
+      for (const k of Object.keys(old)) await fetch(DB + '/pollVotes/' + k + '.json' + authQ(), { method: 'DELETE' });
+    } catch (e) {}
     await fetch(DB + '/poll.json' + authQ(), { method: 'PUT', body: JSON.stringify(p) });
     pollLoad();
   };
@@ -562,7 +567,14 @@
 
   function render() { today(); tiles(); chips(); trend(); breakdowns(); table(); serverUse(); }
 
-  let loadedAll = false;
+  let loadedAll = false, cleaned = false;
+  // limpieza (una vez al abrir): la lista de quién ha jugado cada día (statsSeen) solo hace falta hoy y ayer
+  async function cleanOld() {
+    if (cleaned) return;
+    cleaned = true;
+    const keep = new Set([dayKey(new Date()), dayKey(new Date(Date.now() - 86400000))]);
+    for (const k of Object.keys(data)) if (!keep.has(k)) fetch(DB + '/statsSeen/' + k + '.json' + authQ(), { method: 'DELETE' }).catch(() => {});
+  }
   async function load() {
     try {
       if (firebase.auth().currentUser) token = await firebase.auth().currentUser.getIdToken();
@@ -572,6 +584,7 @@
         data = (await (await fetch(DB + '/stats.json' + authQ(), { cache: 'no-store' })).json()) || {};
         if (data.error) throw new Error(data.error);
         loadedAll = true;
+        cleanOld();
       } else {
         const k = dayKey(new Date());
         const t = await (await fetch(DB + '/stats/' + k + '.json' + authQ(), { cache: 'no-store' })).json();

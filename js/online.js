@@ -392,6 +392,7 @@ PB.Online = (() => {
       claimGifts().catch(() => {});
       checkTagBan().catch(() => {});
       checkPoll().catch(() => {});
+      setTimeout(cleanChat, 20000); // (un rato después de entrar, sin prisa)
       emit('ready');
     })();
     return ready;
@@ -1111,6 +1112,7 @@ PB.Online = (() => {
   // dejan borrar los propios, los de más de un día (limpieza) y todos al administrador.
   const ADMIN = 'ULFnTGBapaaIUhxmHKgCh9TIm6G3';
   const DAY = 86400000;
+  const CHAT_TTL = 3600000; // los mensajes del chat general duran 1 hora (luego se borran: no ocupan sitio)
   let gMsgs = [], gWatch = null, banned = false;
   let pMsgs = [], pWatch = null, pCode = null, pSince = 0;
   // tag propio del jugador (si tiene): { tg, tc }
@@ -1151,9 +1153,7 @@ PB.Online = (() => {
     chatInit = true;
     // sanción de chat: true = para siempre; un número = hasta esa hora
     rtdb.ref('chatBan/' + uid).on('value', (s) => { const v = s.val(); banned = v === true || (typeof v === 'number' && v > now()); }, () => {});
-    // limpieza: los mensajes de hace más de un día se borran (cualquiera puede, poco a poco), con su audio
-    rtdb.ref('chat').orderByChild('t').endAt(now() - DAY).limitToFirst(10).once('value')
-      .then((s) => s.forEach((c) => { c.ref.remove().catch(() => {}); rtdb.ref('chatAudio/' + c.key).remove().catch(() => {}); })).catch(() => {});
+    cleanChat();
     // los audios duran una hora (se borran sabiendo su id por el mensaje, sin tener que bajarlos)
     setTimeout(() => {
       for (const m of gMsgs) if (m.au && m.t < now() - 3600000 && !audioGone.has(m.au)) { audioGone.add(m.au); rtdb.ref('chatAudio/' + m.au).remove().catch(() => {}); }
@@ -1161,6 +1161,12 @@ PB.Online = (() => {
     return true;
   }
   function unwatchChat() { if (gWatch) gWatch(); gWatch = null; }
+  // limpieza: los mensajes de hace más de 1 hora se borran (cualquiera puede, poco a poco), con su audio.
+  // Se hace al abrir el chat y una vez al entrar al juego
+  function cleanChat() {
+    rtdb.ref('chat').orderByChild('t').endAt(now() - CHAT_TTL).limitToFirst(10).once('value')
+      .then((s) => s.forEach((c) => { c.ref.remove().catch(() => {}); rtdb.ref('chatAudio/' + c.key).remove().catch(() => {}); })).catch(() => {});
+  }
   // el último mensaje del chat general (1 mensaje, no la lista)
   async function peekChat() {
     if (!(await start())) return null;
@@ -1825,6 +1831,7 @@ PB.Online = (() => {
     }
     const ok = await clientConnect(mid, m.host, link);
     tr('cliente conectado', ok);
+    setTimeout(() => { rtdb.ref('matches/' + mid).remove().catch(() => {}); rtdb.ref('signal/' + mid).remove().catch(() => {}); }, 40000);
     if (!ok) { link.close(); return { local: true, failed: true }; }
     return { role: 'client', link, mid };
   }
