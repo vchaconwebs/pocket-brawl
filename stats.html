@@ -133,7 +133,8 @@
   .real-h h3 { margin: 0; }
   .real .srv { margin-top: 14px; }
   .rbtn { background: var(--gold); color: #1b1300; border: 0; border-radius: 999px; padding: 8px 16px; font: 600 13px system-ui, sans-serif; cursor: pointer; }
-  .rbtn.ghost { background: var(--panel-3); color: var(--text-2); border: 1px solid var(--edge); }
+  .links { display: flex; flex-wrap: wrap; gap: 8px; }
+  a.rbtn { text-decoration: none; }
   .srv h3.est, h3.est { margin: 0 0 12px; }
   .hidden { display: none !important; }
   .fstep .tl { display: flex; justify-content: space-between; align-items: baseline; font-size: 13.5px; color: var(--text-2); gap: 8px; }
@@ -230,18 +231,16 @@
   </div>
 
   <section class="panel" style="margin-bottom:14px">
-    <div class="ph"><div><h2>Servidor (Firebase)</h2><p class="note">Límites del plan gratis Spark. Arriba, el uso real; abajo, lo que cuenta el propio juego (aproximado, hasta ~2 min por detrás)</p></div></div>
+    <div class="ph"><div><h2>Servidor (Firebase)</h2><p class="note">Límites del plan gratis Spark</p></div></div>
     <div class="pb">
       <div class="real">
-        <div class="real-h"><h3>Uso real (los mismos datos que la consola de Firebase)</h3><button class="rbtn" id="real-btn">Conectar con la cuenta del proyecto</button></div>
-        <p class="pct" id="real-note">Entra con la cuenta de Google dueña del proyecto (vchaconwebs). Solo pide permiso para leer las métricas; dura 1 hora y luego se vuelve a pedir.</p>
-        <div class="srv hidden" id="real-box">
-          <div><h3>Firestore hoy (desde las 9:00)</h3><div class="funnel" id="real-fs"></div></div>
-          <div><h3>Realtime Database</h3><div class="funnel" id="real-db"></div></div>
-          <div><h3>Ahora mismo</h3><div class="funnel" id="real-now"></div><p class="pct" id="real-t"></p></div>
-        </div>
+        <div class="real-h"><h3>Uso exacto</h3><span class="links">
+          <a class="rbtn" target="_blank" rel="noopener" href="https://console.firebase.google.com/u/3/project/pokeversus-9ed3a/firestore/databases/-default-/usage">Firestore → Uso</a>
+          <a class="rbtn" target="_blank" rel="noopener" href="https://console.firebase.google.com/u/3/project/pokeversus-9ed3a/database/pokeversus-9ed3a-default-rtdb/usage">Realtime Database → Uso</a>
+        </span></div>
+        <p class="pct">Los números exactos solo se ven en la consola de Firebase (con el plan gratis, Google no deja leerlos desde otra web). Lo de abajo es lo que cuenta el propio juego: sirve para ver qué gasta más.</p>
       </div>
-      <h3 class="est">Estimación del juego (para ver qué gasta más)</h3>
+      <h3 class="est">Estimación del juego (aproximada, hasta ~2 min por detrás)</h3>
       <div class="srv">
       <div><h3>Firestore hoy</h3><div class="funnel" id="srv-fs"></div><p class="pct">Se reinicia a las 9:00 (hora de España). Si se pasa, fallan login, chat de clan y ranking.</p></div>
       <div><h3>Descargas hoy</h3><div class="funnel" id="srv-dl"></div><div class="split" id="srv-split"></div></div>
@@ -519,82 +518,6 @@
     $('#srv-month').innerHTML = meter('Realtime Database', tot, 10, ' GB', 'var(--c-newacc)');
     $('#srv-month-note').textContent = ks.length ? `Contado desde el ${label(ks.sort()[0], true)}. La consola de Firebase (Realtime Database → Uso) da el dato exacto.` : 'Se empieza a contar ahora.';
   }
-  // ---------- uso real: Cloud Monitoring (de donde saca los números la consola de Firebase)
-  // Se entra con la cuenta de Google del proyecto en una sesión aparte (no toca la sesión del juego)
-  // y solo con permiso de lectura de métricas. El permiso dura 1 hora.
-  const PROJ = 'pokeversus-9ed3a', SCOPE = 'https://www.googleapis.com/auth/monitoring.read';
-  let monTok = null;
-  try { const t = JSON.parse(sessionStorage.getItem('pv.mon') || 'null'); if (t && t.exp > Date.now()) monTok = t; } catch (e) {}
-  const iso = (ms) => new Date(ms).toISOString();
-  // medianoche en California (a esa hora, las 9:00 en España, se reinicia el límite diario de Firestore)
-  function quotaStart() {
-    const now = Date.now(), la = new Date(new Date(now).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-    const off = now - la.getTime();
-    la.setHours(0, 0, 0, 0);
-    return la.getTime() + off;
-  }
-  async function series(metric, start, end, aligner) {
-    const q = new URLSearchParams({
-      filter: `metric.type="${metric}"`, 'interval.startTime': iso(start), 'interval.endTime': iso(end),
-      'aggregation.alignmentPeriod': Math.max(60, Math.ceil((end - start) / 1000)) + 's',
-      'aggregation.perSeriesAligner': aligner, 'aggregation.crossSeriesReducer': 'REDUCE_SUM',
-    });
-    const r = await fetch(`https://monitoring.googleapis.com/v3/projects/${PROJ}/timeSeries?${q}`, { headers: { Authorization: 'Bearer ' + monTok.token } });
-    if (r.status === 401) { monTok = null; try { sessionStorage.removeItem('pv.mon'); } catch (e) {} throw new Error('el permiso ha caducado'); }
-    const j = await r.json();
-    if (j.error) throw new Error(j.error.message);
-    let v = null;
-    for (const s of j.timeSeries || []) for (const p of s.points || []) v = (v || 0) + +(p.value.int64Value || p.value.doubleValue || 0);
-    return v;
-  }
-  async function loadReal() {
-    const btn = $('#real-btn');
-    if (!monTok) { $('#real-box').classList.add('hidden'); btn.classList.remove('ghost'); btn.textContent = 'Conectar con la cuenta del proyecto'; return; }
-    btn.classList.add('ghost');
-    btn.textContent = 'Actualizar';
-    try {
-      const now = Date.now(), d0 = quotaStart(), h = now - 30 * 60000;
-      const F = 'firestore.googleapis.com/document/', D = 'firebasedatabase.googleapis.com/';
-      const [r, w, del, month, limit, conns, store, day] = await Promise.all([
-        series(F + 'read_count', d0, now, 'ALIGN_SUM'), series(F + 'write_count', d0, now, 'ALIGN_SUM'), series(F + 'delete_count', d0, now, 'ALIGN_SUM'),
-        series(D + 'network/monthly_sent', h, now, 'ALIGN_MAX'), series(D + 'network/monthly_sent_limit', h, now, 'ALIGN_MAX'),
-        series(D + 'network/active_connections', now - 10 * 60000, now, 'ALIGN_MAX'), series(D + 'storage/total_bytes', now - 3 * 3600000, now, 'ALIGN_MAX'),
-        series(D + 'network/sent_bytes_count', d0, now, 'ALIGN_SUM'),
-      ]);
-      const GB = 1024 ** 3, MB = 1024 ** 2;
-      $('#real-fs').innerHTML = meter('Lecturas', r || 0, 50000, '', 'var(--c-visits)') + meter('Escrituras', w || 0, 20000, '', 'var(--c-matches)') + meter('Borrados', del || 0, 20000, '', 'var(--c-newacc)');
-      $('#real-db').innerHTML = meter('Descargas del mes', (month || 0) / GB, (limit || 10 * GB) / GB, ' GB', 'var(--c-players)') +
-        meter('Descargas hoy (desde las 9:00)', (day || 0) / MB, 330, ' MB', 'var(--c-players)');
-      $('#real-now').innerHTML = meter('Conexiones a la vez', conns || 0, 100, '', 'var(--c-visits)') + meter('Datos guardados', (store || 0) / MB, 1024, ' MB', 'var(--c-matches)');
-      $('#real-t').textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) + ' (Google tarda unos minutos en tener los datos). Conexiones: si llega a 100, nadie más puede entrar al online.';
-      $('#real-note').textContent = 'Datos de Google Cloud Monitoring, los mismos que la consola. El permiso caduca a las ' + new Date(monTok.exp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) + '.';
-      $('#real-box').classList.remove('hidden');
-    } catch (e) {
-      $('#real-note').textContent = 'No se ha podido leer el uso real: ' + e.message + '.';
-      if (!monTok) { $('#real-box').classList.add('hidden'); btn.classList.remove('ghost'); btn.textContent = 'Conectar con la cuenta del proyecto'; }
-    }
-  }
-  $('#real-btn').onclick = async () => {
-    if (monTok) return loadReal();
-    try {
-      // (otra "app" de Firebase: así la sesión del juego, la que puede ver estas estadísticas, no se toca)
-      const app = firebase.apps.find((a) => a.name === 'mon') || firebase.initializeApp(firebase.app().options, 'mon');
-      const prov = new firebase.auth.GoogleAuthProvider();
-      prov.addScope(SCOPE);
-      prov.setCustomParameters({ prompt: 'select_account', login_hint: 'vchaconwebs@gmail.com' });
-      const res = await app.auth().signInWithPopup(prov);
-      const token = res.credential && res.credential.accessToken;
-      await app.auth().signOut().catch(() => {});
-      if (!token) throw new Error('Google no ha dado permiso');
-      monTok = { token, exp: Date.now() + 55 * 60000 };
-      try { sessionStorage.setItem('pv.mon', JSON.stringify(monTok)); } catch (e) {}
-      loadReal();
-    } catch (e) {
-      if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return;
-      $('#real-note').textContent = 'No se ha podido conectar: ' + (e.message || e);
-    }
-  };
-
   function render() { today(); tiles(); chips(); trend(); breakdowns(); table(); serverUse(); }
 
   let loadedAll = false;
@@ -677,8 +600,6 @@
     loadOnline();
     setInterval(load, 60000);
     setInterval(loadOnline, 30000);
-    loadReal();
-    setInterval(() => { if (monTok) loadReal(); }, 300000);
   });
 </script>
 </body>
