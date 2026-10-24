@@ -344,7 +344,15 @@ PB.Online = (() => {
     return !!uid;
   }
   // Regalos del creador: si hay uno para mí, se borra (para no cobrarlo dos veces) y se dan los premios
+  // (para no gastar una lectura de Firestore en cada entrada, el creador deja además una marca en la
+  // Realtime Database: solo si está se lee el regalo. La primera vez se mira igualmente, por los de antes)
   async function claimGifts() {
+    let first = false;
+    try { first = !localStorage.getItem('pb.giftChk'); localStorage.setItem('pb.giftChk', '1'); } catch (e) {}
+    const flag = rtdb.ref('giftFlag/' + uid);
+    const f = await flag.once('value').catch(() => null);
+    if (!first && !(f && f.val())) return;
+    if (f && f.val()) flag.remove().catch(() => {});
     const ref = fs.collection('gifts').doc(uid);
     const s = await ref.get();
     if (!s.exists) return;
@@ -357,6 +365,7 @@ PB.Online = (() => {
   async function sendGift(toUid, items, msg) {
     if (!(await start())) return err('Sin conexión.');
     await fs.collection('gifts').doc(String(toUid)).set({ items, msg: msg || '', t: Date.now() });
+    await rtdb.ref('giftFlag/' + String(toUid)).set(true).catch(() => {});
     return { ok: true };
   }
 
@@ -368,7 +377,13 @@ PB.Online = (() => {
       presence();
       listenInvites();
       await syncProfile(true).catch(() => {});
-      if (!isGuest()) processAccepted().catch(() => {});
+      // (las solicitudes aceptadas se miran como mucho cada 30 minutos al entrar)
+      let lastAcc = 0;
+      try { lastAcc = +localStorage.getItem('pb.accChk') || 0; } catch (e) {}
+      if (!isGuest() && Date.now() - lastAcc > 1800000) {
+        try { localStorage.setItem('pb.accChk', String(Date.now())); } catch (e) {}
+        processAccepted().catch(() => {});
+      }
       if (!isGuest()) syncCloud().catch(() => {});
       claimGifts().catch(() => {});
       checkTagBan().catch(() => {});
@@ -422,9 +437,16 @@ PB.Online = (() => {
     const d = PB.Save.get();
     let stored = null;
     if (first) {
-      const s = await fs.collection('users').doc(uid).get();
-      if (s.exists) myDoc = Object.assign({ friends: [] }, s.data());
-      if (s.exists) stored = s.data();
+      // tu perfil se guarda en el navegador 12 horas: al entrar no hace falta leerlo cada vez
+      let c = null;
+      try { c = JSON.parse(localStorage.getItem('pb.mydoc') || 'null'); } catch (e) { c = null; }
+      if (c && c.uid === uid && Date.now() - c.t < 43200000 && c.doc) stored = c.doc;
+      else {
+        const s = await fs.collection('users').doc(uid).get();
+        if (s.exists) stored = s.data();
+        if (stored) { myDoc = Object.assign({ friends: [] }, stored); saveMyDoc(); }
+      }
+      if (stored) myDoc = Object.assign({ friends: [] }, stored);
     }
     // los 3 Pokémon con más copas (para el perfil público y el ranking por Pokémon)
     const best = Object.entries(d.copas || {}).filter(([id, c]) => c > 0 && PB.brawlerById(id)).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, c]) => ({ id, c }));
@@ -445,6 +467,11 @@ PB.Online = (() => {
     profWT = Date.now();
     lastProfile = key;
     await fs.collection('users').doc(uid).set(Object.assign({ t: fb.firestore.FieldValue.serverTimestamp() }, p), { merge: true });
+    saveMyDoc();
+  }
+  // copia de tu perfil en el navegador (ver arriba); se guarda cada vez que cambia algo de él
+  function saveMyDoc() {
+    try { localStorage.setItem('pb.mydoc', JSON.stringify({ uid, t: Date.now(), doc: Object.assign({}, myDoc, { t: null }) })); } catch (e) {}
   }
   let profT = null;
   const syncSoon = () => { clearTimeout(profT); profT = setTimeout(() => syncProfile().catch(() => {}), 4000); };
@@ -667,7 +694,7 @@ PB.Online = (() => {
   let reqCache = null, reqT = 0;
   async function requests(force) {
     if (!(await start()) || isGuest()) return [];
-    if (!force && reqCache && Date.now() - reqT < 600000) return reqCache;
+    if (!force && reqCache && Date.now() - reqT < 900000) return reqCache;
     reqT = Date.now();
     reqCache = await requestsNow().catch(() => reqCache || []);
     return reqCache;
@@ -687,6 +714,7 @@ PB.Online = (() => {
     q.forEach((s) => add.push(s.data().to));
     myDoc.friends = [...new Set([...(myDoc.friends || []), ...add])];
     await fs.collection('users').doc(uid).set({ friends: myDoc.friends }, { merge: true });
+    saveMyDoc();
     await Promise.all(q.docs.map((s) => s.ref.delete()));
     friendsCache = null;
     emit('change');
@@ -725,6 +753,7 @@ PB.Online = (() => {
     if (accept) {
       myDoc.friends = [...new Set([...(myDoc.friends || []), id])];
       await fs.collection('users').doc(uid).set({ friends: myDoc.friends }, { merge: true });
+    saveMyDoc();
       await ref.update({ status: 'accepted' });
       friendsCache = null;
     } else await ref.delete();
@@ -735,6 +764,7 @@ PB.Online = (() => {
     if (!(await start())) return err('Sin conexión.');
     myDoc.friends = (myDoc.friends || []).filter((x) => x !== id);
     await fs.collection('users').doc(uid).set({ friends: myDoc.friends }, { merge: true });
+    saveMyDoc();
     friendsCache = null;
     return { ok: true };
   }
@@ -1014,7 +1044,7 @@ PB.Online = (() => {
       stopChat();
       chatClan = myDoc.clan;
       await new Promise((res) => {
-        chatOff = fs.collection('clans').doc(chatClan).collection('chat').orderBy('t', 'desc').limit(40).onSnapshot((q) => {
+        chatOff = fs.collection('clans').doc(chatClan).collection('chat').orderBy('t', 'desc').limit(25).onSnapshot((q) => {
           chatMsgs = q.docs.map((d) => d.data()).reverse().map((m) => ({ sys: !!m.sys, from: m.uid === uid ? 'me' : m.uid, name: clean(m.name, 16), text: clean(m.text, 140), time: m.t }));
           res();
           emit('chat');

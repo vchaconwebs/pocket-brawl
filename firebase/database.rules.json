@@ -220,6 +220,12 @@
         }
       }
     },
+    "giftFlag": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3' || auth.uid === $uid && !newData.exists())"
+      }
+    },
     "tagBan": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",

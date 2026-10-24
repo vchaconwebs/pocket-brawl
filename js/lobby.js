@@ -2577,5 +2577,5 @@ PB.Lobby = (() => {
     window.addEventListener('resize', () => { if (current === 'chestopen') resizeFx(); });
   }
 
-  return { showPlayer, showDetail, report, init, show, tick, openSettings, toast, refresh: refreshLobby, playPressed, get current() { return current; } };
+  return { showPlayer, showDetail, showPoll, report, init, show, tick, openSettings, toast, refresh: refreshLobby, playPressed, get current() { return current; } };
 })();
