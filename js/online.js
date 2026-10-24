@@ -435,17 +435,23 @@ PB.Online = (() => {
 
   // ------------------------------------------------------------ copia del progreso en la nube
   let saveT = null, lastCloud = '';
+  function writeCloud() {
+    saveT = null;
+    if (!uid || !user || user.isAnonymous) return;
+    // (si no ha cambiado nada desde la última copia, no se gasta la escritura)
+    const json = JSON.stringify(PB.Save.get());
+    if (json === lastCloud) return;
+    lastCloud = json;
+    fs.collection('users').doc(uid).collection('private').doc('save')
+      .set({ json, t: Date.now() }).catch(() => { lastCloud = ''; });
+  }
+  // al cerrar o esconder el juego, lo que faltaba por copiar se copia ya (si no, al entrar desde
+  // otro móvil u ordenador faltaba lo de los últimos minutos)
+  document.addEventListener('visibilitychange', () => { if (document.hidden && saveT) { clearTimeout(saveT); writeCloud(); } });
   function saveCloud(soon) {
     if (!uid || !user || user.isAnonymous) return;
     clearTimeout(saveT);
-    saveT = setTimeout(() => {
-      // (si no ha cambiado nada desde la última copia, no se gasta la escritura)
-      const json = JSON.stringify(PB.Save.get());
-      if (json === lastCloud) return;
-      lastCloud = json;
-      fs.collection('users').doc(uid).collection('private').doc('save')
-        .set({ json, t: Date.now() }).catch(() => { lastCloud = ''; });
-    }, soon ? 500 : 240000); // (al acabar cada partida se guarda enseguida; si no, cada 4 min como mucho: el plan gratis tiene un límite de escrituras al día)
+    saveT = setTimeout(writeCloud, soon ? 500 : 240000); // (al acabar cada partida se guarda enseguida; si no, cada 4 min como mucho: el plan gratis tiene un límite de escrituras al día)
   }
 
   // Vincular con Google: el progreso de este navegador pasa a esa cuenta.

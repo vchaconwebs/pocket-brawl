@@ -78,7 +78,7 @@ PB.Input = class {
       move: { x: moveX, y: H - r - 40 },
       attack: { x: atkX, y: H - r - 40 },
       super: { x: atkX + dir * r * 1.7, y: H - r - 40 - r * 1.5 },
-      mega: { x: atkX + dir * r * 2.9, y: H - r - 40 - r * 0.55 },
+      mega: { x: atkX + dir * r * 3.15, y: H - r - 40 - r * 0.4 }, // (separado del súper: antes se tocaban y al pulsar el súper saltaba la mega)
       mr: r * 0.5,
     };
   }
@@ -108,8 +108,9 @@ PB.Input = class {
       if (this.sticks[name]) this.release(name, this.sticks[name], L);
       this.sticks[name] = s;
     };
-    // megaevolución: botón que solo se pulsa (sin apuntar)
-    if (this.megaShown && Math.hypot(p.x - L.mega.x, p.y - L.mega.y) < L.mr * 1.3) {
+    // megaevolución: botón que solo se pulsa (sin apuntar). Si el dedo cae entre los dos botones, gana el más cercano
+    const dMega = Math.hypot(p.x - L.mega.x, p.y - L.mega.y) / (L.mr * 1.3), dSuper = Math.hypot(p.x - L.super.x, p.y - L.super.y) / (L.sr * 1.4);
+    if (this.megaShown && dMega < 1 && dMega < dSuper) {
       this.megaPending = true;
       return;
     }
@@ -364,7 +365,8 @@ PB.Input = class {
       const superHeld = now[6] || now[4] || now[1];
       // apuntado con el stick derecho; sin tocarlo, al rival más cercano (o hacia donde mira)
       const aimOf = (isSuper) => (R.len ? { dx: R.x, dy: R.y, dist: rangeOf(isSuper) * Math.max(0.3, R.len) } : PB.Settings.get('autoAim') ? { auto: true } : { facing: true });
-      if (R.len) out.aim = { isSuper: superHeld && me.superCharge >= 1, ang: Math.atan2(R.y, R.x), dist: rangeOf(superHeld) * Math.max(0.3, R.len), strong: true };
+      // la guía solo se ve mientras mueves el stick derecho (no la del ratón, ni por un stick que "baila" un poco)
+      out.aim = R.len > 0.12 ? { isSuper: superHeld && me.superCharge >= 1, ang: Math.atan2(R.y, R.x), dist: rangeOf(superHeld) * Math.max(0.3, R.len), strong: true } : null;
       const atkBtn = [7, 5, 0, 2];
       if (atkBtn.some((i) => down(i))) inp.attack = aimOf(false);
       else if (atkBtn.some((i) => now[i])) inp.attack = Object.assign({ held: true }, aimOf(false));

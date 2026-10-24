@@ -588,11 +588,22 @@ PB.Game = class {
       this.timers.push({ t: s.delay, fn: () => { if (!b.dead) this.beamHit(b, s, sT, ang); } });
     } else if (s.kind === 'mines') {
       this.startAction(b, ang, 'Shoot', 0.4);
-      const d = Math.min(dist, s.range);
+      // el centro: donde apuntas, o lo más lejos que se pueda llegar sin cruzar un muro
+      let d = Math.min(dist, s.range);
+      while (d > 20 && !this.world.walkable(b.x, b.y, b.x + Math.cos(ang) * d, b.y + Math.sin(ang) * d, 8)) d -= 20;
       const cx = b.x + Math.cos(ang) * d, cy = b.y + Math.sin(ang) * d;
+      // cada trampa busca un hueco libre alrededor (girando y acercándose); antes, junto a una pared se
+      // ponían todas en el mismo sitio y parecía que solo salía una
+      const spot = (i) => {
+        for (const k of [1, 0.7, 0.45]) for (const da of [0, 0.5, -0.5, 1, -1]) {
+          const a = ang + (i / s.count) * Math.PI * 2 + da, r = s.spreadR * k;
+          const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+          if (this.world.walkable(cx, cy, x, y, 8)) return { x, y };
+        }
+        return { x: cx, y: cy };
+      };
       for (let i = 0; i < s.count; i++) {
-        const a = ang + (i / s.count) * Math.PI * 2, r = s.count > 1 ? s.spreadR : 0;
-        const p = this.world.walkable(b.x, b.y, cx + Math.cos(a) * r, cy + Math.sin(a) * r, 8) ? { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r } : { x: cx, y: cy };
+        const p = s.count > 1 ? spot(i) : { x: cx, y: cy };
         this.mines.push({ x: p.x, y: p.y, team: b.team, owner: b, atk: s, type: sT, armT: 0.6, t: s.life, phase: Math.random() * 6 });
         for (let k = 0; k < 5; k++) this.px(p.x, p.y, pal[3], { speed: 90, life: 0.35, size: 4 });
       }
@@ -1680,11 +1691,13 @@ PB.Game = class {
       if (d > atk.range + e.r) continue;
       const off = Math.abs(((Math.atan2(e.y - b.y, e.x - b.x) - ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
       if (off > half && d > e.r + 10) continue;
+      if (!this.world.los(b.x, b.y, e.x, e.y)) continue; // no se pega a través de rocas, árboles ni muros
       this.damage(e, atk.dmg * (mul || 1), b, atk.type || b.def.atkType, { charge: true, knockback: 160, kx: Math.cos(ang), ky: Math.sin(ang), big: true });
       hitAny = true;
     }
     for (const st of this.structures) {
       if (st.hp <= 0 || st.team === b.team || Math.hypot(st.x - b.x, st.y - b.y) > atk.range + st.r) continue;
+      if (!this.world.los(b.x, b.y, st.x, st.y)) continue;
       this.damageStructure(st, atk.dmg * (mul || 1), b, true, st.x, st.y - 30);
     }
     // cajas (Niebla Tóxica) delante
