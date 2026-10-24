@@ -453,6 +453,7 @@
     rayquaza: { sup: { kind: 'comet', range: 330 } },
     snivy: { atk: { dmg: 0.9 }, sup: { kind: 'orbit', dmg: 0.85 } },
     hoopa: { atk: { dmg: 0.9 }, sup: { kind: 'phantom', range: 380, dmg: 0.87 } },
+    axew: { atk: { kind: 'melee', dmg: 0.87 }, sup: { kind: 'rage', time: 4, dmgMul: 1.25 } }, // Ciclón (giro) y Danza Dragón
   };
   function tune(id, which, mv) {
     const t = TUNE[id] && TUNE[id][which];
