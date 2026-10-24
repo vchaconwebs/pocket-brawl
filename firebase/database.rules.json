@@ -206,6 +206,13 @@
         ".validate": "newData.isNumber() && newData.val() === now && (!data.exists() || now - data.val() >= 2500)"
       }
     },
+    "tagBan": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3' || auth.uid === $uid && !newData.exists())",
+        ".validate": "!newData.exists() || newData.hasChildren(['t']) && newData.child('t').isString() && newData.child('t').val().length <= 12"
+      }
+    },
     "chatBan": {
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3')",

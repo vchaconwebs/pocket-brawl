@@ -1267,6 +1267,7 @@ PB.Lobby = (() => {
     const raw = $('#pf-title').value.trim();
     const t = PB.Chat.cleanTag(raw);
     if (raw && !t) return modal(PB.T('Ese tag no vale: de 2 a 12 letras o números, sin palabrotas ni CREADOR, ADMIN o parecidos.'));
+    if (t && PB.Chat.tagBanned(t)) return modal(PB.T('Ese tag te lo quitó el equipo del juego. Elige otro, por favor.'));
     PB.Save.get().title = { t, c: titleCol };
     PB.Save.persist();
     PB.Online.updateMe();
@@ -1598,6 +1599,15 @@ PB.Lobby = (() => {
     $('#pv-acts').innerHTML = (u.friend ? '' : `<button class="act blue" id="pv-add">➕ ${PB.T('Añadir amigo')}</button>`) + `<button class="act gold" id="pv-inv">🎮 ${PB.T('Invitar a jugar')}</button>` +
       `<button class="act red" id="pv-rep">🚩 ${PB.T('Reportar')}</button>`;
     $('#pv-rep').onclick = () => report(id, u.name);
+    // (solo el creador) quitarle el tag
+    if (PB.Online.isAdmin() && u.tg) {
+      $('#pv-acts').insertAdjacentHTML('beforeend', `<button class="act gray" id="pv-untag">🏷 ${PB.T('Quitar tag')}</button>`);
+      $('#pv-untag').onclick = async () => {
+        if (!(await modal(PB.T('¿Quitarle el tag «{t}» a {a}?', { t: u.tg, a: u.name }), true))) return;
+        const r = await PB.Online.removeTag(id, u.tg);
+        toast(r.error || PB.T('Tag quitado: le saldrá un aviso al entrar'));
+      };
+    }
     if ($('#pv-add')) $('#pv-add').onclick = async () => {
       if (PB.Online.isGuest()) return toast(PB.T('Crea una cuenta (gratis) para tener amigos.'));
       const r = await PB.Online.addFriend(id).catch(() => ({ error: PB.T('No se ha podido enviar.') }));
@@ -2352,6 +2362,10 @@ PB.Lobby = (() => {
       show('lobby');
     };
     // regalo del creador: aviso con lo que ha llegado
+    // me han quitado el tag: aviso para que me ponga otro
+    PB.Online.on('tagRemoved', (t) => {
+      modal(PB.T('El equipo del juego te ha quitado el tag «{t}» porque no cumple las normas. Puedes ponerte otro desde tu Perfil.', { t: t || '?' }));
+    });
     PB.Online.on('gift', ({ items, msg }) => {
       const names = items.map((it) => (it.kind === 'pokemon' ? PB.brawlerById(it.id).name : '+' + it.n + ' ' + PB.T({ coins: 'monedas', points: 'Puntos Pokémon', rainbow: 'Monedas Arcoíris' }[it.kind])));
       PB.Audio.play('win');

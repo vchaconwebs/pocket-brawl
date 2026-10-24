@@ -47,7 +47,7 @@ PB.Chat = (() => {
   const TAG_NO = ['admin', 'administrador', 'administrator', 'creador', 'creadora', 'creator', 'dueno', 'duena', 'owner', 'oficial', 'official',
     'moderador', 'moderadora', 'moderator', 'staff', 'developer', 'desarrollador', 'programador', 'soporte', 'support', 'sistema', 'system',
     'pokeversus', 'nintendo', 'gamefreak', 'pokemoncompany', 'esclavizador', 'esclavo', 'helper', 'ayudante', 'fundador', 'founder',
-    'verificado', 'verified', 'youtuber', 'streamer', 'tiktoker', 'partner', 'equipodeljuego', 'teamoficial', 'anthropic', 'claude',
+    'verificado', 'verified', 'partner', 'equipodeljuego', 'teamoficial', 'anthropic', 'claude',
     'tonto', 'tonta', 'idiota', 'estupido', 'estupida', 'imbecil', 'pene', 'teta', 'culo', 'caca', 'mamon', 'pajero', 'pajillero', 'chupa',
     'ojete', 'cojon', 'huevon', 'boludo', 'pelotudo', 'concha', 'guarra', 'violar', 'violador', 'hitler', 'nazi',
     'droga', 'cocaina', 'sexy', 'sexo', 'hentai', 'nude', 'nudes', 'penis', 'boobs', 'idiot', 'stupid', 'loser'];
@@ -64,6 +64,8 @@ PB.Chat = (() => {
     if (t.length < 2 || tagForbidden(t)) return '';
     return t;
   }
+  // tags que el creador le ha quitado a este jugador: no se los puede volver a poner
+  const tagBanned = (t) => (PB.Save.get().bannedTags || []).includes(t);
   const tagColor = (c) => TAG_COLORS[Math.max(0, Math.min(TAG_COLORS.length - 1, c | 0))];
   const tagHtml = (t, c) => (t ? `<span class="gc-tag own" style="background:${tagColor(c)}">${esc(t)}</span>` : '');
 
@@ -208,6 +210,7 @@ PB.Chat = (() => {
         }
         if (m.mine || (admin && tab === 'global')) menu += `<button data-del="${esc(m.id)}">🗑 ${PB.T('Borrar')}</button>`;
         if (admin && !m.mine && tab === 'global') menu += `<button data-ban="${esc(m.uid)}">⛔ ${PB.T('Bloquear')}</button>`;
+        if (admin && !m.mine && cleanTag(m.tg)) menu += `<button data-untag="${esc(m.uid)}" data-tg="${esc(cleanTag(m.tg))}">🏷 ${PB.T('Quitar tag')}</button>`;
         menu += '</div>';
       }
       return `<div class="gc-m${m.mine ? ' mine' : ''}${own ? ' owner' : ''}${helper ? ' helper' : ''}"><img src="${portrait(m.av)}" alt="">` +
@@ -239,6 +242,7 @@ PB.Chat = (() => {
     act('[data-mute]', (b) => { setMuted(b.dataset.mute, true); PB.Lobby.toast(PB.T('No verás más sus mensajes')); });
     act('[data-del]', (b) => PB.Online.deleteChat(b.dataset.del));
     act('[data-ban]', async (b) => { await PB.Online.banChat(b.dataset.ban); PB.Lobby.toast(PB.T('Bloqueado del chat')); });
+    act('[data-untag]', async (b) => { const r = await PB.Online.removeTag(b.dataset.untag, b.dataset.tg); PB.Lobby.toast(r.error || PB.T('Tag quitado: le saldrá un aviso al entrar')); });
     if (atBottom || !log.dataset.ready) { log.scrollTop = log.scrollHeight; log.dataset.ready = '1'; }
     markSeen();
     badge();
@@ -402,7 +406,7 @@ PB.Chat = (() => {
   }
 
   return {
-    filter, cleanTag, tagColor, tagHtml, TAG_COLORS, isMuted, setMuted, initLobby, startGlobal, openGlobal, closeGlobal, initMatch, matchStart, matchEnd, matchLine,
+    filter, cleanTag, tagBanned, tagColor, tagHtml, TAG_COLORS, isMuted, setMuted, initLobby, startGlobal, openGlobal, closeGlobal, initMatch, matchStart, matchEnd, matchLine,
     get typing() { return mBar; }, get matchMuted() { return mMute; }, OWNER, QUICK,
   };
 })();

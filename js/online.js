@@ -370,6 +370,7 @@ PB.Online = (() => {
       await syncProfile(true).catch(() => {});
       if (!isGuest()) processAccepted().catch(() => {});
       claimGifts().catch(() => {});
+      checkTagBan().catch(() => {});
       emit('ready');
     })();
     return ready;
@@ -979,7 +980,7 @@ PB.Online = (() => {
   let gMsgs = [], gWatch = null, banned = false;
   let pMsgs = [], pWatch = null, pCode = null, pSince = 0;
   // tag propio del jugador (si tiene): { tg, tc }
-  const myTag = () => { const t = PB.Save.get().title, tg = t && PB.Chat.cleanTag(t.t); return tg ? { tg, tc: Math.max(0, Math.min(7, t.c | 0)) } : {}; };
+  const myTag = () => { const t = PB.Save.get().title, tg = t && PB.Chat.cleanTag(t.t); return tg && !PB.Chat.tagBanned(tg) ? { tg, tc: Math.max(0, Math.min(7, t.c | 0)) } : {}; };
   const avatar = () => { const d = PB.Save.get(), b = PB.brawlerById(d.selected); return String(d.avatarDex || (b ? b.dex : '')).slice(0, 16); };
   const chatMsg = (key, m) => ({ tg: typeof m.tg === 'string' ? m.tg.slice(0, 12) : '', tc: m.tc | 0, id: key, uid: String(m.uid || ''), name: clean(m.name, 16) || 'Entrenador', text: String(m.text || '').slice(0, 120), t: +m.t || 0, av: String(m.av || ''), au: typeof m.au === 'string' ? m.au.slice(0, 30) : '', dur: Math.max(0, Math.min(9, +m.dur || 0)), mine: m.uid === uid });
   function listen(ref, list, ev, since) {
@@ -1076,6 +1077,27 @@ PB.Online = (() => {
   // borrar un mensaje también borra su audio
   const deleteChat = (id) => { rtdb.ref('chatAudio/' + id).remove().catch(() => {}); return rtdb.ref('chat/' + id).remove().catch(() => {}); };
   const banChat = (id) => rtdb.ref('chatBan/' + id).set(true).catch(() => {});
+  // (solo el creador) quitarle el tag a alguien: al entrar le sale un aviso y tiene que ponerse otro
+  async function removeTag(id, tag) {
+    if (!(await start()) || uid !== ADMIN) return err('Solo el creador puede hacer esto.');
+    try { await rtdb.ref('tagBan/' + id).set({ t: String(tag || '').slice(0, 12), at: fb.database.ServerValue.TIMESTAMP }); } catch (e) { return err('No se ha podido quitar.'); }
+    return { ok: true };
+  }
+  // al entrar: ¿me han quitado el tag? (se borra el aviso, se apunta para no repetirlo y se avisa)
+  async function checkTagBan() {
+    const ref = rtdb.ref('tagBan/' + uid);
+    const s = await ref.once('value').catch(() => null);
+    const v = s && s.val();
+    if (!v) return;
+    const d = PB.Save.get(), t = String(v.t || '').slice(0, 12);
+    d.bannedTags = [...new Set([...(d.bannedTags || []), t])].slice(-20);
+    if (d.title && (!t || d.title.t === t)) d.title = { t: '', c: d.title.c | 0 };
+    PB.Save.persist();
+    ref.remove().catch(() => {});
+    lastProfile = '';
+    updateMe();
+    emit('tagRemoved', t);
+  }
   // chat del grupo: se engancha a la sala en la que estés (solo ven los mensajes desde que entraste)
   function watchPartyChat() {
     const code = party ? party.code : null;
@@ -1701,7 +1723,7 @@ PB.Online = (() => {
     topPlayers, topClans, topByPokemon, topForPokemon, getUser,
     searchClans, getClan, myClan, createClan, joinClan, leaveClan, clanRequests, answerClanRequest,
     chat, sendChat,
-    watchChat, unwatchChat, peekChat, sendGlobalChat, deleteChat, banChat, sendPartyChat, inviteToPlay, sendVoice, getVoice,
+    watchChat, unwatchChat, peekChat, sendGlobalChat, deleteChat, banChat, removeTag, sendPartyChat, inviteToPlay, sendVoice, getVoice,
     chatMsgs: () => gMsgs, partyMsgs: () => pMsgs, isAdmin: () => uid === ADMIN, get myUid() { return uid; },
     party: () => party, createParty, invite, joinByCode, setReady, updateMe, kick, leaveParty,
     voteRematch, cancelRematch, rematchGo, rematchLeft,
