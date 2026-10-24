@@ -11,22 +11,26 @@
   <link rel="apple-touch-icon" href="assets/icons/icon-180.png">
   <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="description" content="PokéVersus: fangame gratuito de combates 3v3 con Pokémon en el navegador. Más de 900 Pokémon, evoluciones en partida, 5 modos y juego con amigos. Sin ánimo de lucro.">
-  <title>PokéVersus · Combates 3v3 gratis en el navegador</title>
+  <meta name="description" content="Juego de Pokémon online gratis: combates 3 contra 3 estilo Brawl Stars en el navegador, PC y móvil. Cientos de Pokémon, megaevoluciones, 8 modos, clanes y partidas con amigos. Sin descargas.">
+  <title>PokéVersus · Juego de Pokémon online gratis 3v3 (navegador y móvil)</title>
   <link rel="canonical" href="https://pokeversus.com/">
   <meta property="og:type" content="website">
+  <meta property="og:locale" content="es_ES">
   <meta property="og:site_name" content="PokéVersus">
   <meta property="og:url" content="https://pokeversus.com/">
-  <meta property="og:title" content="PokéVersus · Combates 3v3 gratis en el navegador">
-  <meta property="og:description" content="Fangame gratuito de combates 3v3 con Pokémon. Juega en el navegador, en PC o móvil. Free 3v3 Pokémon fan game in your browser.">
+  <meta property="og:title" content="PokéVersus · Juego de Pokémon online gratis 3v3">
+  <meta property="og:description" content="Combates 3 contra 3 con Pokémon en el navegador, PC y móvil: megaevoluciones, 8 modos, clanes y partidas con amigos. Gratis y sin descargas. Free online 3v3 Pokémon fan game.">
   <meta property="og:image" content="https://pokeversus.com/assets/icons/og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PokéVersus · Juego de Pokémon online gratis 3v3">
+  <meta name="twitter:description" content="Combates 3 contra 3 con Pokémon en el navegador y el móvil. Gratis y sin descargas.">
   <meta name="twitter:image" content="https://pokeversus.com/assets/icons/og.png">
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"VideoGame","name":"PokéVersus","url":"https://pokeversus.com/",
-   "description":"Fangame gratuito y sin ánimo de lucro de combates 3v3 con Pokémon en el navegador.",
+  {"@context":"https://schema.org","@type":"VideoGame","name":"PokéVersus","alternateName":["PokeVersus","Poke Versus"],"url":"https://pokeversus.com/",
+   "description":"Juego de Pokémon online gratis y sin ánimo de lucro: combates 3 contra 3 en el navegador, PC y móvil, con megaevoluciones, 8 modos de juego, clanes y partidas con amigos.",
+   "playMode":["MultiPlayer","SinglePlayer"],"numberOfPlayers":{"@type":"QuantitativeValue","minValue":1,"maxValue":10},"operatingSystem":"Any (navegador web)",
    "image":"https://pokeversus.com/assets/icons/og.png","genre":["Action","Multiplayer"],"gamePlatform":["Web browser","PC","Mobile"],
    "applicationCategory":"Game","inLanguage":["es","en","pt","fr","it","de"],"isAccessibleForFree":true,
    "offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
@@ -38,7 +42,7 @@
   <canvas id="game"></canvas>
 
   <div id="loading" class="screen"><h1>Cargando…</h1><p id="ld-sub"></p><button class="act gray hidden" id="ld-cancel">Cancelar</button><p id="ld-tip" class="ld-tip hidden">💜 ¿Te gusta PokéVersus? Compártelo con tus amigos o juégalo en directo</p></div>
-  <noscript><h1>PokéVersus</h1><p>Fangame gratuito de combates 3v3 con Pokémon en el navegador. Activa JavaScript para jugar. / Free 3v3 Pokémon fan game. Enable JavaScript to play.</p></noscript>
+  <noscript><h1>PokéVersus · Juego de Pokémon online gratis</h1><p>PokéVersus es un fangame gratuito y sin ánimo de lucro de combates 3 contra 3 con Pokémon, estilo Brawl Stars, que se juega en el navegador del PC o del móvil sin descargar nada. Elige entre cientos de Pokémon, haz que evolucionen y megaevolucionen en plena partida y juega a 8 modos: Atrapa Pokéballs, Niebla Tóxica, Niebla Tóxica Dúo, Despierta a Snorlax, Voltorbol, Territorio, Duelo de Equipos y Eliminación. Crea un clan, chatea y juega con tus amigos. Activa JavaScript para jugar. / Free online 3v3 Pokémon fan game in your browser. Enable JavaScript to play.</p></noscript>
 
   <!-- INICIO (la primera vez o al cerrar sesión) -->
   <div id="welcome" class="screen hidden">
@@ -522,7 +526,7 @@
   <script src="js/news.js?v=142"></script>
   <script src="js/roster-data.js?v=142"></script>
   <script src="js/forms-data.js?v=142"></script>
-  <script src="js/i18n-data.js?v=148"></script>
+  <script src="js/i18n-data.js?v=153"></script>
   <script src="js/i18n-names.js?v=142"></script>
   <script src="js/i18n.js?v=142"></script>
   <script src="js/sprites.js?v=145"></script>

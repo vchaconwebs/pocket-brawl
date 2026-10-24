@@ -530,6 +530,7 @@ PB.I18N = {
   "{name} ha creado el clan": ["{name} created the clan", "{name} criou o clã", "{name} a créé le clan", "{name} ha creato il clan", "{name} hat den Clan gegründet"],
   "Ya está en otro clan.": ["Already in another clan.", "Já está em outro clã.", "Déjà dans un autre clan.", "È già in un altro clan.", "Ist schon in einem anderen Clan."],
   'PokéVersus · Combates 3v3 gratis en el navegador': ['PokéVersus · Free 3v3 battles in your browser', 'PokéVersus · Batalhas 3v3 grátis no navegador', 'PokéVersus · Combats 3v3 gratuits dans le navigateur', 'PokéVersus · Battaglie 3v3 gratis nel browser', 'PokéVersus · Kostenlose 3v3-Kämpfe im Browser'],
+  'PokéVersus · Juego de Pokémon online gratis 3v3 (navegador y móvil)': ['PokéVersus · Free online 3v3 Pokémon game (browser and mobile)', 'PokéVersus · Jogo de Pokémon online grátis 3v3 (navegador e celular)', 'PokéVersus · Jeu Pokémon en ligne gratuit 3v3 (navigateur et mobile)', 'PokéVersus · Gioco Pokémon online gratis 3v3 (browser e mobile)', 'PokéVersus · Kostenloses Online-Pokémon-Spiel 3v3 (Browser und Handy)'],
 
   // ------------------------------------------------------------------ cofres
   'Toca para abrir': ['Tap to open', 'Toque para abrir', 'Touche pour ouvrir', 'Tocca per aprire', 'Tippen zum Öffnen'],
