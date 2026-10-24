@@ -120,6 +120,14 @@
 
   /* embudo */
   .funnel { display: grid; gap: 12px; }
+  .srv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+  .srv h3 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .srv .fstep .tl b { font-size: 22px; }
+  .srv .pct { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .srv .split { display: grid; gap: 6px; margin-top: 12px; font-size: 13px; color: var(--text-2); }
+  .srv .split div { display: flex; justify-content: space-between; gap: 8px; }
+  .srv .split b { color: var(--text); font-weight: normal; }
+  @media (max-width: 980px) { .srv { grid-template-columns: minmax(0, 1fr); } }
   .fstep .tl { display: flex; justify-content: space-between; align-items: baseline; font-size: 13.5px; color: var(--text-2); gap: 8px; }
   .fstep .tl b { font-size: 26px; color: var(--text); font-weight: normal; }
   .fstep .bar { height: 22px; border-radius: 7px; background: var(--panel-3); overflow: hidden; margin-top: 3px; }
@@ -174,8 +182,6 @@
       <div class="nowrow">
         <div class="now" id="now"><i></i><b class="num" id="now-n">–</b><span id="now-txt">en línea ahora</span></div>
         <div class="rec" id="rec" title="Récord de jugadores a la vez"><span>🏆</span><b class="num" id="rec-n">–</b><span id="rec-txt">récord a la vez</span></div>
-        <div class="rec" id="fsuse" title="Uso de la base de datos hoy (aprox.). Límite gratis: 50.000 lecturas y 20.000 escrituras al día; se reinicia a las 9:00"><span>🗄️</span><b class="num" id="fs-n">–</b><span id="fs-txt">uso del servidor hoy</span></div>
-        <div class="rec" id="dluse" title="Descargas de la Realtime Database hoy (aprox., las cuenta el juego). Límite gratis: 10 GB al mes ≈ 330 MB al día"><span>📶</span><b class="num" id="dl-n">–</b><span id="dl-txt">descargas hoy</span></div>
         <div class="rec" id="avg" title="Media de gente en línea hoy (se mide cada 10 minutos)"><span>📊</span><b class="num" id="avg-n">–</b><span id="avg-txt">media en línea hoy</span></div>
       </div>
       <div>
@@ -214,6 +220,15 @@
       <div class="pb"><div class="rows" id="sources"></div></div>
     </section>
   </div>
+
+  <section class="panel" style="margin-bottom:14px">
+    <div class="ph"><div><h2>Servidor (Firebase)</h2><p class="note">Plan gratis Spark · lo cuenta el propio juego, es aproximado y va hasta ~2 min por detrás</p></div></div>
+    <div class="pb"><div class="srv">
+      <div><h3>Firestore hoy</h3><div class="funnel" id="srv-fs"></div><p class="pct">Se reinicia a las 9:00 (hora de España). Si se pasa, fallan login, chat de clan y ranking.</p></div>
+      <div><h3>Descargas hoy</h3><div class="funnel" id="srv-dl"></div><div class="split" id="srv-split"></div></div>
+      <div><h3>Descargas este mes</h3><div class="funnel" id="srv-month"></div><p class="pct" id="srv-month-note"></p></div>
+    </div></div>
+  </section>
 
   <section class="panel">
     <div class="ph"><div><h2>Día a día</h2><p class="note">Del más reciente al más antiguo</p></div></div>
@@ -466,23 +481,26 @@
     }).join('');
   }
 
-  // lecturas y escrituras de Firestore de hoy (las cuenta el juego; es aproximado)
-  function fsUse() {
-    const f = (data[dayKey(new Date())] || {}).fs || {};
-    const r = f.r || 0, w = f.w || 0, pr = Math.round((r / 50000) * 100), pw = Math.round((w / 20000) * 100), mx = Math.max(pr, pw);
-    $('#fs-n').textContent = mx + ' %';
-    $('#fs-n').style.color = mx >= 80 ? '#ff6b6b' : mx >= 60 ? '#ffcf3a' : '';
-    $('#fs-txt').textContent = `servidor hoy · ${fmt(r)} lecturas (${pr} %) · ${fmt(w)} escrituras (${pw} %)`;
+  // apartado Servidor: Firestore (lecturas / escrituras del día) y descargas de la Realtime Database (KB por tipo)
+  const meter = (name, x, max, unit, c) => {
+    const pc = Math.round((x / max) * 100), col = pc >= 80 ? 'var(--down)' : pc >= 60 ? '#ffcf3a' : c;
+    return `<div class="fstep" style="--c:${col}"><div class="tl"><span>${name}</span><b class="num">${x >= 100 ? fmt(x) : dec(x)}${unit}</b></div><div class="bar"><span style="width:${Math.min(100, Math.max(1.5, pc))}%"></span></div><div class="pct">${pc} % de ${fmt(max)}${unit}</div></div>`;
+  };
+  const dlMB = (r) => { const f = (r && r.dl) || {}; return ((f.relay || 0) + (f.chat || 0) + (f.online || 0)) / 1024; };
+  function serverUse() {
+    const k = dayKey(new Date()), r = data[k] || {}, f = r.fs || {}, d = r.dl || {};
+    $('#srv-fs').innerHTML = meter('Lecturas', f.r || 0, 50000, '', 'var(--c-visits)') + meter('Escrituras', f.w || 0, 20000, '', 'var(--c-matches)');
+    $('#srv-dl').innerHTML = meter('Realtime Database', dlMB(r), 330, ' MB', 'var(--c-players)');
+    const mb = (x) => dec((x || 0) / 1024) + ' MB';
+    $('#srv-split').innerHTML = `<div><span>Partidas por relevo</span><b>${mb(d.relay)}</b></div><div><span>Chat general</span><b>${mb(d.chat)}</b></div>` +
+      `<div><span>Contador de conectados</span><b>${mb(d.online)}</b></div><div><span>Jugadores que han ido por relevo</span><b>${fmt(r.relay)}</b></div>`;
+    // mes en curso (el límite de 10 GB es por mes)
+    const month = k.slice(0, 7), ks = Object.keys(data).filter((x) => x.startsWith(month) && data[x].dl);
+    const tot = ks.reduce((a, x) => a + dlMB(data[x]), 0) / 1024;
+    $('#srv-month').innerHTML = meter('Realtime Database', tot, 10, ' GB', 'var(--c-newacc)');
+    $('#srv-month-note').textContent = ks.length ? `Contado desde el ${label(ks.sort()[0], true)}. La consola de Firebase (Realtime Database → Uso) da el dato exacto.` : 'Se empieza a contar ahora.';
   }
-  // descargas de la Realtime Database de hoy (relevo de partidas, chat, contador de conectados), en KB
-  function dlUse() {
-    const r = data[dayKey(new Date())] || {}, f = r.dl || {};
-    const mb = (k) => (f[k] || 0) / 1024, tot = mb('relay') + mb('chat') + mb('online'), pc = Math.round((tot / 330) * 100);
-    $('#dl-n').textContent = pc + ' %';
-    $('#dl-n').style.color = pc >= 80 ? '#ff6b6b' : pc >= 60 ? '#ffcf3a' : '';
-    $('#dl-txt').textContent = `descargas hoy · ${dec(tot)} MB de 330 · relevo ${dec(mb('relay'))} · chat ${dec(mb('chat'))} · conectados ${dec(mb('online'))}` + (r.relay ? ` · ${fmt(r.relay)} jugadores por relevo` : '');
-  }
-  function render() { today(); tiles(); chips(); trend(); breakdowns(); table(); fsUse(); dlUse(); }
+  function render() { today(); tiles(); chips(); trend(); breakdowns(); table(); serverUse(); }
 
   let loadedAll = false;
   async function load() {
