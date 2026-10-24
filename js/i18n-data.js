@@ -510,6 +510,7 @@ PB.I18N = {
   "{n} jugadores buscando · {s} s": ["{n} players searching · {s} s", "{n} jogadores procurando · {s} s", "{n} joueurs en recherche · {s} s", "{n} giocatori in ricerca · {s} s", "{n} Spieler suchen · {s} s"],
   "¡Partida encontrada!": ["Match found!", "Partida encontrada!", "Match trouvé !", "Partita trovata!", "Match gefunden!"],
   "Conectando con los demás jugadores…": ["Connecting to the other players…", "Conectando com os outros jogadores…", "Connexion aux autres joueurs…", "Connessione agli altri giocatori…", "Verbinde mit den anderen Spielern…"],
+  "Si no conecta, en {n} s juegas con bots": ["If it can't connect, you'll play with bots in {n} s", "Se não conectar, em {n} s jogas com bots", "Si ça ne se connecte pas, tu joueras avec des bots dans {n} s", "Se non si connette, tra {n} s giochi con i bot", "Falls es nicht verbindet, spielst du in {n} s mit Bots"],
   "No se ha podido conectar. Juegas con bots.": ["Could not connect. Playing with bots.", "Não foi possível conectar. Você joga com bots.", "Connexion impossible. Tu joues avec des bots.", "Impossibile connettersi. Giochi con i bot.", "Verbindung fehlgeschlagen. Du spielst mit Bots."],
   "Tu grupo está buscando partida…": ["Your group is finding a match…", "Seu grupo está procurando partida…", "Ton groupe cherche un match…", "Il tuo gruppo sta cercando una partita…", "Deine Gruppe sucht ein Match…"],
   "Sin conexión.": ["No connection.", "Sem conexão.", "Pas de connexion.", "Nessuna connessione.", "Keine Verbindung."],

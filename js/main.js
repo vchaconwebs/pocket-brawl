@@ -526,6 +526,12 @@
     help().classList.add('hidden');
   }
 
+  // volver a la lobby desde la búsqueda o la conexión. Si venías de la pantalla de resultados, se
+  // sale bien de la partida (si no, la lobby y la Poké Ball de los cofres no se dibujaban hasta recargar)
+  function backToLobby() {
+    if (mode === 'end') toMenu(); else PB.Lobby.show('lobby');
+  }
+
   // ------------------------------------------------------------ pausa
   let paused = false;
   // El menú de pausa no para la partida (tampoco contra bots: si se parasen todos, se notaría que son bots)
@@ -746,7 +752,7 @@
     } catch (e) { r = { local: true }; }
     PB.Online.setSearching(null);
     searching = false;
-    if (r.cancelled) { PB.Lobby.show('lobby'); return; }
+    if (r.cancelled) { backToLobby(); return; }
     if (r.mid) return joinAndStart(r.mid);
     startMatch();
   }
@@ -780,22 +786,30 @@
     if (mode === 'play') return;
     if (partyWait) stopPartyWait();
     searchScreen('¡Partida encontrada!', PB.T('Conectando con los demás jugadores…'), true);
-    // si se queda colgado conectando, se puede salir (y como mucho a los 25 s se juega con bots)
+    // si se queda colgado conectando, se puede salir; y como mucho a los 40 s se juega con bots.
+    // Se ve la cuenta atrás para que no parezca que se ha quedado parado
+    const LIMIT = 40, t0 = Date.now();
+    const tick = setInterval(() => {
+      if (mode === 'play' || !$('#loading') || $('#loading').classList.contains('hidden')) { clearInterval(tick); return; }
+      const left = Math.max(0, Math.ceil(LIMIT - (Date.now() - t0) / 1000));
+      $('#ld-sub').textContent = PB.T('Conectando con los demás jugadores…') + ' ' + PB.T('Si no conecta, en {n} s juegas con bots', { n: left });
+    }, 500);
     let gaveUp = false;
-    $('#ld-cancel').onclick = () => { gaveUp = true; if (net && mode !== 'play') endNet(); PB.Lobby.show('lobby'); };
+    $('#ld-cancel').onclick = () => { gaveUp = true; clearInterval(tick); if (net && mode !== 'play') endNet(); backToLobby(); };
     let j = { local: true };
     try { j = await Promise.race([PB.Online.joinMatch(mid), new Promise((r) => setTimeout(() => r({ local: true, failed: true }), 25000))]); } catch (e) { j = { local: true, failed: true }; }
-    if (gaveUp || mode === 'play') return;
+    if (gaveUp || mode === 'play') { clearInterval(tick); return; }
+    if (j.local) clearInterval(tick);
     if (j.local) {
       // los de una sala que no consiguen entrar a la partida del jefe vuelven a la lobby
-      if (fromParty) { PB.Lobby.toast(PB.T('No se ha podido entrar en la partida de tu grupo.')); PB.Lobby.show('lobby'); return; }
+      if (fromParty) { PB.Lobby.toast(PB.T('No se ha podido entrar en la partida de tu grupo.')); backToLobby(); return; }
       if (j.failed) PB.Lobby.toast(PB.T('No se ha podido conectar. Juegas con bots.'));
       return startMatch();
     }
     if (j.role === 'client') {
       // si el anfitrión no empieza, partida con bots. Hay que esperar bastante: si no se puede conectar directo
       // (misma wifi en clase, redes que lo bloquean...) el anfitrión tarda unos segundos en pasar al relevo
-      setTimeout(() => { if (net && net.role === 'client' && !net.client) { endNet(); PB.Lobby.toast(PB.T('No se ha podido conectar. Juegas con bots.')); startMatch(); } }, 50000);
+      setTimeout(() => { clearInterval(tick); if (!gaveUp && net && net.role === 'client' && !net.client) { endNet(); PB.Lobby.toast(PB.T('No se ha podido conectar. Juegas con bots.')); startMatch(); } }, Math.max(5000, LIMIT * 1000 - (Date.now() - t0)));
     }
     startNetMatch(j);
   }
@@ -815,14 +829,14 @@
       sub();
       partyWait = setInterval(() => {
         // si el jefe se ha quedado colgado, vuelve a la lobby
-        if (Date.now() - t0 > 40000) { stopPartyWait(); PB.Lobby.show('lobby'); } else sub();
+        if (Date.now() - t0 > 40000) { stopPartyWait(); backToLobby(); } else sub();
       }, 500);
       // solo vuelve a la lobby; el jefe sigue buscando
-      $('#ld-cancel').onclick = () => { stopPartyWait(); PB.Lobby.show('lobby'); };
+      $('#ld-cancel').onclick = () => { stopPartyWait(); backToLobby(); };
     } else if (partyWait) {
       // el jefe ha cancelado
       stopPartyWait();
-      if (mode !== 'play') PB.Lobby.show('lobby');
+      if (mode !== 'play') backToLobby();
     }
   });
   function stopPartyWait() { clearInterval(partyWait); partyWait = null; }

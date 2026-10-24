@@ -1546,8 +1546,9 @@ PB.Online = (() => {
     let relayed = false;
     const relayP = new Promise((res) => { link.onRelay = (p) => { if (p === host) { relayed = true; res(true); } }; setTimeout(() => res(false), 45000); });
     const direct = clientDirect(mid, host, link);
-    // lo primero que funcione: directo o relevo (si lo directo falla, se espera al relevo)
-    const ok = await Promise.race([direct.then((d) => d || relayP), relayP]);
+    // lo primero que funcione: directo o relevo (si lo directo falla, se espera al relevo).
+    // Si el anfitrión ni siquiera ha mandado su oferta, es que ya no está: no se le espera más
+    const ok = await Promise.race([direct.then((d) => (d === 'nooffer' ? Promise.race([relayP, new Promise((r) => setTimeout(() => r(false), 3000))]) : d || relayP)), relayP]);
     link.onRelay = null;
     tr(ok ? (relayed ? 'conectado por relevo' : 'conectado directo') : 'sin conexión');
     return ok;
@@ -1557,10 +1558,10 @@ PB.Online = (() => {
     const offRef = sig.child(uid + '/' + host + '/offer');
     const offer = await new Promise((res) => {
       const cb = offRef.on('value', (s) => { if (s.val()) { offRef.off('value', cb); res(s.val()); } });
-      setTimeout(() => { offRef.off('value', cb); res(null); }, 20000);
+      setTimeout(() => { offRef.off('value', cb); res(null); }, 15000);
     });
     tr('oferta', !!offer);
-    if (!offer) return false;
+    if (!offer) return 'nooffer';
     const pc = new RTCPeerConnection({ iceServers: ICE });
     const chP = new Promise((res) => { pc.ondatachannel = (e) => res(e.channel); setTimeout(() => res(null), 15000); });
     await pc.setRemoteDescription(JSON.parse(offer));
