@@ -1,9 +1,43 @@
 // Versión del juego y notas de parche. Al publicar una actualización con novedades:
 // sube PB.VERSION y añade su nota ARRIBA del todo en PB.PATCH_NOTES (la primera es la que se enseña).
 // Cada jugador la ve una sola vez al entrar a la lobby (se guarda en localStorage 'pb.seenVersion').
-PB.VERSION = '1.8';
+PB.VERSION = '1.9';
 
 PB.PATCH_NOTES = [
+  {
+    v: '1.9',
+    date: '25/10/2026',
+    es: {
+      title: '¡Actualización 1.9!',
+      items: [
+        ['⚔️', '¡DUELO 2 CONTRA 2 Y 1 CONTRA 1! En la tarjeta de Duelo de Equipos eliges 3vs3, 2vs2 o 1vs1, cada uno con sus propios mapas más pequeños. Gana el que más K.O. haga o el primero en llegar a 30 (3vs3), 15 (2vs2) o 10 (1vs1).'],
+        ['🗳️', 'Encuestas: de vez en cuando os preguntaremos cuáles son vuestros modos favoritos (hasta 4 cada uno). Los menos votados se quitarán un tiempo.'],
+        ['🤝', 'Emparejamiento más justo: si juegas solo y te toca contra un grupo, tus bots juegan al máximo y con un nivel más; y si pierdes contra un equipo con 2 personas más que el tuyo, no pierdes copas.'],
+        ['📱', 'Tu progreso ya es el mismo en el PC y en el móvil con la misma cuenta: al entrar se carga siempre el más nuevo.'],
+        ['🏅', 'Medallas de maestría nuevas en la lobby, la colección y la ficha de cada Pokémon, con una barra hasta el siguiente rango y su premio.'],
+        ['🥊', 'Los ataques cuerpo a cuerpo (Puño Fuego, Giro Rápido, Patada Giro, Acua Cola…) pegan un poco menos y ya no dan tanta velocidad extra.'],
+        ['📊', 'Los niveles se notan menos (+1,2 % por nivel en vez de +2 %), y en Voltorbol no cuentan: ahí lo importante es la pelota.'],
+        ['⚽', 'Voltorbol: si usas el súper con la pelota en las manos, se te cae. Se acabó cruzar el campo de una embestida.'],
+        ['⚖️', 'Las súpers de Zapdos y Rayquaza tienen bastante menos área, y Axew y Haxorus pegan algo menos.'],
+        ['🛠️', 'Arreglos: Sneasler ya puede usar Finta y Garra Umbría como Weavile, menos tirones para los que juegan por conexión indirecta, y el servidor gasta todavía menos.'],
+      ],
+    },
+    en: {
+      title: 'Update 1.9!',
+      items: [
+        ['⚔️', '2v2 AND 1v1 DUELS! On the Team Duel card you can pick 3v3, 2v2 or 1v1, each with its own smaller maps. Whoever gets the most KOs wins, or the first to reach 30 (3v3), 15 (2v2) or 10 (1v1).'],
+        ['🗳️', 'Polls: every now and then we’ll ask which modes you like best (up to 4 each). The least voted ones will be removed for a while.'],
+        ['🤝', 'Fairer matchmaking: if you play solo against a group, your bots play at full strength and one level higher; and if you lose against a team with 2 more people than yours, you don’t lose trophies.'],
+        ['📱', 'Your progress is now the same on PC and mobile with the same account: the newest one always loads when you start.'],
+        ['🏅', 'New mastery medals in the lobby, the collection and each Pokémon’s page, with a bar to the next rank and its reward.'],
+        ['🥊', 'Melee attacks (Fire Punch, Rapid Spin, Rolling Kick, Aqua Tail…) hit a bit less hard and no longer give as much extra speed.'],
+        ['📊', 'Levels matter less (+1.2% per level instead of +2%), and they don’t count at all in Voltorb Ball: there, it’s all about the ball.'],
+        ['⚽', 'Voltorb Ball: using your super while holding the ball makes you drop it. No more dashing across the field with it.'],
+        ['⚖️', 'Zapdos’s and Rayquaza’s supers cover a much smaller area, and Axew and Haxorus hit a little less hard.'],
+        ['🛠️', 'Fixes: Sneasler can use Feint and Night Slash like Weavile, less stutter for players on an indirect connection, and the server uses even less.'],
+      ],
+    },
+  },
   {
     v: '1.8',
     date: '24/10/2026',
