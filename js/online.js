@@ -91,16 +91,20 @@ PB.Online = (() => {
     if (p[0] === 'gifts') return 'regalos';
     return 'otros';
   };
+  let fsTag = null;
   function countFirestore() {
     if (testing) return;
     const n = { r: 0, w: 0 }, by = { r: {}, w: {} };
-    const add = (kind, path, c) => { n[kind] += c; const k = FS_KIND(path); by[kind][k] = (by[kind][k] || 0) + c; };
+    const add = (kind, path, c) => { n[kind] += c; const k = path.startsWith('#') ? path.slice(1) : FS_KIND(path); by[kind][k] = (by[kind][k] || 0) + c; };
     const qPath = (q) => { try { return q._delegate._query.path.canonicalString(); } catch (e) { return ''; } };
     const wrap = (proto, name, kind, cnt, pathOf) => {
       const f = proto && proto[name];
       if (!f || f._pv) return;
       proto[name] = function (...a) {
-        const p = f.apply(this, a), path = pathOf(this);
+        // (fsTag: etiqueta puesta justo antes de llamar, para separar consultas de la misma colección)
+        const path = fsTag ? '#' + fsTag : pathOf(this);
+        fsTag = null;
+        const p = f.apply(this, a);
         if (p && p.then) p.then((x) => add(kind, path, cnt ? cnt(x) : 1), () => {});
         return p;
       };
@@ -725,6 +729,7 @@ PB.Online = (() => {
     const s = clean(q, 16).toLowerCase();
     if (s.length < 2) return [];
     let res;
+    fsTag = 'otros'; // (búsquedas de jugadores)
     if (s.startsWith('#')) res = await fs.collection('users').where('tag', '==', s.toUpperCase()).limit(5).get();
     else res = await fs.collection('users').orderBy('nameLower').startAt(s).endAt(s + '').limit(12).get();
     const sent = await fs.collection('friendReqs').where('from', '==', uid).limit(50).get();
@@ -774,7 +779,7 @@ PB.Online = (() => {
   // Además se comparte entre todos: el primero que lo pide pasado el rato hace la consulta de 50 y deja
   // el resultado en cache/<ranking> (1 documento); los demás leen solo ese documento (1 lectura).
   const rankCache = {};
-  const RANK_TTL = 900000, SHARED_TTL = 1800000;
+  const RANK_TTL = 1800000, SHARED_TTL = 3600000;
   // (lo que viene del documento compartido lo ha escrito otro jugador: se vuelve a limpiar todo)
   const safeId = (x) => String(x == null ? '' : x).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
   const fixUsers = (v) => v.map((p) => Object.assign(viewUser(safeId(p.id), Object.assign({}, p, { clan: p.clan ? safeId(p.clan) : null })), p && p.c != null ? { c: p.c | 0 } : {}));
@@ -787,7 +792,8 @@ PB.Online = (() => {
     const ref = fs.collection('cache').doc(key);
     const s = await ref.get().catch(() => null);
     const d = s && s.exists ? s.data() : null;
-    if (d && typeof d.v === 'string' && now() - (d.t || 0) < SHARED_TTL) try { v = JSON.parse(d.v); v = Array.isArray(v) ? fix(v.filter((x) => x && typeof x === 'object')).slice(0, 50) : null; } catch (e) { v = null; }
+    // (un margen al azar de hasta 10 min: así no lo refrescan muchos a la vez cuando caduca)
+    if (d && typeof d.v === 'string' && now() - (d.t || 0) < SHARED_TTL + Math.random() * 600000) try { v = JSON.parse(d.v); v = Array.isArray(v) ? fix(v.filter((x) => x && typeof x === 'object')).slice(0, 50) : null; } catch (e) { v = null; }
     if (!Array.isArray(v)) {
       v = await fn();
       const json = JSON.stringify(v);
@@ -801,6 +807,7 @@ PB.Online = (() => {
     if (!(await start())) return [];
     await syncProfile().catch(() => {});
     const list = await cached('players', async () => {
+      fsTag = 'ranking';
       const q = await fs.collection('users').orderBy('copas', 'desc').limit(50).get();
       return q.docs.map((s) => viewUser(s.id, s.data()));
     }, fixUsers);
@@ -813,6 +820,7 @@ PB.Online = (() => {
     if (!(await start())) return [];
     await syncProfile().catch(() => {});
     const list = await cached('mons', async () => {
+      fsTag = 'ranking';
       const q = await fs.collection('users').orderBy('bestCopas', 'desc').limit(50).get();
       return q.docs.map((s) => viewUser(s.id, s.data()));
     }, fixUsers);
@@ -823,6 +831,7 @@ PB.Online = (() => {
     if (!(await start()) || !PB.brawlerById(id)) return [];
     await syncProfile().catch(() => {});
     const list = await cached('mon-' + id, async () => {
+      fsTag = 'ranking';
       const q = await fs.collection('users').orderBy('pc.' + id, 'desc').limit(25).get(); // (de cada Pokémon basta con el top 25)
       return q.docs.map((s) => Object.assign(viewUser(s.id, s.data()), { c: ((s.data().pc || {})[id]) | 0 }));
     }, fixUsers);
@@ -879,6 +888,11 @@ PB.Online = (() => {
     return c;
   }
 
+  // solo el id y el nombre de tu clan (lo que ya sabe tu perfil): sin leer el clan ni a sus miembros
+  async function myClanLite() {
+    if (!(await start()) || isGuest() || !myDoc.clan) return null;
+    return { id: myDoc.clan, name: clean(myDoc.clanName || '', 20) };
+  }
   async function setMyClan(id, name) {
     clanC = null;
     myDoc.clan = id;
@@ -1838,7 +1852,7 @@ PB.Online = (() => {
     account, loginGoogle, emailAccount, resetPassword, logout, saveCloud,
     me: async () => (await start(), viewUser(uid, myDoc)),
     topPlayers, topClans, topByPokemon, topForPokemon, getUser,
-    searchClans, getClan, myClan, createClan, joinClan, leaveClan, clanRequests, answerClanRequest,
+    searchClans, getClan, myClan, myClanLite, createClan, joinClan, leaveClan, clanRequests, answerClanRequest,
     chat, sendChat,
     watchChat, unwatchChat, peekChat, sendGlobalChat, deleteChat, banChat, removeTag, votePoll, get poll() { return poll; }, sendPartyChat, inviteToPlay, sendVoice, getVoice,
     chatMsgs: () => gMsgs, partyMsgs: () => pMsgs, isAdmin: () => uid === ADMIN, get myUid() { return uid; },

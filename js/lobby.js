@@ -1294,7 +1294,7 @@ PB.Lobby = (() => {
     $('#pf-input').value = d.name;
     $('#pf-tag').textContent = PB.T('Código de amigo: {tag}', { tag: d.tag });
     $('#pf-avatars').classList.add('hidden');
-    PB.Online.myClan().then((c) => { $('#pf-clan').textContent = c ? 'Clan: ' + c.name : 'Sin clan'; });
+    PB.Online.myClanLite().then((c) => { $('#pf-clan').textContent = c ? 'Clan: ' + c.name : 'Sin clan'; });
     renderTitleEditor();
     const st = d.stats;
     const bestId = Object.keys(d.copas || {}).filter((id) => PB.brawlerById(id)).sort((a, b) => d.copas[b] - d.copas[a])[0];
@@ -1742,7 +1742,7 @@ PB.Lobby = (() => {
       if (rows) rows.innerHTML = list.map((p) => prow({ ...p, copas: p.c, avatar: portrait(b), sub: p.clanName || PB.T('Sin clan') })).join('') || `<p class="empty">${PB.T('Nadie tiene copas con este Pokémon todavía. ¡Sé el primero!')}</p>`;
     } else {
       const list = await PB.Online.topClans();
-      const my = await PB.Online.myClan();
+      const my = await PB.Online.myClanLite(); // (solo para marcar el tuyo: sin cargar sus miembros)
       box.innerHTML = list.slice(0, 50).map((c) => prow({ name: c.name, copas: c.copas, pos: c.pos, avatar: clanIcon(c), sub: c.count + '/' + PB.META.clanMax + ' miembros', me: my && my.id === c.id, isClan: true, clanId: c.id })).join('');
       // tocar un clan: ver sus miembros
       box.querySelectorAll('[data-clan]').forEach((e) => (e.onclick = () => { PB.Audio.play('ui'); my && my.id === e.dataset.clan ? showClan() : showOtherClan(e.dataset.clan); }));
