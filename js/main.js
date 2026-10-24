@@ -279,7 +279,8 @@
         bots.push(new PB.Bot(game, b, 0.6));
         game.feed.push({ killer: b.name, kdex: null, victim: PB.T('se ha desconectado'), vdex: null, team: b.team, t: game.time, info: true });
       }
-    } else if (peer === net.hostPeer && mode === 'play' && !game.winner && !net.migrating) {
+    } else if (peer === net.hostPeer && (mode === 'play' || mode === 'end') && !game.winner && !net.migrating) {
+      // (también si ya estoy eliminado en Niebla viendo los resultados: la partida sigue para los demás)
       migrateHost();
     }
   }
@@ -307,7 +308,8 @@
       net.remotes[net.humans[u]] = new PB.Net.Remote();
     };
     try { r = await PB.Online.migrate(net.mid, net.round, newHost === me, newHost === me ? left.filter((u) => u !== me) : newHost, onPeer); } catch (e) { r = null; }
-    if (net !== cur || mode !== 'play') return;
+    if (net !== cur || (mode !== 'play' && mode !== 'end')) return;
+    if (!r && mode === 'end') { endNet(); return; } // ya tenía mis resultados: solo se cierra la conexión
     if (!r) {
       // no ha habido manera: la partida no cuenta
       endNet();
