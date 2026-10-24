@@ -546,5 +546,80 @@ PB.PixUI = (() => {
     root.setProperty('--sk-row', 'url("' + skinURL({ o: '#020308', k: 'rgba(255,255,255,0.18)', f: '#18234e' }, WIN_ART) + '")');
   }
 
-  return { iconCanvas, iconURL, panel, bar, icon, ring, installSkins, FRAMES };
+  // ------------------------------------------------------------------ medallas de maestría
+  // Medalla con cinta, del color de su rango (1 Bronce … 5 Maestro) y un emblema: estrella (Bronce,
+  // Plata y Oro, con 1, 2 o 3 puntas de brillo en la cinta), gema (Diamante) y corona (Maestro). 20×24 píxeles.
+  const MED = [
+    null,
+    { b: '#d8894a', l: '#ffc38a', d: '#7e4012', r: '#c0392b', rl: '#ff7a5c' },
+    { b: '#c8d4e8', l: '#ffffff', d: '#66738f', r: '#2f6fd6', rl: '#7fb0ff' },
+    { b: '#ffd23a', l: '#fff6b0', d: '#a46a00', r: '#c0392b', rl: '#ff7a5c' },
+    { b: '#6fe0ff', l: '#e4fbff', d: '#1f7fa8', r: '#2a4fb8', rl: '#6f9cff' },
+    { b: '#ff6ad8', l: '#ffd0f4', d: '#93207a', r: '#7a2ad8', rl: '#c08aff' },
+  ];
+  const EMBLEM = {
+    star: ['...#...', '..###..', '#######', '.#####.', '..###..', '.##.##.', '.#...#.'],
+    gem: ['.#####.', '##.#.##', '#######', '.#####.', '..###..', '...#...', '.......'],
+    crown: ['#..#..#', '##.#.##', '#######', '#######', '.#####.', '.......', '.......'],
+  };
+  const medCache = {};
+  function masteryCanvas(tier) {
+    tier = Math.max(1, Math.min(5, tier | 0));
+    if (medCache[tier]) return medCache[tier];
+    const W = 20, H = 24, C = MED[tier], g = Array.from({ length: H }, () => Array(W).fill(null));
+    // cinta: dos tiras en V que bajan hasta la medalla
+    for (let y = 0; y < 10; y++) {
+      for (let k = 0; k < 4; k++) {
+        const xl = 2 + Math.floor(y * 0.55) + k, xr = W - 1 - xl;
+        const col = k === 1 || k === 2 ? (k === 1 ? C.rl : C.r) : C.r;
+        g[y][xl] = col; g[y][xr] = col;
+      }
+    }
+    // medalla redonda con brillo arriba a la izquierda y sombra abajo a la derecha
+    const cx = 10, cy = 15.5;
+    for (let y = 6; y < H; y++) for (let x = 0; x < W; x++) {
+      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+      if (d > 8.3) continue;
+      const diag = x + 0.5 - cx + (y + 0.5 - cy);
+      let col = C.b;
+      if (d > 7.2) col = C.d;
+      else if (d > 5.4 && d < 6.3) col = C.d; // aro grabado
+      else if (diag < -6.5) col = C.l;
+      else if (diag > 6) col = C.d;
+      g[y][x] = col;
+    }
+    // emblema en el centro (con sombra)
+    const em = EMBLEM[tier === 5 ? 'crown' : tier === 4 ? 'gem' : 'star'];
+    const isEm = (i, j) => em[j] && em[j][i] === '#';
+    // borde oscuro alrededor del emblema y el emblema en blanco: se lee bien sobre cualquier color
+    em.forEach((row, j) => row.split('').forEach((ch, i) => {
+      if (ch !== '#') return;
+      for (const [a, c2] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1]]) if (!isEm(i + a, j + c2) && g[12 + j + c2]) g[12 + j + c2][7 + i + a] = C.d;
+    }));
+    em.forEach((row, j) => row.split('').forEach((ch, i) => { if (ch === '#') g[12 + j][7 + i] = '#fffdf0'; }));
+    // contorno oscuro alrededor de todo
+    const out = g.map((r) => r.slice());
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (g[y][x]) continue;
+      if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => g[y + b] && g[y + b][x + a])) out[y][x] = '#10142a';
+    }
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const c = cv.getContext('2d');
+    out.forEach((row, y) => row.forEach((col, x) => { if (col) { c.fillStyle = col; c.fillRect(x, y, 1, 1); } }));
+    return (medCache[tier] = cv);
+  }
+  const medUrls = {};
+  function masteryURL(tier, scale) {
+    const k = tier + ':' + (scale || 2);
+    if (medUrls[k]) return medUrls[k];
+    const src = masteryCanvas(tier), s = scale || 2, cv = document.createElement('canvas');
+    cv.width = src.width * s; cv.height = src.height * s;
+    const c = cv.getContext('2d');
+    c.imageSmoothingEnabled = false;
+    c.drawImage(src, 0, 0, cv.width, cv.height);
+    return (medUrls[k] = cv.toDataURL());
+  }
+
+  return { iconCanvas, iconURL, panel, bar, icon, ring, installSkins, FRAMES, masteryCanvas, masteryURL };
 })();

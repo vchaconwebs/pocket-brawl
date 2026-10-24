@@ -263,6 +263,11 @@ PB.Lobby = (() => {
     if (!b) return;
     $('#hero-name').textContent = b.name;
     $('#hero-lvl').textContent = 'Nv. ' + PB.Save.level(b.id);
+    // medalla de maestría del Pokémon elegido
+    const mt = PB.masteryOf(PB.Save.copas(b.id));
+    $('#hero-mast').classList.toggle('hidden', !mt);
+    $('#hero-mast').innerHTML = mt ? mastImg(mt, 'mast-ic', 3) + `<em style="color:${PB.MASTERY[mt - 1].color}">${mastName(mt)}</em>` : '';
+    $('#hero-mast').style.setProperty('--mc', mt ? PB.MASTERY[mt - 1].color : '');
     const M = PB.MODES[api.getMode()];
     const rnd = api.isRandom && api.isRandom();
     $('#mode-ico').src = modeIcon(rnd ? 'random' : M.id);
@@ -352,10 +357,9 @@ PB.Lobby = (() => {
   }
 
   // medalla de maestría (según las copas de ese Pokémon)
-  const mastBadge = (copas) => {
-    const t = PB.masteryOf(copas);
-    return t ? `<i class="mast" style="--mc:${PB.MASTERY[t - 1].color}" title="${PB.T('Maestría {m}', { m: PB.T(PB.MASTERY[t - 1].name) })}">◆</i>` : '';
-  };
+  const mastName = (t) => PB.T(PB.MASTERY[t - 1].name);
+  const mastImg = (t, cls, scale) => `<img class="${cls || 'mast-ic'}" src="${PB.PixUI.masteryURL(t, scale || 2)}" alt="" title="${PB.T('Maestría {m}', { m: mastName(t) })}">`;
+  const mastBadge = (copas) => { const t = PB.masteryOf(copas); return t ? mastImg(t) : ''; };
   function renderCollection() {
     const d = PB.Save.get();
     const grid = $('#col-grid');
@@ -388,7 +392,7 @@ PB.Lobby = (() => {
         `<span class="nm">${b.name}</span>` +
         `<span class="tdots">${b.types.map((ty) => `<i style="background:${PB.TYPE_INFO[ty].color}"></i>`).join('')}</span>` +
         (own
-          ? `<span class="lv">Nv. ${PB.Save.level(b.id)} · <img class="cup" src="${cupIcon()}" alt="">${PB.Save.copas(b.id)}${mastBadge(PB.Save.copas(b.id))}</span>`
+          ? `<span class="lv">Nv. ${PB.Save.level(b.id)} · <img class="cup" src="${cupIcon()}" alt="">${PB.Save.copas(b.id)}</span>` + (PB.masteryOf(PB.Save.copas(b.id)) ? mastImg(PB.masteryOf(PB.Save.copas(b.id)), 'card-mast', 2) : '')
           : `<span class="lock">🔒</span><span class="cost">${money(PB.Save.unlockCost(b.id), starIcon)}</span>`) +
         `<span class="rar">${r.name}</span></button>`;
     }).join('');
@@ -477,13 +481,7 @@ PB.Lobby = (() => {
     const shots = now.shots > 1 ? ` × ${now.shots}` : '';
     const si = (n) => `<img class="sti" src="${PB.PixUI.iconURL(n, 2)}" alt="">`;
     $('#dt-stats').innerHTML =
-      (own ? `<tr><td><img class="sti" src="${cupIcon()}" alt="">Copas</td><td>${PB.Save.copas(id)}${mastBadge(PB.Save.copas(id))}</td></tr>` : '') +
-      (own ? (() => {
-        // maestría: la actual y cuánto falta para la siguiente
-        const c = PB.Save.copas(id), t = PB.masteryOf(c), nx = PB.MASTERY[t];
-        const cur = t ? PB.T(PB.MASTERY[t - 1].name) : PB.T('Sin maestría');
-        return `<tr><td>${si('star')}${PB.T('Maestría')}</td><td>${cur}${nx ? ` <small>· ${PB.T('{n} copas para {m}', { n: nx.copas - c, m: PB.T(nx.name) })}</small>` : ''}</td></tr>`;
-      })() : '') +
+      (own ? `<tr><td><img class="sti" src="${cupIcon()}" alt="">Copas</td><td>${PB.Save.copas(id)}</td></tr>` : '') +
       `<tr><td>${si('heart')}Vida</td><td>${now.hp}${plus('hp')}</td></tr>` +
       `<tr><td>${si('sword')}Daño</td><td>${now.dmg}${shots}${plus('dmg')}</td></tr>` +
       (now.superDmg ? `<tr><td>${si('star')}Súper</td><td>${now.superDmg}${b.super.dps ? '/s' : ''}${plus('superDmg')}</td></tr>` : '') +
@@ -589,6 +587,29 @@ PB.Lobby = (() => {
       if (d.points < cost) acts.insertAdjacentHTML('beforeend', `<p class="need">Te faltan ${cost - d.points} Puntos Pokémon. Se consiguen en los cofres.</p>`);
     }
     $('#dt-hero').classList.toggle('locked', !own);
+    renderMastery(id, own);
+  }
+
+  // Recuadro de maestría en la ficha: medalla grande, rango, barra hasta el siguiente y su premio
+  function renderMastery(id, own) {
+    let box = $('#dt-mastery');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'dt-mastery';
+      $('#dt-stats').closest('table').insertAdjacentElement('beforebegin', box);
+    }
+    if (!own) { box.innerHTML = ''; box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    const c = PB.Save.copas(id), t = PB.masteryOf(c), nx = PB.MASTERY[t], prev = t ? PB.MASTERY[t - 1].copas : 0;
+    const k = nx ? Math.max(0, Math.min(1, (c - prev) / (nx.copas - prev))) : 1;
+    const col = t ? PB.MASTERY[t - 1].color : '#8a94b0';
+    const reward = nx ? `+${nx.coins} <img src="${PB.Icons.coin()}" alt="">` + (nx.rainbow ? ` +${nx.rainbow} <img src="${PB.Icons.rainbow()}" alt="">` : '') : '';
+    box.style.setProperty('--mc', col);
+    box.innerHTML =
+      (t ? mastImg(t, 'mb-ic', 3) : `<span class="mb-none">?</span>`) +
+      `<div class="mb-txt"><small>${PB.T('Maestría')}</small><b>${t ? mastName(t) : PB.T('Sin maestría')}</b>` +
+      `<span class="mb-bar"><i style="width:${Math.round(k * 100)}%"></i></span>` +
+      `<small>${nx ? PB.T('{n} copas para {m}', { n: nx.copas - c, m: PB.T(nx.name) }) + ' · ' + reward : PB.T('¡Rango máximo!')}</small></div>`;
   }
 
   // nombre corto de la forma de un movimiento (para distinguir dos que se llaman igual)

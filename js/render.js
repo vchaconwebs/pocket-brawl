@@ -2146,11 +2146,10 @@ PB.Renderer = class {
     this.outlined(b.name, x, y - 8, 13, b.creator ? '#ffd23a' : isMe ? '#7dff8f' : mine ? '#a9d0ff' : '#ffb0b0');
     // medalla de maestría de ese Pokémon (rombo del color del rango) a la izquierda del nombre
     if (b.mastery) {
-      const mx = x - ctx.measureText(b.name).width / 2 - 9, my = y - 12, col = PB.MASTERY[b.mastery - 1].color;
-      ctx.fillStyle = '#10142a';
-      ctx.beginPath(); ctx.moveTo(mx, my - 7); ctx.lineTo(mx + 6, my); ctx.lineTo(mx, my + 7); ctx.lineTo(mx - 6, my); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = col;
-      ctx.beginPath(); ctx.moveTo(mx, my - 5); ctx.lineTo(mx + 4, my); ctx.lineTo(mx, my + 5); ctx.lineTo(mx - 4, my); ctx.closePath(); ctx.fill();
+      const img = PB.PixUI.masteryCanvas(b.mastery);
+      const mx = Math.round(x - ctx.measureText(b.name).width / 2 - 26), my = Math.round(y - 27);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, mx, my, 24, 29);
     }
     // vida: barra pixel con una marca cada 1000
     const hpk = Math.max(0, b.hp) / b.maxHp;

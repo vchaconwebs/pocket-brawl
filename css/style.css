@@ -2132,8 +2132,23 @@ body:has(#end:not(.hidden)) #btn-mchat { top: auto; bottom: calc(10px + var(--sa
 /* racha de victorias junto a las copas */
 .pf-streak { margin-left: 6px; color: #ffb347; font-weight: bold; }
 body.in-match #game { cursor: none; }
-.mast { font-style: normal; color: var(--mc); margin-left: 4px; text-shadow: 0 0 2px #000, 0 0 6px var(--mc); }
+/* maestría: medallas en pixel art */
+.mast-ic { width: 20px; height: 24px; image-rendering: pixelated; vertical-align: middle; margin-left: 4px; filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.25)); }
+#col-grid .card-mast { position: absolute; top: 14px; right: 2px; width: 34px; height: 41px; image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.45)); pointer-events: none; }
+.hero-mast { display: inline-flex; align-items: center; gap: 4px; }
+.hero-mast em { font-style: normal; font-size: 18px; text-shadow: 1px 1px 0 #0c1020; }
+.hero-mast .mast-ic { width: 34px; height: 41px; margin: -12px 0 -8px; filter: drop-shadow(0 0 6px var(--mc, #ffd23a)); }
+#dt-mastery { display: flex; align-items: center; gap: 12px; margin: 8px 0; padding: 8px 12px; border-radius: 10px; background: rgba(10, 15, 40, 0.6); border: 2px solid var(--mc); box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.35), 0 0 10px color-mix(in srgb, var(--mc) 40%, transparent); }
+#dt-mastery .mb-ic { width: 60px; height: 72px; image-rendering: pixelated; filter: drop-shadow(0 0 8px var(--mc)); }
+#dt-mastery .mb-none { width: 60px; height: 60px; display: grid; place-items: center; border-radius: 50%; border: 3px dashed #5a6488; color: #5a6488; font-size: 30px; }
+#dt-mastery .mb-txt { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+#dt-mastery .mb-txt b { font-size: 22px; font-weight: 400; color: var(--mc); text-shadow: 1px 1px 0 #0c1020; }
+#dt-mastery .mb-txt small { color: #cfdcff; font-size: 12px; }
+#dt-mastery .mb-txt small img { width: 14px; height: 14px; vertical-align: -2px; image-rendering: pixelated; }
+#dt-mastery .mb-bar { height: 10px; border-radius: 5px; background: #141a36; border: 2px solid #0c1020; overflow: hidden; }
+#dt-mastery .mb-bar i { display: block; height: 100%; background: linear-gradient(var(--mc), color-mix(in srgb, var(--mc) 60%, #000)); }
 .mastery-up { border-color: var(--mc) !important; box-shadow: 0 0 14px var(--mc); }
+.mastery-up .mast-up-ic { width: 40px; height: 48px; image-rendering: pixelated; margin: -10px 4px -10px -4px; }
 .pf-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
 .pf-title-row input { width: 130px; }
 #pf-title-cols { display: inline-flex; gap: 4px; }

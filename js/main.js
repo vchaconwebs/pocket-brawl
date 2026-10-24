@@ -705,7 +705,7 @@
     const dc = reward.copas;
     $('#end-rewards').innerHTML =
       `<div class="copas-change ${dc > 0 ? 'up' : dc < 0 ? 'down' : ''}"><img src="${PB.Icons.cup()}" alt=""><b>${dc > 0 ? '+' : ''}${dc}</b><small>${me.def.name}: ${reward.copasNow} copas</small></div>` +
-      (reward.mastery ? `<div class="pill mastery-up" style="--mc:${PB.MASTERY[reward.mastery.tier - 1].color}"><i class="mast">◆</i><b>${PB.T('¡Maestría {m}!', { m: PB.T(PB.MASTERY[reward.mastery.tier - 1].name) })}</b>` +
+      (reward.mastery ? `<div class="pill mastery-up" style="--mc:${PB.MASTERY[reward.mastery.tier - 1].color}"><img class="mast-up-ic" src="${PB.PixUI.masteryURL(reward.mastery.tier, 3)}" alt=""><b>${PB.T('¡Maestría {m}!', { m: PB.T(PB.MASTERY[reward.mastery.tier - 1].name) })}</b>` +
         `<img src="${PB.Icons.coin()}" alt=""><b>+${reward.mastery.coins}</b>` + (reward.mastery.rainbow ? `<img src="${PB.Icons.rainbow()}" alt=""><b>+${reward.mastery.rainbow}</b>` : '') + '</div>' : '') +
       `<div class="pill pay"><img src="${PB.Icons.coin()}" alt=""><b>+${reward.coins}</b><img src="${PB.Icons.star()}" alt=""><b>+${reward.points}</b>` +
       (reward.rainbow ? `<img src="${PB.Icons.rainbow()}" alt=""><b>+${reward.rainbow}</b>` : '') + `</div>` +
