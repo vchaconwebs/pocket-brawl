@@ -2123,3 +2123,6 @@ body:not(.pad) .pad-focus { outline: none !important; box-shadow: none !importan
 /* en la pantalla final el botón del chat va abajo (arriba tapaba tu fila y el MVP) */
 body:has(#end:not(.hidden)) #btn-mchat { top: auto; bottom: calc(10px + var(--sab, 0px)); }
 .pt-cup { width: 12px; height: 12px; vertical-align: -1px; margin-right: 2px; image-rendering: pixelated; }
+.srv-text p { margin: 0 0 10px; font-size: 16px; line-height: 1.35; color: #e6ecff; }
+.srv-text b { color: #ffe066; font-weight: 400; }
+.srv-btns { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 6px; }

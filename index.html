@@ -32,7 +32,7 @@
    "offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
   </script>
   <link rel="preload" href="assets/fonts/Jersey10.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=148">
+  <link rel="stylesheet" href="css/style.css?v=149">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -171,6 +171,15 @@
       <div class="patch-vers" id="patch-vers"></div>
       <ul id="patch-list"></ul>
       <button class="big" id="patch-ok">¡A jugar!</button>
+    </div>
+  </div>
+
+  <!-- AVISO: servidor lleno (límite diario de Firebase) -->
+  <div id="srv-notice" class="patch hidden" role="dialog" aria-modal="true" aria-labelledby="srv-title" style="z-index: 61">
+    <div class="panel patch-panel">
+      <div class="patch-head"><h2 id="srv-title">⚠️ Problemas con el servidor</h2></div>
+      <div id="srv-text" class="srv-text"></div>
+      <div class="srv-btns"><button class="act blue" id="srv-donate">❤️ Donar</button><button class="big" id="srv-ok">Entendido</button></div>
     </div>
   </div>
 
@@ -536,5 +545,41 @@
   <script src="js/chat.js?v=142"></script>
   <script src="js/lobby.js?v=148"></script>
   <script src="js/main.js?v=148"></script>
+  <script>
+    // Aviso temporal: el servidor gratis se ha llenado hoy (vuelve a las 9:00 en España). Sale una vez por visita.
+    (() => {
+      const until = Date.UTC(2026, 9, 24, 7, 0);
+      let seen = false;
+      try { seen = sessionStorage.getItem('pb.srvNotice') === '1'; } catch (e) {}
+      if (Date.now() > until || seen) return;
+      const es = !PB.lang || PB.lang === 'es';
+      const T = es ? {
+        h: '⚠️ Problemas con el servidor',
+        p: ['Hoy ha entrado tantísima gente que el servidor se ha quedado petado 😅.',
+          'Hasta las <b>9:00 de la mañana</b> (hora de España) no funcionarán bien el inicio de sesión, el chat, los clanes, los perfiles ni el ranking. Las partidas sí se pueden jugar.',
+          'Para que el online siga en pie voy a tener que pagar un servidor, así que <b>cualquier donación se agradece muchísimo</b> ❤️',
+          'Perdón por los problemas y ¡muchas gracias por jugar!'],
+        ok: 'Entendido', don: '❤️ Donar',
+      } : {
+        h: '⚠️ Server problems',
+        p: ['So many people joined today that the server is overloaded 😅.',
+          'Until <b>9:00 AM (Spain time)</b>, signing in, chat, clans, profiles and the ranking won’t work properly. You can still play matches.',
+          'To keep online play running I’ll have to pay for a server, so <b>any donation is hugely appreciated</b> ❤️',
+          'Sorry for the trouble and thanks a lot for playing!'],
+        ok: 'Got it', don: '❤️ Donate',
+      };
+      const $ = (s) => document.querySelector(s);
+      $('#srv-title').textContent = T.h;
+      $('#srv-text').innerHTML = T.p.map((x) => '<p>' + x + '</p>').join('');
+      $('#srv-ok').textContent = T.ok;
+      $('#srv-donate').textContent = T.don;
+      if (!PB.DONATE_URL) $('#srv-donate').remove();
+      else $('#srv-donate').onclick = () => window.open(PB.DONATE_URL, '_blank', 'noopener');
+      $('#srv-ok').onclick = () => { $('#srv-notice').classList.add('hidden'); try { sessionStorage.setItem('pb.srvNotice', '1'); } catch (e) {} };
+      const show = () => $('#srv-notice').classList.remove('hidden');
+      if ($('#loading').classList.contains('hidden')) show();
+      else new MutationObserver((m, o) => { if ($('#loading').classList.contains('hidden')) { o.disconnect(); show(); } }).observe($('#loading'), { attributes: true });
+    })();
+  </script>
 </body>
 </html>
