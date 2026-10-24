@@ -448,9 +448,9 @@
   // Ajustes de equilibrio a mano (set nuevo). kind: solo si el movimiento es de esa forma; dmg: multiplica el daño
   const TUNE = {
     deoxys: { atk: { kind: 'spread', range: 280, dmg: 0.92 } }, // Psicocorte llegaba demasiado lejos
-    zapdos: { sup: { kind: 'storm', radius: 320 } },
+    zapdos: { sup: { kind: 'storm', radius: 240, count: 5 } }, // su tormenta cubría media pantalla
     zeraora: { atk: { kind: 'melee', dmg: 0.88 }, sup: { kind: 'storm', count: 6 } },
-    rayquaza: { sup: { kind: 'comet', range: 330 } },
+    rayquaza: { sup: { kind: 'comet', range: 280, radius: 140 } }, // el cometa caía muy lejos y en un área enorme
     snivy: { atk: { dmg: 0.9 }, sup: { kind: 'orbit', dmg: 0.85 } },
     hoopa: { atk: { dmg: 0.9 }, sup: { kind: 'phantom', range: 380, dmg: 0.87 } },
     axew: { atk: { kind: 'melee', dmg: 0.87 }, sup: { kind: 'rage', time: 4, dmgMul: 1.25 } }, // Ciclón (giro) y Danza Dragón
