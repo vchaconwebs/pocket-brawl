@@ -548,12 +548,25 @@
   <script>
     // Aviso temporal: el servidor gratis se ha llenado hoy (vuelve a las 9:00 en España). Sale una vez por visita.
     (() => {
-      const until = Date.UTC(2026, 9, 24, 7, 0);
+      // hasta las 9:00 (España): servidor caído; luego, el resto del 24 de octubre: aviso de inestabilidad
+      const down = Date.now() < Date.UTC(2026, 9, 24, 7, 0), until = Date.UTC(2026, 9, 24, 22, 0);
       let seen = false;
-      try { seen = sessionStorage.getItem('pb.srvNotice') === '1'; } catch (e) {}
+      try { seen = sessionStorage.getItem('pb.srvNotice') === (down ? '1' : '2'); } catch (e) {}
       if (Date.now() > until || seen) return;
       const es = !PB.lang || PB.lang === 'es';
-      const T = es ? {
+      const T = !down ? (es ? {
+        h: '⚠️ Servidor inestable',
+        p: ['Estos días el juego está teniendo muchísimos jugadores y el servidor puede tener <b>problemas e inestabilidad</b> (chat, clanes, ranking o inicio de sesión).',
+          'Para que todo vaya bien hace falta mejorar los servidores, así que <b>cualquier ayuda para mantenerlos se agradece muchísimo</b> ❤️',
+          'Perdón si algo falla y ¡gracias por jugar!'],
+        ok: 'Entendido', don: '❤️ Ayudar',
+      } : {
+        h: '⚠️ Unstable server',
+        p: ['The game has tons of players these days, so the server may have <b>problems and instability</b> (chat, clans, ranking or signing in).',
+          'The servers need to be improved, so <b>any help to keep them running is hugely appreciated</b> ❤️',
+          'Sorry if something fails, and thanks for playing!'],
+        ok: 'Got it', don: '❤️ Help',
+      }) : es ? {
         h: '⚠️ Problemas con el servidor',
         p: ['Hoy ha entrado tantísima gente que el servidor se ha quedado petado 😅.',
           'Hasta las <b>9:00 de la mañana</b> (hora de España) no funcionarán bien el inicio de sesión, el chat, los clanes, los perfiles ni el ranking. Las partidas sí se pueden jugar.',
@@ -575,7 +588,7 @@
       $('#srv-donate').textContent = T.don;
       if (!PB.DONATE_URL) $('#srv-donate').remove();
       else $('#srv-donate').onclick = () => window.open(PB.DONATE_URL, '_blank', 'noopener');
-      $('#srv-ok').onclick = () => { $('#srv-notice').classList.add('hidden'); try { sessionStorage.setItem('pb.srvNotice', '1'); } catch (e) {} };
+      $('#srv-ok').onclick = () => { $('#srv-notice').classList.add('hidden'); try { sessionStorage.setItem('pb.srvNotice', down ? '1' : '2'); } catch (e) {} };
       const show = () => $('#srv-notice').classList.remove('hidden');
       if ($('#loading').classList.contains('hidden')) show();
       else new MutationObserver((m, o) => { if ($('#loading').classList.contains('hidden')) { o.disconnect(); show(); } }).observe($('#loading'), { attributes: true });
