@@ -17,8 +17,8 @@ PB.META = {
   },
   // premio de cada partida (en Niebla Tóxica cuenta como victoria quedar entre los 4 primeros)
   matchReward: {
-    win: { coins: 25, points: 24, rainbow: 3 },
-    lose: { coins: 10, points: 11, rainbow: 1 },
+    win: { coins: 40, points: 24, rainbow: 3 }, // (monedas +60 % en la v1.8: con tantos Pokémon, subirlos de nivel costaba mucho)
+    lose: { coins: 16, points: 11, rainbow: 1 },
   },
   bonusWins: 3, // las 3 primeras victorias del día dan el doble de fichas
   // premio de cada modo según lo que dura (fichas, monedas, puntos y pase): por minuto jugado,

@@ -432,14 +432,14 @@
     return 'fighter';
   }
 
-  // Precio (en Puntos Pokémon) y rareza. ×5 desde la v1.8: se compraban todos de golpe (sobre todo los
+  // Precio (en Puntos Pokémon) y rareza. ×4 desde la v1.8: se compraban todos de golpe (sobre todo los
   // legendarios); ahora comprar es lento y la forma normal de conseguirlos son las Poké Balls y la Zona Safari
   const RARITY = {
-    starter: { name: 'Inicial', color: '#9ad08a', cost: 1000 },
-    common: { name: 'Común', color: '#c8c8c8', cost: 500 },
-    rare: { name: 'Raro', color: '#5aa8ff', cost: 1000 },
-    epic: { name: 'Épico', color: '#c07aff', cost: 2000 },
-    legendary: { name: 'Legendario', color: '#ffd23a', cost: 4000 },
+    starter: { name: 'Inicial', color: '#9ad08a', cost: 800 },
+    common: { name: 'Común', color: '#c8c8c8', cost: 400 },
+    rare: { name: 'Raro', color: '#5aa8ff', cost: 800 },
+    epic: { name: 'Épico', color: '#c07aff', cost: 1600 },
+    legendary: { name: 'Legendario', color: '#ffd23a', cost: 3200 },
   };
   PB.RARITY = RARITY;
   for (const r of Object.values(RARITY)) r.name = PB.T(r.name);
