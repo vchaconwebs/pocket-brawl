@@ -549,6 +549,8 @@ PB.Save = (() => {
       if (it.kind === 'coins' && n) { d.coins += n; got.push({ kind: 'coins', n }); }
       if (it.kind === 'points' && n) { d.points += n; got.push({ kind: 'points', n }); }
       if (it.kind === 'rainbow' && n) { d.rainbow = (d.rainbow || 0) + n; got.push({ kind: 'rainbow', n }); }
+      // quitar la espera por abandonar partidas (se guarda en su dispositivo: solo se puede quitar así)
+      if (it.kind === 'unban') { d.abandons = []; got.push({ kind: 'unban' }); }
     }
     if (got.length) persist();
     return got;
