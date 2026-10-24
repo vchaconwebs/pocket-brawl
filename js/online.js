@@ -504,8 +504,8 @@ PB.Online = (() => {
   });
 
   // Perfiles de otros jugadores (amigos, miembros de un clan...): cada uno es una lectura, así que se
-  // guardan 15 minutos (también al recargar) y solo se piden los que falten o estén viejos.
-  const USER_TTL = 900000;
+  // guardan 1 hora (también al recargar) y solo se piden los que falten o estén viejos.
+  const USER_TTL = 3600000; // (1 hora: nombres y copas de otros pueden ir un poco atrasados)
   let userCache = {};
   try { userCache = JSON.parse(localStorage.getItem('pb.users') || '{}') || {}; } catch (e) { userCache = {}; }
   let userSaveT = null;
@@ -708,7 +708,7 @@ PB.Online = (() => {
   let friendsCache = null, friendsT = 0;
   async function friends(force) {
     if (!(await start()) || isGuest()) return [];
-    if (!force && friendsCache && Date.now() - friendsT < 600000) return friendsCache;
+    if (!force && friendsCache && Date.now() - friendsT < 1800000) return friendsCache;
     // (las aceptadas, como mucho cada 30 min: cada consulta cuesta una lectura aunque no haya ninguna)
     let lastAcc = 0;
     try { lastAcc = +localStorage.getItem('pb.accChk') || 0; } catch (e) {}
@@ -931,11 +931,11 @@ PB.Online = (() => {
     await syncProfile(false, true);
   }
 
-  // (mirar el clan cuesta una lectura por miembro: se guarda 5 minutos; al cambiar algo se vuelve a leer)
+  // (mirar el clan cuesta una lectura por miembro: se guarda 15 minutos; al cambiar algo se vuelve a leer)
   let clanC = null, clanCT = 0;
   async function myClan() {
     if (!(await start()) || isGuest()) return null;
-    if (clanC && myDoc.clan === clanC.id && Date.now() - clanCT < 300000) return clanC;
+    if (clanC && myDoc.clan === clanC.id && Date.now() - clanCT < 900000) return clanC;
     if (!myDoc.clan) {
       const q = await fs.collection('clans').where('members', 'array-contains', uid).limit(1).get().catch(() => null);
       if (!q || q.empty) return null;
