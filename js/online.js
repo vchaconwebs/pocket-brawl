@@ -445,12 +445,16 @@ PB.Online = (() => {
 
   // ------------------------------------------------------------ perfil
   const myName = () => clean(PB.Save.get().name, 16) || 'Entrenador';
-  let lastProfile = '';
+  let lastProfile = '', written = null; // (written: lo último que se escribió del perfil)
   let myDoc = { friends: [], clan: null };
 
   const isGuest = () => !user || user.isAnonymous;
-  // (como mucho una escritura del perfil cada 15 minutos; lo que cambie entre medias va en la siguiente)
+  // (nombre, tag, clan y avatar al momento; copas y estadísticas como mucho cada 30 minutos, lo que cambie
+  // entre medias va en la siguiente)
   let profWT = 0, profLater = null;
+  try { profWT = +localStorage.getItem('pb.profWT') || 0; } catch (e) {}
+  const PROF_EVERY = 1800000;
+  const PROF_NOW = ['name', 'tag', 'fav', 'clan', 'clanName', 'tg', 'tc']; // (esto se ve enseguida: no espera)
   async function syncProfile(first, force) {
     if (!uid || isGuest()) return;
     const d = PB.Save.get();
@@ -476,16 +480,20 @@ PB.Online = (() => {
     const keyOf = (o) => JSON.stringify(Object.keys(p).map((k) => (k === 'pc' ? Object.entries(o.pc || {}).sort() : o[k] === undefined ? null : o[k])));
     const key = keyOf(p);
     if (stored && keyOf(stored) === key) lastProfile = key; // al entrar, si el perfil guardado ya está al día no se reescribe
+    const myDocWas = Object.assign({}, written || myDoc);
     Object.assign(myDoc, p);
     if (key === lastProfile) return;
-    const wait = 900000 - (Date.now() - profWT); // (como mucho una escritura del perfil cada 15 min)
-    if (!first && !force && wait > 0) {
+    const wait = PROF_EVERY - (Date.now() - profWT); // (copas y demás: como mucho una escritura cada 30 min)
+    const urgent = (first && !stored) || PROF_NOW.some((k) => (myDocWas[k] || null) !== (p[k] || null));
+    if (!force && !urgent && wait > 0) {
       if (!profLater) profLater = setTimeout(() => { profLater = null; syncProfile(false, true).catch(() => {}); }, wait);
       return;
     }
     profWT = Date.now();
+    try { localStorage.setItem('pb.profWT', String(profWT)); } catch (e) {}
     lastProfile = key;
     await fs.collection('users').doc(uid).set(Object.assign({ t: fb.firestore.FieldValue.serverTimestamp() }, p), { merge: true });
+    written = Object.assign({}, p);
     saveMyDoc();
   }
   // copia de tu perfil en el navegador (ver arriba); se guarda cada vez que cambia algo de él
@@ -709,13 +717,7 @@ PB.Online = (() => {
   async function friends(force) {
     if (!(await start()) || isGuest()) return [];
     if (!force && friendsCache && Date.now() - friendsT < 1800000) return friendsCache;
-    // (las aceptadas, como mucho cada 30 min: cada consulta cuesta una lectura aunque no haya ninguna)
-    let lastAcc = 0;
-    try { lastAcc = +localStorage.getItem('pb.accChk') || 0; } catch (e) {}
-    if (force || Date.now() - lastAcc > 1800000) {
-      try { localStorage.setItem('pb.accChk', String(Date.now())); } catch (e) {}
-      await processAccepted().catch(() => {});
-    }
+    // (las aceptadas se miran junto con las solicitudes, solo si hay algo nuevo: ver friendNews)
     const ids = (myDoc.friends || []).slice(0, 100);
     const list = await usersByIds(ids);
     await Promise.all(list.map(async (f) => { f.online = await isOnline(f.id); }));
@@ -724,13 +726,29 @@ PB.Online = (() => {
     return friendsCache;
   }
 
-  // (la lobby lo pide cada vez que se actualiza: se guarda 10 minutos para no gastar lecturas)
+  // friendFlag/<uid>: la hora de la última solicitud o aceptación para ti (la pone quien la manda).
+  // Las consultas de solicitudes cuestan lecturas aunque no haya ninguna, así que solo se hacen si hay
+  // algo nuevo (unos bytes de la Realtime Database) o cada 6 h (por las versiones viejas, que no la ponen).
+  const friendFlag = (id) => rtdb.ref('friendFlag/' + id).set(fb.database.ServerValue.TIMESTAMP).catch(() => {});
+  async function friendNews() {
+    let last = 0;
+    try { last = +localStorage.getItem('pb.reqChk.' + uid) || 0; } catch (e) {}
+    if (Date.now() - last > 21600000) return true;
+    const s = await rtdb.ref('friendFlag/' + uid).once('value').catch(() => null);
+    const v = s && s.val();
+    return typeof v === 'number' && v > last - 60000;
+  }
+  // (la lobby lo pide cada vez que se actualiza: se guarda 30 minutos, también al recargar)
   let reqCache = null, reqT = 0;
   async function requests(force) {
     if (!(await start()) || isGuest()) return [];
     if (!force && reqCache && Date.now() - reqT < 1800000) return reqCache;
+    if (!reqCache) try { reqCache = JSON.parse(localStorage.getItem('pb.reqs.' + uid) || 'null'); } catch (e) { reqCache = null; }
     reqT = Date.now();
+    if (!force && reqCache && !(await friendNews())) return reqCache;
     reqCache = await requestsNow().catch(() => reqCache || []);
+    await processAccepted().catch(() => {});
+    try { localStorage.setItem('pb.reqChk.' + uid, String(Date.now())); localStorage.setItem('pb.reqs.' + uid, JSON.stringify(reqCache)); } catch (e) {}
     return reqCache;
   }
   async function requestsNow() {
@@ -779,6 +797,7 @@ PB.Online = (() => {
     if (back.exists) return answerRequest(id, true);
     const d = PB.Save.get();
     await fs.collection('friendReqs').doc(id + '_' + uid).set({ from: uid, to: id, fromName: myName(), fromCopas: PB.Save.totalCopas(), fromFav: d.selected, status: 'pending', t: Date.now() });
+    friendFlag(id);
     return { ok: true };
   }
 
@@ -790,8 +809,10 @@ PB.Online = (() => {
       await fs.collection('users').doc(uid).set({ friends: myDoc.friends }, { merge: true });
     saveMyDoc();
       await ref.update({ status: 'accepted' });
+      friendFlag(id);
       friendsCache = null;
     } else await ref.delete();
+    if (reqCache) { reqCache = reqCache.filter((r) => r.id !== id); try { localStorage.setItem('pb.reqs.' + uid, JSON.stringify(reqCache)); } catch (e) {} }
     return { ok: true };
   }
 
@@ -925,6 +946,7 @@ PB.Online = (() => {
   }
   async function setMyClan(id, name) {
     clanC = null;
+    noClanT = 0;
     myDoc.clan = id;
     myDoc.clanName = name || '';
     lastProfile = '';
@@ -932,13 +954,15 @@ PB.Online = (() => {
   }
 
   // (mirar el clan cuesta una lectura por miembro: se guarda 15 minutos; al cambiar algo se vuelve a leer)
-  let clanC = null, clanCT = 0;
+  let clanC = null, clanCT = 0, noClanT = 0;
   async function myClan() {
     if (!(await start()) || isGuest()) return null;
     if (clanC && myDoc.clan === clanC.id && Date.now() - clanCT < 900000) return clanC;
     if (!myDoc.clan) {
+      // (sin clan: buscar si te han metido en alguno cuesta una lectura; como mucho cada 15 min)
+      if (Date.now() - noClanT < 900000) return null;
       const q = await fs.collection('clans').where('members', 'array-contains', uid).limit(1).get().catch(() => null);
-      if (!q || q.empty) return null;
+      if (!q || q.empty) { noClanT = Date.now(); return null; }
       await setMyClan(q.docs[0].id, clean(q.docs[0].data().name, 20));
     }
     const c = await clanFull(myDoc.clan);

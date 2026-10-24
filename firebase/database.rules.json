@@ -239,6 +239,13 @@
         "$other": { ".validate": false }
       }
     },
+    "friendFlag": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid != null",
+        ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+      }
+    },
     "giftFlag": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",

@@ -204,10 +204,21 @@ PB.Lobby = (() => {
   // más nueva de los scripts que la que tenemos. Si es así, avisa en la lobby con un botón para recargar.
   const loadedV = (() => { const m = /main\.js\?v=(\d+)/.exec([...document.scripts].map((x) => x.src).join(' ')); return m ? +m[1] : 0; })();
   let newVersion = false;
+  // recarga forzada: si la página publicada tiene un pb-force mayor, se recarga en cuanto esté en la lobby
+  // (aunque esté en grupo o con el chat abierto; en partida espera a que acabe)
+  const FORCE_RE = /name="pb-force" content="(\d+)"/;
+  const loadedForce = (() => { const m = document.querySelector('meta[name="pb-force"]'); return m ? +m.content || 0 : 0; })();
+  let forceNow = false;
+  setInterval(() => {
+    if (forceNow && current === 'lobby' && !(PB.Match && PB.Match.busy)) { forceNow = false; location.reload(); }
+  }, 3000);
   async function checkUpdate() {
-    if (newVersion || !loadedV || /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
+    if (forceNow || !loadedV || /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
     try {
       const html = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
+      const f = FORCE_RE.exec(html);
+      if (f && +f[1] > loadedForce) { forceNow = true; if (current === 'lobby') toast(PB.T('Actualizando a la versión nueva…')); return; }
+      if (newVersion) return;
       const m = /main\.js\?v=(\d+)/.exec(html);
       if (m && +m[1] > loadedV) {
         newVersion = true;
