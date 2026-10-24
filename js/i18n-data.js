@@ -912,4 +912,5 @@ PB.I18N = {
   "¡Gracias por votar!": ["Thanks for voting!", "Obrigado por votares!", "Merci d’avoir voté !", "Grazie per aver votato!", "Danke fürs Abstimmen!"],
   "Ya has votado en esta encuesta.": ["You have already voted in this poll.", "Já votaste neste inquérito.", "Tu as déjà voté à ce sondage.", "Hai già votato in questo sondaggio.", "Du hast bei dieser Umfrage schon abgestimmt."],
   "Ahora no": ["Not now", "Agora não", "Pas maintenant", "Non ora", "Nicht jetzt"],
+  "ya puedes volver a jugar online": ["you can play online again", "já podes voltar a jogar online", "tu peux rejouer en ligne", "puoi tornare a giocare online", "du kannst wieder online spielen"],
 };

@@ -2440,7 +2440,7 @@ PB.Lobby = (() => {
       modal(PB.T('El equipo del juego te ha quitado el tag «{t}» porque no cumple las normas. Puedes ponerte otro desde tu Perfil.', { t: t || '?' }));
     });
     PB.Online.on('gift', ({ items, msg }) => {
-      const names = items.map((it) => (it.kind === 'pokemon' ? PB.brawlerById(it.id).name : '+' + it.n + ' ' + PB.T({ coins: 'monedas', points: 'Puntos Pokémon', rainbow: 'Monedas Arcoíris' }[it.kind])));
+      const names = items.map((it) => (it.kind === 'pokemon' ? PB.brawlerById(it.id).name : it.kind === 'unban' ? PB.T('ya puedes volver a jugar online') : '+' + it.n + ' ' + PB.T({ coins: 'monedas', points: 'Puntos Pokémon', rainbow: 'Monedas Arcoíris' }[it.kind])));
       PB.Audio.play('win');
       refreshLobby();
       modal('🎁 ' + PB.T('¡Regalo del creador! Has recibido: {list}', { list: names.join(', ') }) + (msg ? '\n\n«' + msg + '»' : ''));
