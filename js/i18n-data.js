@@ -913,4 +913,6 @@ PB.I18N = {
   "Ya has votado en esta encuesta.": ["You have already voted in this poll.", "Já votaste neste inquérito.", "Tu as déjà voté à ce sondage.", "Hai già votato in questo sondaggio.", "Du hast bei dieser Umfrage schon abgestimmt."],
   "Ahora no": ["Not now", "Agora não", "Pas maintenant", "Non ora", "Nicht jetzt"],
   "ya puedes volver a jugar online": ["you can play online again", "já podes voltar a jogar online", "tu peux rejouer en ligne", "puoi tornare a giocare online", "du kannst wieder online spielen"],
+  "Niebla Tóxica (solo y dúo)": ["Toxic Fog (solo and duo)", "Névoa Tóxica (solo e dupla)", "Brouillard Toxique (solo et duo)", "Nebbia Tossica (singolo e duo)", "Giftnebel (Solo und Duo)"],
+  "Duelo de Equipos (3vs3, 2vs2, 1vs1)": ["Team Duel (3v3, 2v2, 1v1)", "Duelo de Equipes (3vs3, 2vs2, 1vs1)", "Duel d’Équipes (3c3, 2c2, 1c1)", "Duello a Squadre (3vs3, 2vs2, 1vs1)", "Team-Duell (3v3, 2v2, 1v1)"],
 };

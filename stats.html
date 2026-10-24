@@ -531,8 +531,9 @@
     $('#srv-month-note').textContent = ks.length ? `Contado desde el ${label(ks.sort()[0], true)}. La consola de Firebase (Realtime Database → Uso) da el dato exacto.` : 'Se empieza a contar ahora.';
   }
   // ---------- encuesta de modos (poll y pollVotes en la Realtime Database)
-  const POLL_MODES = 'gems,showdown,duo,heist,ball,zone,brawl,pair,duel,knockout';
-  const POLL_NAMES = { gems: 'Atrapa Pokéballs', showdown: 'Niebla Tóxica', duo: 'Niebla Tóxica Dúo', heist: 'Despierta a Snorlax', ball: 'Voltorbol', zone: 'Territorio', brawl: 'Duelo 3vs3', pair: 'Duelo 2vs2', duel: 'Duelo 1vs1', knockout: 'Eliminación' };
+  // (Niebla Tóxica solo y dúo es una sola opción, igual que Duelo de Equipos 3vs3, 2vs2 y 1vs1)
+  const POLL_MODES = 'gems,showdown,heist,ball,zone,brawl,knockout';
+  const POLL_NAMES = { gems: 'Atrapa Pokéballs', showdown: 'Niebla Tóxica (solo y dúo)', duo: 'Niebla Tóxica Dúo', heist: 'Despierta a Snorlax', ball: 'Voltorbol', zone: 'Territorio', brawl: 'Duelo de Equipos (3vs3, 2vs2, 1vs1)', pair: 'Duelo 2vs2', duel: 'Duelo 1vs1', knockout: 'Eliminación' };
   async function pollLoad() {
     try {
       const p = await (await fetch(DB + '/poll.json' + authQ(), { cache: 'no-store' })).json();

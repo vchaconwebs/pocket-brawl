@@ -1258,7 +1258,9 @@ PB.Lobby = (() => {
     const left = () => Math.max(0, Math.ceil((p.ends - PB.Online.now()) / 60000));
     $('#poll-left').textContent = PB.T('Quedan {n} min', { n: left() });
     const draw = () => {
-      $('#poll-grid').innerHTML = p.modes.map((id) => `<button class="poll-opt${pollPick.includes(id) ? ' on' : ''}" data-pm="${id}"><img src="${modeIcon(id)}" alt=""><span>${PB.MODES[id].name}</span></button>`).join('');
+      // (Niebla Tóxica y Duelo de Equipos van como una sola opción, con todas sus variantes)
+      const label = (id) => (id === 'showdown' ? PB.T('Niebla Tóxica (solo y dúo)') : id === 'brawl' ? PB.T('Duelo de Equipos (3vs3, 2vs2, 1vs1)') : PB.MODES[id].name);
+      $('#poll-grid').innerHTML = p.modes.map((id) => `<button class="poll-opt${pollPick.includes(id) ? ' on' : ''}" data-pm="${id}"><img src="${modeIcon(id)}" alt=""><span>${label(id)}</span></button>`).join('');
       $('#poll-grid').querySelectorAll('[data-pm]').forEach((b) => (b.onclick = () => {
         const id = b.dataset.pm;
         if (pollPick.includes(id)) pollPick = pollPick.filter((x) => x !== id);
