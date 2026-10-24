@@ -42,10 +42,26 @@ PB.Chat = (() => {
   // ------------------------------------------------------------ tag propio (como el CREADOR, cada uno el suyo)
   // Hasta 12 letras o números, sin palabrotas ni hacerse pasar por el equipo del juego; color de una lista fija
   const TAG_COLORS = ['#ff5a5a', '#ff9a3a', '#ffd23a', '#5ad87a', '#3ad8d0', '#5aa8ff', '#b07aff', '#ff6ad8'];
-  const TAG_RESERVED = /(creador|esclavizador|admin|moderador|staff|oficial|owner|desarrollador|(^| )(mod|dev|gm)( |$))/i;
+  // Se mira el tag entero sin espacios y con los trucos de siempre (4DM1N, A D M I N, CREAD0R...)
+  // palabras que no pueden ir en ningún sitio del tag: cargos del juego, marcas y palabrotas (además de las del chat)
+  const TAG_NO = ['admin', 'administrador', 'administrator', 'creador', 'creadora', 'creator', 'dueno', 'duena', 'owner', 'oficial', 'official',
+    'moderador', 'moderadora', 'moderator', 'staff', 'developer', 'desarrollador', 'programador', 'soporte', 'support', 'sistema', 'system',
+    'pokeversus', 'nintendo', 'gamefreak', 'pokemoncompany', 'esclavizador', 'esclavo', 'helper', 'ayudante', 'fundador', 'founder',
+    'verificado', 'verified', 'youtuber', 'streamer', 'tiktoker', 'partner', 'equipodeljuego', 'teamoficial', 'anthropic', 'claude',
+    'tonto', 'tonta', 'idiota', 'estupido', 'estupida', 'imbecil', 'pene', 'teta', 'culo', 'caca', 'mamon', 'pajero', 'pajillero', 'chupa',
+    'ojete', 'cojon', 'huevon', 'boludo', 'pelotudo', 'concha', 'guarra', 'violar', 'violador', 'hitler', 'nazi',
+    'droga', 'cocaina', 'sexy', 'sexo', 'hentai', 'nude', 'nudes', 'penis', 'boobs', 'idiot', 'stupid', 'loser'];
+  // palabras cortas que solo cuentan si van solas (MODO o BOTÓN sí valen; MOD o BOT no)
+  const TAG_NO_WORD = ['mod', 'mods', 'adm', 'dev', 'devs', 'gm', 'bot', 'bots', 'ceo', 'tpc', 'puta', 'puto', 'ano', 'anal', 'pis', 'kkk', 'xxx', 'ass', 'perra', 'porro', 'cono'];
+  const TAG_NO_S = TAG_NO.map(squash).filter((w) => w.length >= 4), TAG_NO_WORD_S = new Set(TAG_NO_WORD.map(squash));
+  function tagForbidden(t) {
+    const all = squash(t);
+    if (TAG_NO_S.some((w) => all.includes(w)) || BAD.some((w) => w.length >= 5 && all.includes(squash(w))) || SROOTS.some((r) => all.includes(r))) return true;
+    return t.split(' ').some((w) => TAG_NO_WORD_S.has(squash(w)) || isBad(w));
+  }
   function cleanTag(t) {
     t = String(t || '').replace(/[^\p{L}\p{N} ]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 12).toUpperCase();
-    if (t.length < 2 || TAG_RESERVED.test(t) || filter(t, 12) !== t) return '';
+    if (t.length < 2 || tagForbidden(t)) return '';
     return t;
   }
   const tagColor = (c) => TAG_COLORS[Math.max(0, Math.min(TAG_COLORS.length - 1, c | 0))];
