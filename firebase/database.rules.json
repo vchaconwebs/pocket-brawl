@@ -61,7 +61,7 @@
       }
     },
     "stats": {
-      ".read": true,
+      ".read": "auth != null && auth.uid === 'ULFnTGBapaaIUhxmHKgCh9TIm6G3'",
       "$day": {
         ".validate": "$day.matches(/^20[0-9][0-9]-[01][0-9]-[0-3][0-9]$/)",
         "$k": {
@@ -80,11 +80,19 @@
             ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1"
           }
         },
+        "fs": {
+          "$k": {
+            ".write": "$k.matches(/^(r|w)$/)",
+            ".validate": "newData.isNumber() && newData.val() > (data.exists() ? data.val() : 0) && newData.val() <= (data.exists() ? data.val() : 0) + 2000"
+          }
+        },
         "peak": {
+          ".read": true,
           ".write": true,
           ".validate": "newData.isNumber() && newData.val() > (data.exists() ? data.val() : 0) && newData.val() <= (data.exists() ? data.val() : 0) + 50"
         },
         "online": {
+          ".read": true,
           "$slot": {
             ".write": "!data.exists()",
             ".validate": "$slot.matches(/^[0-9]{1,3}$/) && newData.isNumber() && newData.val() >= 1 && newData.val() <= 5000"

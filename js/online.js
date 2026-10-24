@@ -59,6 +59,7 @@ PB.Online = (() => {
         auth = fb.auth();
         rtdb = fb.database();
         fs = fb.firestore();
+        countFirestore();
         rtdb.ref('.info/serverTimeOffset').on('value', (s) => { offset = s.val() || 0; });
         countVisit();
         goOnline();
@@ -77,6 +78,35 @@ PB.Online = (() => {
   // Solo números por día: visitas, partidas, jugadores distintos y cuentas nuevas. Nada personal.
   const day = () => new Date(Date.now() + offset).toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
   const testing = /^(localhost|127\.0\.0\.1)$/.test(location.hostname); // las pruebas en local no cuentan
+  // Cuántas lecturas y escrituras de Firestore hace este navegador (aprox.): se suman cada 2 min en
+  // stats/<día>/fs/{r,w} para ver en stats.html si el día se acerca al límite gratis (50.000 / 20.000)
+  function countFirestore() {
+    if (testing) return;
+    const n = { r: 0, w: 0 };
+    const wrap = (proto, name, kind, cnt) => {
+      const f = proto && proto[name];
+      if (!f || f._pv) return;
+      proto[name] = function (...a) {
+        const p = f.apply(this, a);
+        if (p && p.then) p.then((x) => { n[kind] += cnt ? cnt(x) : 1; }, () => {});
+        return p;
+      };
+      proto[name]._pv = true;
+    };
+    const F = fb.firestore;
+    wrap(F.DocumentReference.prototype, 'get', 'r');
+    wrap(F.Query.prototype, 'get', 'r', (q) => Math.max(1, (q && q.size) || 0));
+    for (const m of ['set', 'update', 'delete']) wrap(F.DocumentReference.prototype, m, 'w');
+    setInterval(() => {
+      for (const k of ['r', 'w']) {
+        const v = Math.min(n[k], 2000);
+        if (!v) continue;
+        n[k] -= v;
+        rtdb.ref('stats/' + day() + '/fs/' + k).set(fb.database.ServerValue.increment(v)).catch(() => {});
+      }
+    }, 120000);
+  }
+
   function bump(path) {
     if (!rtdb || testing) return;
     rtdb.ref('stats/' + day() + '/' + path).set(fb.database.ServerValue.increment(1)).catch(() => {});
